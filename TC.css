@@ -128,17 +128,23 @@ section {
 
 
 .keywords {
-  grid-area: special;
+  grid-area: keywords;
   flex-direction: center;
   background-color: white;
 }
 
 .equip {
-    grid-area: upgrades;
+    grid-area: equip;
     flex-direction: center;
     background-color: white;
   }
  
+  .abil {
+    grid-area: abil;
+    flex-direction: center;
+    background-color: white;
+  }
+
 
 .pic {
   grid-area: pic;
@@ -301,16 +307,4 @@ input[type="hidden"][value="Off"].ranged3-status ~ .ranged3{
 
 
 
-
-
-
-.equip {
-    grid-area: equip;
-    background-color:  white;
-  }
-
-  .abil {
-    grid-area: abil;
-    background-color:  white;
-  }
   
