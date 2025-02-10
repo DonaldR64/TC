@@ -35,9 +35,9 @@ main {
   width: 800px;
   height: 800px;
   grid-gap: 4px;
-  grid-template-columns: auto;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
   grid-template-rows: auto;
-  grid-template-areas: "keywords header header pic    pic"
+  grid-template-areas: "header header header   pic    pic"
                         "att     att    att    pic    pic"
                         "melee   melee  melee  equip  equip"
                         "ranged  ranged ranged equip  equip"
