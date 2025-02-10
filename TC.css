@@ -304,26 +304,6 @@ input[type="hidden"][value="Off"].ranged3-status ~ .ranged3{
 }
 
 
-
-  
-
-.spheader {
-  text-align: center;
-}
-
-.spheader h2 {
-  text-align: center;
-  color: white;
-}
-
-input[type="hidden"][name="attr_faction"]:is([value="Deathguard"],[value="Space Wolves"],[value="Ratlings"],[value="Goblins"],[value="Slaanesh"],[value="Infected Colony"]) ~ .spheader h2 {
-  color: black;
-}
-input[type="hidden"][name="attr_faction"]:is([value="Necron"]) ~ .spheader h2 {
-  color:  #39FF14;
-}
-
-
 .spheader {
   text-align: center;
 }
