@@ -273,10 +273,10 @@
                     <div><span>Move</span></div>
                     <div><span>Ranged</span></div>
                     <div><span>Melee</span></div>
-                    <div><span>Armour</span></div>
+                    <div><span>Base Armour</span></div>
                     <h4><span name="attr_move"></span></h4>
-                    <h4><span name="attr_ranged"></span></h4>
-                    <h4><span name="attr_melee"></span></h4>
+                    <h4><span name="attr_rangedtext"></span></h4>
+                    <h4><span name="attr_meleetext"></span></h4>
                     <h4><span name="attr_armour"></span></h4>
                 </section>
 
@@ -396,5 +396,28 @@
         on("sheet:opened", function() {
             setAttrs({sheetTab:"display"});
         });
+
+        on("change:attrs sheet:opened", function() { 
+            getAttrs(["ranged","melee"], function(values) {
+                let ranged = parseInt(values.ranged);
+                let melee = parseInt(values.melee);
+                let rangedText = ranged.toString();
+                let meleeText = ranged.toString();
+                if (ranged > 0) {
+                    rangedText = "+" + rangedText;
+                }
+                if (melee > 0) {
+                    meleeText = "+" + meleeText;
+                }
+                setAttrs({
+                    "rangedtext": rangedText,
+                    "meleetext": meleeText,
+                })
+
+
+            });    
+        }); 
+
+        
     
     </script>
