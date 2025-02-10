@@ -39,9 +39,9 @@ main {
   grid-template-rows: auto;
   grid-template-areas: "header header header   pic    pic"
                         "att     att    att    pic    pic"
+                        "abil    abil   abil   pic    pic"
                         "melee   melee  melee  equip  equip"
-                        "ranged  ranged ranged equip  equip"
-                        "abil    abil   abil   abil   abil";
+                        "ranged  ranged ranged equip  equip";
   
 }
 
