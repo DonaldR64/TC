@@ -1,0 +1,407 @@
+<input type="hidden" class="sheet-tabstoggle" name="attr_sheetTab"  value="display"  />
+<div>
+    <button type="action" name="act_input" >Input</button>
+    <button type="action" name="act_display" >Display</button>
+    <button type="action" name="act_abilities" >Special Rules</button>
+</div>
+
+
+<div class="sheet-input">
+    <div class="2colrow">
+        <div class="col">
+            <h3>Unit Information</h3>
+            <label>Name:</label><input type="text" name="attr_character_name">
+            <br>
+            <label for="attr_faction">Faction:</label>
+            <select name="attr_faction">
+                <option value="" selected disabled hidden>Choose here</option>
+                <option value="New Antioch">New Antioch</option>
+                
+            </select>
+        </div>
+        <div class="col">
+            <h3>Attributes</h3>
+            <label>Move:</label><input type="number" name="attr_move">
+            <label>Ranged:</label><input type="number" name="attr_ranged">
+            <label>Melee:</label><input type="number" name="attr_melee">
+            <label>Armour:</label><input type="number" name="attr_armour">
+        </div>
+        <div class="col">
+            <h3>Keywords</h3>
+            <label>Keywords:</label><input type="text" name="attr_keywords">           
+        </div>
+
+
+
+
+        <div class="row">
+            <h3>Melee Weapons</h3>
+            <div class="weapons">
+                <table>
+                <thead>
+                    <tr>
+                        <th>Equipped</th>
+                        <th>Weapon</th>
+                        <th>Type</th>
+                        <th>Modifiers</th>
+                        <th>Keywords</th>
+                        <th>Sound</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><select name="attr_melee1equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_melee1name"></td>
+                        <td><select name="attr_melee1type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>      
+                        <td><input type="text" name="attr_melee1modifiers"></td>
+                        <td><input type="text" name="attr_melee1keywords"></td>
+                        <td><input type="text" name="attr_melee1sound"></td>                
+                    </tr>
+                    <tr>
+                        <td><select name="attr_melee2equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_melee2name"></td>
+                        <td><select name="attr_melee2type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>      
+                        <td><input type="text" name="attr_melee2modifiers"></td>
+                        <td><input type="text" name="attr_melee2keywords"></td>
+                        <td><input type="text" name="attr_melee2sound"></td>                
+                    </tr>
+                    <tr>
+                        <td><select name="attr_melee3equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_melee3name"></td>
+                        <td><select name="attr_melee3type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>      
+                        <td><input type="text" name="attr_melee3modifiers"></td>
+                        <td><input type="text" name="attr_melee3keywords"></td>
+                        <td><input type="text" name="attr_melee3sound"></td>                
+                    </tr>
+                </tbody>
+            </table>    
+        </div>   
+        
+        <div class="row">
+            <h3>Ranged Weapons</h3>
+            <div class="weapons">
+                <table>
+                <thead>
+                    <tr>
+                    <th>Equipped</th>
+                    <th>Weapon</th>
+                    <th>Type</th>
+                    <th>Range</th>
+                    <th>Modifiers</th>
+                    <th>Keywords</th>
+                    <th>FX</th>
+                    <th>Sound</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><select name="attr_ranged1equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_ranged1name"></td>
+                        <td><select name="attr_ranged1type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>     
+                        <td><input type="number" name="attr_ranged1range"></td>
+                        <td><input type="text" name="attr_ranged1modifiers"></td>
+                        <td><input type="text" name="attr_ranged1keywords"></td>
+                        <td><input type="text" name="attr_ranged1fx"></td>
+                        <td><input type="text" name="attr_ranged1sound"></td>                
+                    </tr>
+                    <tr>
+                        <td><select name="attr_ranged2equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_ranged2name"></td>
+                        <td><select name="attr_ranged2type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>     
+                        <td><input type="number" name="attr_ranged2range"></td>
+                        <td><input type="text" name="attr_ranged2modifiers"></td>
+                        <td><input type="text" name="attr_ranged2keywords"></td>
+                        <td><input type="text" name="attr_ranged2fx"></td>
+                        <td><input type="text" name="attr_ranged2sound"></td>                
+                    </tr>
+                    <tr>
+                        <td><select name="attr_ranged3equipped">
+                            <option value = "Off">Off</option>
+                            <option value = "Equipped">Equipped</option>
+                        </select></td>
+                        <td><input type="text" name="attr_ranged3name"></td>
+                        <td><select name="attr_ranged3type">
+                            <option value="" selected disabled hidden>Choose here</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+    
+                        </select></td>     
+                        <td><input type="number" name="attr_ranged3range"></td>
+                        <td><input type="text" name="attr_ranged3modifiers"></td>
+                        <td><input type="text" name="attr_ranged3keywords"></td>
+                        <td><input type="text" name="attr_ranged3fx"></td>
+                        <td><input type="text" name="attr_ranged3sound"></td>                
+                    </tr>
+                   
+                </tbody>
+            </table>    
+        </div>   
+
+        <div class="row">
+            <h3>Equipment</h3>
+            <div class="equipment">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" name="attr_equip1name"></td>  
+                            <td><input type="text" name="attr_equip1info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_equip2name"></td>  
+                            <td><input type="text" name="attr_equip2info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_equip3name"></td>  
+                            <td><input type="text" name="attr_equip3info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_equip4name"></td> 
+                            <td><input type="text" name="attr_equip4info"></td>   
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_equip5name"></td> 
+                            <td><input type="text" name="attr_equip5info"></td>   
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row">
+            <h3>Abilities</h3>
+            <div class="abilities">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" name="attr_ability1name"></td>  
+                            <td><input type="text" name="attr_ability1info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_ability2name"></td>  
+                            <td><input type="text" name="attr_ability2info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_ability3name"></td>  
+                            <td><input type="text" name="attr_ability3info"></td>  
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_ability4name"></td> 
+                            <td><input type="text" name="attr_ability4info"></td>   
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="attr_ability5name"></td> 
+                            <td><input type="text" name="attr_ability5info"></td>   
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sheet-display">
+    <input type="hidden" name="attr_faction"/>
+    <div class="mysheet">
+        <div class="attributes">
+        <main>
+        <input type="hidden" name="attr_faction"/>
+            <section class="header f-center">
+            <h1><span name="attr_character_name"></span></h1>
+            <h3><span name="attr_faction"></span> <span name="attr_type"></span></h3>
+            </section>
+
+            <section class="pic f-center">
+                <img alt="Character Avatar" name="attr_character_avatar"/>
+            </section>
+
+
+            <section class="att">
+            <h3>Attributes</h3>
+            <div class="attinfo">
+                <div><span>Move</span></div>
+                <div><span>Ranged</span></div>
+                <div><span>Melee</span></div>
+                <div><span>Armour</span></div>
+                <h4><span name="attr_move"></span></h4>
+                <h4><span name="attr_ranged"></span></h4>
+                <h4><span name="attr_melee"></span></h4>
+                <h4><span name="attr_armour"></span></h4>
+            </section>
+
+            <section class="keywords">
+            <h3>Keywords</h3>
+            <h3><span name="attr_keywords"></span></h3>
+            </section>
+
+
+            <section class="melee">
+            <h3>Melee Weapons</h3>
+            <div class="meleeinfo">
+                <div><span>Weapon</span></div>
+                <div><span>Type</span></div>
+                <div><span>Modifiers</span></div>
+                <div><span>Keywords</span></div>
+            </div>
+
+            <input type="hidden" name="attr_melee1equipped" class="melee1-status" value="Off">
+            <div class="melee1">
+                <h4><span name="attr_melee1name"></span></h4>
+                <h4><span name="attr_melee1type"></span></h4>
+                <h4><span name="attr_melee1modifiers"></span></h4>
+                <h4><span name="attr_melee1keywords"></span></h4>
+            </div>
+
+            <input type="hidden" name="attr_melee2equipped" class="melee2-status" value="Off">
+            <div class="melee1">
+                <h4><span name="attr_melee2name"></span></h4>
+                <h4><span name="attr_melee2type"></span></h4>
+                <h4><span name="attr_melee2modifiers"></span></h4>
+                <h4><span name="attr_melee2keywords"></span></h4>
+            </div>
+
+            <input type="hidden" name="attr_melee3equipped" class="melee3-status" value="Off">
+            <div class="melee1">
+                <h4><span name="attr_melee3name"></span></h4>
+                <h4><span name="attr_melee3type"></span></h4>
+                <h4><span name="attr_melee3modifiers"></span></h4>
+                <h4><span name="attr_melee3keywords"></span></h4>
+            </div>
+
+            </section>
+
+            <section class="ranged">
+            <h3>Ranged Weapons</h3>
+            <div class="rangeinfo">
+                <div><span>Weapon</span></div>
+                <div><span>Type</span></div>
+                <div><span>Range</span></div>
+                <div><span>Modifiers</span></div>
+                <div><span>Keywords</span></div>
+            </div>
+
+            <input type="hidden" name="attr_range1equipped" class="range1-status" value="Off">
+            <div class="range1">
+                <h4><span name="attr_range1name"></span></h4>
+                <h4><span name="attr_range1type"></span></h4>
+                <h4><span name="attr_range1range"></span></h4>
+                <h4><span name="attr_range1modifiers"></span></h4>
+                <h4><span name="attr_range1keywords"></span></h4>
+            </div>
+
+            <input type="hidden" name="attr_range2equipped" class="range2-status" value="Off">
+            <div class="range1">
+                <h4><span name="attr_range2name"></span></h4>
+                <h4><span name="attr_range2type"></span></h4>
+                <h4><span name="attr_range2range"></span></h4>
+                <h4><span name="attr_range2modifiers"></span></h4>
+                <h4><span name="attr_range2keywords"></span></h4>
+            </div>
+
+            <input type="hidden" name="attr_range3equipped" class="range3-status" value="Off">
+            <div class="range1">
+                <h4><span name="attr_range3name"></span></h4>
+                <h4><span name="attr_range3type"></span></h4>
+                <h4><span name="attr_range3range"></span></h4>
+                <h4><span name="attr_range3modifiers"></span></h4>
+                <h4><span name="attr_range3keywords"></span></h4>
+            </div>
+
+            </section>
+
+
+            <section class="equip">
+            <h3>Equipment</h3>
+            <h4><span name="attr_equip1name"></span></h4>
+            <h4><span name="attr_equip2name"></span></h4>
+            <h4><span name="attr_equip3name"></span></h4>
+            <h4><span name="attr_equip4name"></span></h4>
+            <h4><span name="attr_equip5name"></span></h4>
+            </section>
+
+
+            <section class="abil">
+            <h3>Abilities</h3>
+            <h4><span name="attr_ability1name"></span></h4>
+            <h4><span name="attr_ability2name"></span></h4>
+            <h4><span name="attr_ability3name"></span></h4>
+            <h4><span name="attr_ability4name"></span></h4>
+            <h4><span name="attr_ability5name"></span></h4>
+            </section>
+
+
+
+
+
+
+        </main>
+        </div>
+    </div>    
+</div>
+
+    <script type="text/worker">
+        const buttonlist = ["input","display","special"];
+        buttonlist.forEach(button => {
+            on(`clicked:${button}`, function() {
+                setAttrs({
+                    sheetTab: button
+                });
+            });
+        });
+    
+        on("sheet:opened", function() {
+            setAttrs({sheetTab:"display"});
+        });
+    
+    </script>
