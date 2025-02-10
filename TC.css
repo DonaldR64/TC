@@ -36,7 +36,7 @@ main {
   height: 800px;
   grid-gap: 4px;
   grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-  grid-template-rows: auto;
+  grid-template-rows: 1fr 1fr 1fr 2fr 2fr;
   grid-template-areas: "header header header   pic    pic"
                         "att     att    att    pic    pic"
                         "abil    abil   abil   pic    pic"
