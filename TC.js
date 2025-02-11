@@ -47,6 +47,10 @@ const TC = (() => {
 
     }; 
 
+
+    const TurnMarkers = ["","https://s3.amazonaws.com/files.d20.io/images/361055772/zDURNn_0bbTWmOVrwJc6YQ/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055766/UZPeb6ZiiUImrZoAS58gvQ/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055764/yXwGQcriDAP8FpzxvjqzTg/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055768/7GFjIsnNuIBLrW_p65bjNQ/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055770/2WlTnUslDk0hpwr8zpZIOg/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055771/P9DmGozXmdPuv4SWq6uDvw/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055765/V5oPsriRTHJQ7w3hHRBA3A/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055767/EOXU3ujXJz-NleWX33rcgA/thumb.png?1695998303","https://s3.amazonaws.com/files.d20.io/images/361055769/925-C7XAEcQCOUVN1m1uvQ/thumb.png?1695998303"];
+
+
     let outputCard = {title: "",subtitle: "",faction: "",body: [],buttons: [],};
 
     const Factions = {
@@ -74,13 +78,79 @@ const TC = (() => {
 
     };
 
-    const Gunnery = [
-        [1,2,3,4,5,5,6,7,8,9,10,11,12,13,14,14,15,16,17,18],
-        [1,1,2,3,4,4,5,6,6,7,8,8,9,10,11,11,12,13,13,14],
-        [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10],
-        [0,1,1,1,2,2,2,3,3,4,4,4,5,5,5,6,6,6,7,7],
-        [0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3,4,4,4],
-    ];
+    let Keywords = {
+        'artificial': "This model is not of natural origin but is instead constructed from non-organic elements.",
+        'assault': "Ranged attacks made with weapons that have this Keyword do not prevent a model from charging during the same activation. A charge may only be made if a single ranged attack is made with a weapon with this Keyword, regardless of any other rules that the weapon might have.",
+        'blast': "A weapon with BLAST (X) has an area of effect with a radius of hexes indicated by X. If this weapon targets a model, this radius is measured from the centre of that model’s base in all directions. If this weapon targets a point on the ground, this radius is measured from that point in all directions, including vertically. If the Attack ACTION with this weapon is successful, it hits every model within this radius that the target (either model or point) has line of sight to (i.e. not completely blocked by terrain).",
+        "consumable": "An item with this keyword can only be used once. After the battle, any items with this keyword that were used are lost.",
+        "critical": "When attacking with a weapon with this keyword, add +2 DICE (instead of 1) to any injury rolls the weapon causes if you roll a Critical (i.e. 12+) on the Action Success Chart",
+        "cumbersome": "Model always requires two hands to use this weapon, even if the model has the Keyword STRONG. A weapon with the Keyword CUMBERSOME ignores this restriction when benefitting from the Shield Combo rule.",
+        "elite": "The most senior and heroic models of the warband. They have different rules for experience and advancement, and often enjoy a different weapon, armour and equipment selection.",
+        "fear": "Enemies of models with this Keyword suffer -1 DICE in melee combat against this model. Some units are immune to this effect. Models that cause FEAR are not affected by FEAR themselves.",
+        "fire": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "fireteam": "This model is part of a Fireteam made up of two models. All models that are part of this Fireteam can be activated at the same time without the opponent getting their turn in between. They can take their ACTIONS in any order they wish, switching between the two models. Note that if the activation of either member of the Fireteam forcefully ends (due to a failed RISKY ACTION for example), it ends both Activations. Allies cannot be part of a Fireteam.",
+        "gas": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "grenade": "Grenade-type weapons ignore penalties for cover and long range. They do not count towards the number of ranged weapons a model can carry and do not have to be held in your hand at all times. A model armed with grenades can use them as many times as they wish.",
+        "heavy": "If carrying a weapon, armour or equipment with this Keyword, the model cannot move/dash and shoot during its Activation, and the model cannot roll D6 and add it to the Charge move. A model can only carry one item with this Keyword.",
+        "infiltrator": " Models with this Keyword can be deployed anywhere on the table out of line of sight of any enemies, but at least 8 hexes away from the closest enemy. They are deployed after all other models without this Keyword. If any infiltrators cannot be deployed according to these restrictions then those models can always be placed in your deployment zone. If a scenario does not allow for infiltrators, deploy models with this Keyword during standard deployment as if they didn’t have this Keyword.",
+        "limit": "You can only purchase as many of this piece of equipment/weapon/armour as indicated by the number in parenthesis for your warband. If you find more via looting/exploration, you can break this limit.",
+        "shrapnel": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "skirmisher": "When a model with this Keyword is targeted by an enemy’s Charge, it may immediately move D3 hexes in any direction, except into Melee Combat. A Skirmisher may also make this move when a charging enemy model would enter Melee Combat with it during a Charge that is not targeting it. After either of these moves is resolved, the Charge continues as normal toward the original target. These moves can only be taken if the Skirmisher is not in Melee Combat and only one such move may be taken per Charge",
+        "strong": " A model with this Keyword ignores the rules for weapons/armour/equipment with Keyword HEAVY, including not being limited to carrying only one HEAVY item (though other limitations apply as normal). In addition, it may use a single two-handed Melee weapon as a one-handed weapon.",
+        "tough": " If a TOUGH model would be taken Out Of Action, it is knocked Down instead. After a TOUGH model has been knocked Down in this way once, it can be taken Out of Action as normal.",
+        
+
+
+
+    }
+
+
+
+
+
+
+
+    const TerrainInfo = {
+        "#000000": {name: "Hill 1", height: 1,los: "Open",cover: false,move: "Normal"},
+        "#434343": {name: "Hill 2", height: 2,los: "Open",cover: false,move: "Normal"},  
+        "#666666": {name: "Hill 3",height:3,los: "Open",cover: false,move: "Normal"},
+        "#c0c0c0": {name: "Hill 4",height:4,los: "Open",cover: false,move: "Normal"},
+        "#d9d9d9": {name: "Hill 5",height:5,los: "Open",cover: false,move: "Normal"},
+    
+        "#ffffff": {name: "Spire", height: 2,los: "Blocked",cover: false,move: "Impassable"}, 
+        "#00ffff": {name: "Stream", height: 0,los: "Partial",cover: false,move: "Difficult"}, 
+        "#00ff00": {name: "Woods",height: 2,los: "Partial",cover: true,move: "Difficult"},
+        "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,move: "Normal"},
+        "#9900ff": {name: "Ditch Hill",height: -1,los: "Open",cover: false,move: "Normal"},
+        "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,move: "Difficult"},
+        "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,move: "Difficult"}, 
+        "#6aa84f": {name: "Jungle", height: 2,los: "Partial",cover: true,move: "Difficult"}, 
+        "#0000ff": {name: "Lake", height: 0,los: "Open",cover: true,move: "Difficult"}, 
+
+        "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,move: "Difficult"}, 
+
+    };
+
+
+    const MapTokenInfo = {
+        "Woods": {name: "Woods",height: 2,los: "Partial",cover: true,move: "Difficult"},
+        "Hedge": {name: "Hedge",height: 0,los: "Open",cover: true,move: "Normal"},
+        "Crops": {name: "Crops",height: 0,los: "Open",cover: true,move: "Normal"},
+        "Ruins": {name: "Ruins",height: 1,los: "Partial",cover: true,move: "Dangerous if Rush/Charge"},
+        "Imperial Building A": {name: "Building",height: 1,los: "Blocked",cover: true,move: "Difficult"},
+        "Imperial Building B": {name: "Building",height: 2,los: "Blocked",cover: true,move: "Difficult"},
+        "Imperial Building C": {name: "Building",height: 3,los: "Blocked",cover: true,move: "Difficult"},
+        "Wood Building A": {name: "Building",height: 1,los: "Blocked",cover: true,move: "Difficult"},
+        "Minefield": {name: "Minefield",height: 0,los: "Open",cover: false,move: "Dangerous"},
+        "Razorwire": {name: "Razorwire",height: 0,los: "Open",cover: false,move: "Dangerous for Infantry"},
+        "Drums": {name: "Storage Drums",height: .5,los: "Partial",cover: true,move:"Normal"},
+        "Pipe": {name: "Pipe",height: .5,los: "Partial",cover: true,move:"Difficult"},
+        "Crater": {name: "Crater",height: 0,los: "Open",cover: true,move:"Difficult"},
+
+
+
+    }
+
 
 
 
@@ -897,6 +967,10 @@ const TC = (() => {
         let tok = findObjs({_type:"graphic", id: tokenIDs[0]})[0];
         let char = getObj("character", tok.get("represents")); 
         
+
+
+
+
 
     }
 
