@@ -28,7 +28,9 @@ input[type="hidden"][name="attr_faction"] ~ .mysheet {
 input[type="hidden"][name="attr_faction"][value="New Antioch"] ~ .mysheet {
     background-color:darkslategrey;
 }
-
+input[type="hidden"][name="attr_faction"][value="Heretic Legion"] ~ .mysheet {
+  background-color: red;
+}
 
 main {
   display: grid;
