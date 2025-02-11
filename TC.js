@@ -364,9 +364,9 @@ const TC = (() => {
         constructor(tokenID) {
             let token = findObjs({_type:"graphic", id: tokenID})[0];
             let char = getObj("character", token.get("represents")); 
-log(token.get("name"));
             let attributeArray = AttributeArray(char.id);
             let faction = attributeArray.faction;
+            let charName = char.get("name");
             let player;
             if (faction === "New Antioch" || faction === "Trench Pilgrims" || faction === "Iron Sultanate") {
                 player = 0;
@@ -485,9 +485,12 @@ log(token.get("name"));
                 }
             }
 
-            //eliminate duplicates from keywords
+            //eliminate duplicates from keywords and trim spaces
+            keywords = keywords.map(e => {
+                return e.trim();
+            });
             keywords = [...new Set(keywords)];
-    log(keywords)
+
             //update character sheet
             for (let i=0;i<keywords.length;i++) {
                 let keyword = keywords[i];
@@ -501,10 +504,12 @@ log(token.get("name"));
                 }
             }
 
-            let name = attributeArray.name; //modify later
 
-            this.name = name;
+            this.name = token.get("name");
             this.id = tokenID;
+            this.charID = char.id;
+            this.charName = charName;
+
             this.player = player;
             this.faction = faction;
             this.location = location;
@@ -1073,6 +1078,8 @@ log(token.get("name"));
                 showplayers_bar1: true,
                 showname: true,
                 showplayers_aura1: true,
+                bar3_value: 0,
+                bar3_max: "",
                 bar2_value: 0,
                 bar2_max: "",
                 bar1_value: 0,
@@ -1127,11 +1134,11 @@ log(token.get("name"));
                     let tok = findObjs({_type:"graphic", id: id})[0];
                     let char = getObj("character", tok.get("represents")); 
                     faction = Attribute(char,"faction");
-                    if (!state.BFG.players[playerID] || state.BFG.players[playerID] === undefined) {
-                        state.BFG.players[playerID] = faction;
+                    if (!state.TC.players[playerID] || state.TC.players[playerID] === undefined) {
+                        state.TC.players[playerID] = faction;
                     }
                 }
-            } else if (!state.BFG.players[playerID] || state.BFG.players[playerID] === undefined) {
+            } else if (!state.TC.players[playerID] || state.TC.players[playerID] === undefined) {
                 sendChat("","Click on one of your Units then select Roll again");
                 return;
             }
@@ -1151,6 +1158,30 @@ log(token.get("name"));
         }
         _.each(tokenIDs,id => {
             let model = new Model(id);
+            let name = model.charName || "Unnamed";
+            name = name.replace(model.faction,"");
+            name = name.trim();
+            //special names here
+
+
+
+            model.token.set({
+                aura1_color: "#00FF00",
+                aura1_radius: 0.1,
+                bar3_value: 0,
+                bar3_max: "",
+                bar2_value: 0,
+                bar2_max: "",
+                bar1_value: 0,
+                bar1_max: "",
+                name: name,
+            })
+            
+
+
+
+
+
         })        
 
 
