@@ -65,6 +65,20 @@ const TC = (() => {
 
         },
        
+        "Heretic Legion": {
+            "image": "https://s3.amazonaws.com/files.d20.io/images/428505453/sjIHroRj6jS1pvF1WKnLGQ/thumb.png?1739231545",
+            "backgroundColour": "#2F4F4F",
+            "titlefont": "Arial",
+            "fontColour": "#FFFFFF",
+            "borderColour": "#000000",
+            "borderStyle": "5px ridge",
+            "dice": "Antioch",
+
+        },
+       
+
+
+
         "Neutral": {
             "image": "",
             "dice": "Neutral",
@@ -372,6 +386,12 @@ const TC = (() => {
             } else {
                 player = 1;
             }
+            if (state.TC.factions[player] === "") {
+                state.TC.factions[player] = faction
+            }
+
+
+
 
             let location = new Point(token.get("left"),token.get("top"));
             let cube = location.toCube();
@@ -1255,19 +1275,20 @@ const TC = (() => {
         _.each(ModelArray,model => {
             models[model.player]++;
         })
+
         let firstPlayer,line0,line1,blurb;
         let fewestModels = false;
         if (models[0] < models[1]) {
             firstPlayer = 0;
             fewestModels = true;
-        } else if (models[1] > models[0]) {
+        } else if (models[1] < models[0]) {
             firstPlayer = 1;
             fewestModels = true;
         } else {
             let roll0 = randomInteger(6);
             let roll1 = randomInteger(6);
-            line0 = state.TC.factions[0] + ": " + DisplayDice(roll0,Factions[state.TC.factions[0]],24);
-            line1 = state.TC.factions[1] + ": " + DisplayDice(roll1,Factions[state.TC.factions[1]],24);
+            line0 = state.TC.factions[0] + ": " + DisplayDice(roll0,Factions[state.TC.factions[0]].dice,24);
+            line1 = state.TC.factions[1] + ": " + DisplayDice(roll1,Factions[state.TC.factions[1]].dice,24);
             if (roll0 < roll1) {
                 firstPlayer = 1;
             } else if (roll0 > roll1) {
