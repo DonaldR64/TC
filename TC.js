@@ -611,15 +611,14 @@ const TC = (() => {
 
         
         let edges = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",fill: "#000000"});
-        MapEdge = edges[0].get("x");
-        if (edges.length > 1) {
-            sendChat("","More than one Edge");
-        } 
-
-        turnOrder = getTurnArray();
-
-
-
+        if (edges) {
+            MapEdge = edges[0].get("x");
+            if (edges.length > 1) {
+                sendChat("","More than one Edge");
+            } 
+        } else {
+            sendChat("","Need to add an Edge");
+        }
     }
 
     const BuildMap = () => {
@@ -1091,7 +1090,7 @@ const TC = (() => {
         //on('destroy:graphic',destroyGraphic);
     };
     on('ready', () => {
-        log("===> Battlefleet Gothic Version: " + version + " <===");
+        log("===> Trench Crusade Version: " + version + " <===");
         LoadPage();
         BuildMap();
         registerEventHandlers();
