@@ -5,7 +5,7 @@ const TC = (() => {
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0, hexesW: 0, hexesH: 0};
     const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI"];
 
-    let UnitArray = {}; //Units
+    let ModelArray = {}; 
 
     let hexMap = {}; 
     let MapEdge; //will be the x coord of the table edge
@@ -41,7 +41,7 @@ const TC = (() => {
 
 //fix below
     const SM = {
-        moved: "status_Advantage-or-Up::2006462", //if unit moved
+        moved: "status_Advantage-or-Up::2006462", //if model moved
         fired: "status_Shell::5553215",
        
 
@@ -360,6 +360,199 @@ const TC = (() => {
         }
     }
 
+    class Model {
+        constructor(tokenID) {
+            let token = findObjs({_type:"graphic", id: tokenID})[0];
+            let char = getObj("character", token.get("represents")); 
+            log(token.get("name"));
+            let attributeArray = AttributeArray(char.id);
+            let faction = attributeArray.faction;
+            let player;
+            if (faction === "New Antioch" || faction === "Trench Pilgrims" || faction === "Iron Sultanate") {
+                player = 0;
+            } else {
+                player = 1;
+            }
+
+            let location = new Point(token.get("left"),token.get("top"));
+            let hex = pointToHex(location);
+            let hexLabel = hex.label();
+
+            //abilities
+            let move = parseInt(attributeArray.move);
+            let rangedBonus = parseInt(attributeArray.ranged);
+            let meleeBonus = parseInt(attributeArray.melee);
+            let baseArmour = parseInt(attributeArray.armour);
+
+            let words = attributeArray.keywords || " ";
+            words = words.split(",");
+            let keywords = [];
+            _.each(words,word => {
+                if (word !== undefined && word !== " " && word !== "") {
+                    keywords.push(word);
+                }
+            })
+
+            let weaponArray = {};
+            let types = ["melee","ranged"];
+            for (let j=0;j<types.length;j++) {
+                let type = types[j] + i;
+                for (let i=1;i<4;i++) {
+                    let wname = attributeArray[type+"name"];
+                    let wequipped = attributeArray[type+"equipped"];
+                    if (wequipped !== "Equipped") {continue};
+                    if (!wname || wname === "" || wname === undefined || wname === " ") {continue};
+                    let wtype = attributeArray[type+"type"];       
+                    let wrange = parseInt(attributeArray[type+"range"]) || 0;
+                    let wmodifiers = attributeArray[type+"modifiers"] || " ";
+                    let wkeywords = attributeArray[type+"keywords"] || " ";
+                    let wsound = attributeArray[type+"sound"] || "";
+                    let wfx = attributeArray[type+"fx"] || "";
+                    let weapon = {
+                        name: wname,
+                        type: wtype,
+                        range: wrange,
+                        modifiers: wmodifiers,
+                        keywords: wkeywords,
+                        sound: wsound,
+                        fx: wfx,
+                    }
+                    if (weaponArray[type]) {
+                        weaponArray[type].push(weapon);
+                    } else {
+                        weaponArray[type]= [weapon];
+                    }
+                    wkeywords = wkeywords.split(",");
+                    _.each(wkeywords,key => {
+                        if (key !== undefined && key !== " " && key !== "") {
+                            keywords.push(key);
+                        }
+                    })
+                }
+            }
+
+
+            for (let i=1;i<21;i++) {
+                let attName = "spec" + i + "Name";
+                let attText = "spec" + i + "Text";
+
+                AttributeSet(char.id,attName,"");
+                AttributeSet(char.id,attText,"");
+            }
+
+            let specNum = 1;
+            let equipmentArray = [];
+            for (let i=1;i<6;i++) {
+                let name = attributeArray["equip" + i + "name"];
+                let info = attributeArray["equip" + i + "info"];
+                let equip = {
+                    name: name,
+                    info: info,
+                }
+                if (name !== undefined && name !== " " && name !== "") {
+                    equipmentArray.push(equip);
+                    if (Keywords[name]) {
+                        keywords.push(name);
+                    } else {
+                        let attName = "spec" + specNum + "Name";
+                        let attText = "spec" + specNum + "Text";
+                        AttributeSet(char.id,attName,name);
+                        AttributeSet(char.id,attText,info);
+                        specNum++;
+                    }
+                }
+            }
+
+            let abilityArray = [];
+            for (let i=1;i<6;i++) {
+                let name = attributeArray["ability" + i + "name"];
+                let info = attributeArray["ability" + i + "info"];
+                let ability = {
+                    name: name,
+                    info: info,
+                }
+                if (name !== undefined && name !== " " && name !== "") {
+                    abilityArray.push(ability);
+                    if (Keywords[name]) {
+                        keywords.push(name);
+                    } else {
+                        let attName = "spec" + specNum + "Name";
+                        let attText = "spec" + specNum + "Text";
+                        AttributeSet(char.id,attName,name);
+                        AttributeSet(char.id,attText,info);
+                        specNum++;
+                    }
+                }
+            }
+
+            //eliminate duplicates from keywords
+            keywords = [...new Set(keywords)];
+            //update character sheet
+            for (let i=0;i<keywords.length;i++) {
+                let keyword = keywords[i];
+                let info = Keywords[keyword];
+                if (info) {
+                    let attName = "spec" + specNum + "Name";
+                    let attText = "spec" + specNum + "Text";
+                    AttributeSet(char.id,attName,keyword);
+                    AttributeSet(char.id,attText,info);
+                    specNum++;
+                }
+            }
+
+            let name = attributeArray.name; //modify later
+
+            this.name = name;
+            this.id = tokenID;
+            this.player = player;
+            this.faction = faction;
+            this.location = location;
+            this.hex = hex;
+            this.hexLabel = hexLabel;
+
+            this.move = move;
+            this.rangedBonus = rangedBonus;
+            this.meleeBonus = meleeBonus;
+            this.baseArmour = baseArmour;
+            //this.armour = armour;
+
+            this.weaponArray = weaponArray;
+            this.equipmentArray = equipmentArray;
+            this.abilityArray = abilityArray;
+
+            this.token = token;
+            
+            ModelArray[tokenID] = this;
+
+            //hexMap[hexLabel].tokenIDs.push(token.id);
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+    }
+
+
+
+
+
+
+
 
 
 
@@ -412,12 +605,6 @@ const TC = (() => {
             sound.set({playing: true,softstop:false});
         }
     };
-
-    const FX = (fxname,unit1,unit2)=> {
-        // unit1 is shooter, unit2 = target
-        let fxType =  findObjs({type: "custfx", name: fxname})[0];
-        spawnFxBetweenPoints(unit1.location, unit2.location, fxType.id);
-    }
 
 
     //Retrieve Values from Character Sheet Attributes
@@ -743,7 +930,7 @@ const TC = (() => {
      
     const TA = () => {
         //add tokens on token layer
-        UnitArray = {};
+        ModelArray = {};
         //create an array of all tokens
         let start = Date.now();
         let tokens = findObjs({
@@ -761,7 +948,7 @@ const TC = (() => {
             if (character === null || character === undefined) {
                 return;
             };
-            //add to unit array
+            //add to model array
 
 
 
@@ -771,7 +958,7 @@ const TC = (() => {
 
 
         let elapsed = Date.now()-start;
-        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(UnitArray).length + " placed in Unit Array");
+        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(ModelArray).length + " placed in Model Array");
 
 
 
@@ -864,7 +1051,7 @@ const TC = (() => {
     //game functions
     const ClearState = (msg) => {
         //clear arrays
-        UnitArray = {};
+        ModelArray = {};
         //clear token info
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
@@ -956,17 +1143,25 @@ const TC = (() => {
         }
     }
 
-    const AddUnits = (msg) => {
+    const AddModels = (msg) => {
         if (!msg.selected) {return};
         let Tag = msg.content.split(";");
         let tokenIDs = [];
         for (let i=0;i<msg.selected.length;i++) {
             tokenIDs.push(msg.selected[i]._id);
         }
-        let faction, player;
-        let tok = findObjs({_type:"graphic", id: tokenIDs[0]})[0];
-        let char = getObj("character", tok.get("represents")); 
-        
+        _.each(tokenIDs,id => {
+            let model = new Model(id);
+        })        
+
+
+
+
+
+
+
+
+
 
 
 
@@ -987,15 +1182,15 @@ const TC = (() => {
             return;
         };
         let id = msg.selected[0]._id;
-        let unit = UnitArray[id];
-        if (!unit) {
+        let model = ModelArray[id];
+        if (!model) {
             sendChat("","Not in Array Yet");
             return
         }
-        let h = hexMap[unit.hexLabel];
-        let faction = unit.faction;
+        let h = hexMap[model.hexLabel];
+        let faction = model.faction;
         if (!faction) {faction = "Neutral"};
-        SetupCard(unit.name,unit.hexLabel,unit.faction);
+        SetupCard(model.name,model.hexLabel,model.faction);
 
         PrintCard();
         
@@ -1006,8 +1201,8 @@ const TC = (() => {
         let shooterID = Tag[1];
         let targetID = Tag[2];
         
-        let shooter = UnitArray[shooterID];
-        let target = UnitArray[targetID];
+        let shooter = ModelArray[shooterID];
+        let target = ModelArray[targetID];
 
         SetupCard("LOS","",shooter.faction);
         
@@ -1017,26 +1212,26 @@ const TC = (() => {
 
 
 
-    const ChangeHex = (unit,oldHexLabel,newHexLabel) => {
+    const ChangeHex = (model,oldHexLabel,newHexLabel) => {
     
 
 
-        let index = hexMap[oldHexLabel][label].indexOf(unit.id);
+        let index = hexMap[oldHexLabel][label].indexOf(model.id);
         if (index > -1) {
             hexMap[oldHexLabel][label].splice(index,1);
         }
         if (newHexLabel) {
-            hexMap[newHexLabel][label].push(unit.id);
-            unit.hexLabel = newHexLabel;
-            unit.location = hexMap[newHexLabel].centre;
-            if (unit.hexLabel !== unit.lastHexLabel && unit.type !== "Ordnance" && unit.type !== "Defence") {
-                let h1 = hexMap[unit.hexLabel];
-                let h2 = hexMap[unit.lastHexLabel];
+            hexMap[newHexLabel][label].push(model.id);
+            model.hexLabel = newHexLabel;
+            model.location = hexMap[newHexLabel].centre;
+            if (model.hexLabel !== model.lastHexLabel && model.type !== "Ordnance" && model.type !== "Defence") {
+                let h1 = hexMap[model.hexLabel];
+                let h2 = hexMap[model.lastHexLabel];
                 let d = h1.cube.distance(h2.cube);
-                if (d <= 1 && unit.type !== "Ordnance" && unit.type !== "Defence") {
-                    unit.token.set(SM.slow,true);
+                if (d <= 1 && model.type !== "Ordnance" && model.type !== "Defence") {
+                    model.token.set(SM.slow,true);
                 } else {
-                    unit.token.set(SM.slow,false);
+                    model.token.set(SM.slow,false);
                 }
             }
         }
@@ -1064,10 +1259,10 @@ const TC = (() => {
             return;
         };
         _.each(tokenIDs,id => {
-            let unit = UnitArray[id];
-            if (!unit) {return};
+            let model = ModelArray[id];
+            if (!model) {return};
             let abilityName,action;
-            let abilArray = findObjs({_type: "ability", _characterid: unit.charID});
+            let abilArray = findObjs({_type: "ability", _characterid: model.charID});
             //clear old abilities
             for(let a=0;a<abilArray.length;a++) {
                 abilArray[a].remove();
@@ -1090,12 +1285,12 @@ const TC = (() => {
         if (tok.get('subtype') === "token") {
             log(tok.get("name") + " moving in changeGraphic");
             if ((tok.get("left") !== prev.left) || (tok.get("top") !== prev.top) || (tok.get("rotation") !== prev.rotation)) {
-                let unit = UnitArray[tok.id];
-                if (!unit) {return};
+                let model = ModelArray[tok.id];
+                if (!model) {return};
 
                 let newLocation = new Point(tok.get("left"),tok.get("top"));
                 let newHex = hexMap[newLocation.toOffset().label()];
-                let oldHexLabel = unit.hexLabel;
+                let oldHexLabel = model.hexLabel;
                 let oldRotation = Angle(prev.rotation);
                 let newRotation = Angle(tok.get("rotation"));
                 //rotate in 60 degree increments
@@ -1113,7 +1308,7 @@ const TC = (() => {
 
                
 
-                //ChangeHex(unit,oldHexLabel,newHex.label);
+                //ChangeHex(model,oldHexLabel,newHex.label);
 
             };
         };
@@ -1131,8 +1326,8 @@ const TC = (() => {
                 log()
                 log("STATE");
                 log(state.TC);
-                log("Unit Array");
-                log(UnitArray);
+                log("Model Array");
+                log(ModelArray);
                 break;
             case '!ClearState':
                 ClearState(msg);
@@ -1140,8 +1335,8 @@ const TC = (() => {
             case '!Roll':
                 RollD6(msg);
                 break;
-            case '!AddUnits':
-                AddUnits(msg);
+            case '!AddModels':
+                AddModels(msg);
                 break;
             case '!TokenInfo':
                 TokenInfo(msg);
