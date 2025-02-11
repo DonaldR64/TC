@@ -1061,7 +1061,6 @@ log(token.get("name"));
             layer: "objects",
         })
        
-       
 
         tokens.forEach((token) => {
             if (token.get("name").includes("Objective") === true) {return};
@@ -1323,7 +1322,6 @@ log(token.get("name"));
     
         switch(args[0]) {
             case '!Dump':
-                log()
                 log("STATE");
                 log(state.TC);
                 log("Model Array");
