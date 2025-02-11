@@ -79,25 +79,25 @@ const TC = (() => {
     };
 
     let Keywords = {
-        'artificial': "This model is not of natural origin but is instead constructed from non-organic elements.",
-        'assault': "Ranged attacks made with weapons that have this Keyword do not prevent a model from charging during the same activation. A charge may only be made if a single ranged attack is made with a weapon with this Keyword, regardless of any other rules that the weapon might have.",
-        'blast': "A weapon with BLAST (X) has an area of effect with a radius of hexes indicated by X. If this weapon targets a model, this radius is measured from the centre of that model’s base in all directions. If this weapon targets a point on the ground, this radius is measured from that point in all directions, including vertically. If the Attack ACTION with this weapon is successful, it hits every model within this radius that the target (either model or point) has line of sight to (i.e. not completely blocked by terrain).",
-        "consumable": "An item with this keyword can only be used once. After the battle, any items with this keyword that were used are lost.",
-        "critical": "When attacking with a weapon with this keyword, add +2 DICE (instead of 1) to any injury rolls the weapon causes if you roll a Critical (i.e. 12+) on the Action Success Chart",
-        "cumbersome": "Model always requires two hands to use this weapon, even if the model has the Keyword STRONG. A weapon with the Keyword CUMBERSOME ignores this restriction when benefitting from the Shield Combo rule.",
-        "elite": "The most senior and heroic models of the warband. They have different rules for experience and advancement, and often enjoy a different weapon, armour and equipment selection.",
-        "fear": "Enemies of models with this Keyword suffer -1 DICE in melee combat against this model. Some units are immune to this effect. Models that cause FEAR are not affected by FEAR themselves.",
-        "fire": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
-        "fireteam": "This model is part of a Fireteam made up of two models. All models that are part of this Fireteam can be activated at the same time without the opponent getting their turn in between. They can take their ACTIONS in any order they wish, switching between the two models. Note that if the activation of either member of the Fireteam forcefully ends (due to a failed RISKY ACTION for example), it ends both Activations. Allies cannot be part of a Fireteam.",
-        "gas": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
-        "grenade": "Grenade-type weapons ignore penalties for cover and long range. They do not count towards the number of ranged weapons a model can carry and do not have to be held in your hand at all times. A model armed with grenades can use them as many times as they wish.",
-        "heavy": "If carrying a weapon, armour or equipment with this Keyword, the model cannot move/dash and shoot during its Activation, and the model cannot roll D6 and add it to the Charge move. A model can only carry one item with this Keyword.",
-        "infiltrator": " Models with this Keyword can be deployed anywhere on the table out of line of sight of any enemies, but at least 8 hexes away from the closest enemy. They are deployed after all other models without this Keyword. If any infiltrators cannot be deployed according to these restrictions then those models can always be placed in your deployment zone. If a scenario does not allow for infiltrators, deploy models with this Keyword during standard deployment as if they didn’t have this Keyword.",
-        "limit": "You can only purchase as many of this piece of equipment/weapon/armour as indicated by the number in parenthesis for your warband. If you find more via looting/exploration, you can break this limit.",
-        "shrapnel": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
-        "skirmisher": "When a model with this Keyword is targeted by an enemy’s Charge, it may immediately move D3 hexes in any direction, except into Melee Combat. A Skirmisher may also make this move when a charging enemy model would enter Melee Combat with it during a Charge that is not targeting it. After either of these moves is resolved, the Charge continues as normal toward the original target. These moves can only be taken if the Skirmisher is not in Melee Combat and only one such move may be taken per Charge",
-        "strong": " A model with this Keyword ignores the rules for weapons/armour/equipment with Keyword HEAVY, including not being limited to carrying only one HEAVY item (though other limitations apply as normal). In addition, it may use a single two-handed Melee weapon as a one-handed weapon.",
-        "tough": " If a TOUGH model would be taken Out Of Action, it is knocked Down instead. After a TOUGH model has been knocked Down in this way once, it can be taken Out of Action as normal.",
+        'Artificial': "This model is not of natural origin but is instead constructed from non-organic elements.",
+        'Assault': "Ranged attacks made with weapons that have this Keyword do not prevent a model from charging during the same activation. A charge may only be made if a single ranged attack is made with a weapon with this Keyword, regardless of any other rules that the weapon might have.",
+        'Blast': "A weapon with BLAST (X) has an area of effect with a radius of hexes indicated by X. If this weapon targets a model, this radius is measured from the centre of that model’s base in all directions. If this weapon targets a point on the ground, this radius is measured from that point in all directions, including vertically. If the Attack ACTION with this weapon is successful, it hits every model within this radius that the target (either model or point) has line of sight to (i.e. not completely blocked by terrain).",
+        "Consumable": "An item with this keyword can only be used once. After the battle, any items with this keyword that were used are lost.",
+        "Critical": "When attacking with a weapon with this keyword, add +2 DICE (instead of 1) to any injury rolls the weapon causes if you roll a Critical (i.e. 12+) on the Action Success Chart",
+        "Cumbersome": "Model always requires two hands to use this weapon, even if the model has the Keyword STRONG. A weapon with the Keyword CUMBERSOME ignores this restriction when benefitting from the Shield Combo rule.",
+        "Elite": "The most senior and heroic models of the warband. They have different rules for experience and advancement, and often enjoy a different weapon, armour and equipment selection.",
+        "Fear": "Enemies of models with this Keyword suffer -1 DICE in melee combat against this model. Some units are immune to this effect. Models that cause FEAR are not affected by FEAR themselves.",
+        "Fire": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "Fireteam": "This model is part of a Fireteam made up of two models. All models that are part of this Fireteam can be activated at the same time without the opponent getting their turn in between. They can take their ACTIONS in any order they wish, switching between the two models. Note that if the activation of either member of the Fireteam forcefully ends (due to a failed RISKY ACTION for example), it ends both Activations. Allies cannot be part of a Fireteam.",
+        "Gas": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "Grenade": "Grenade-type weapons ignore penalties for cover and long range. They do not count towards the number of ranged weapons a model can carry and do not have to be held in your hand at all times. A model armed with grenades can use them as many times as they wish.",
+        "Heavy": "If carrying a weapon, armour or equipment with this Keyword, the model cannot move/dash and shoot during its Activation, and the model cannot roll D6 and add it to the Charge move. A model can only carry one item with this Keyword.",
+        "Infiltrator": " Models with this Keyword can be deployed anywhere on the table out of line of sight of any enemies, but at least 8 hexes away from the closest enemy. They are deployed after all other models without this Keyword. If any infiltrators cannot be deployed according to these restrictions then those models can always be placed in your deployment zone. If a scenario does not allow for infiltrators, deploy models with this Keyword during standard deployment as if they didn’t have this Keyword.",
+        "Limit": "You can only purchase as many of this piece of equipment/weapon/armour as indicated by the number in parenthesis for your warband. If you find more via looting/exploration, you can break this limit.",
+        "Shrapnel": "A model hit by a weapon with this Keyword suffers a BLOOD MARKER, in addition to any other effects of the attack. The model suffers this BLOOD MARKER even if the attack has no other effects or is otherwise negated. Some equipment or abilities can negate the additional BLOOD MARKER caused by this Keyword.",
+        "Skirmisher": "When a model with this Keyword is targeted by an enemy’s Charge, it may immediately move D3 hexes in any direction, except into Melee Combat. A Skirmisher may also make this move when a charging enemy model would enter Melee Combat with it during a Charge that is not targeting it. After either of these moves is resolved, the Charge continues as normal toward the original target. These moves can only be taken if the Skirmisher is not in Melee Combat and only one such move may be taken per Charge",
+        "Strong": " A model with this Keyword ignores the rules for weapons/armour/equipment with Keyword HEAVY, including not being limited to carrying only one HEAVY item (though other limitations apply as normal). In addition, it may use a single two-handed Melee weapon as a one-handed weapon.",
+        "Tough": " If a TOUGH model would be taken Out Of Action, it is knocked Down instead. After a TOUGH model has been knocked Down in this way once, it can be taken Out of Action as normal.",
         
 
 
@@ -364,7 +364,7 @@ const TC = (() => {
         constructor(tokenID) {
             let token = findObjs({_type:"graphic", id: tokenID})[0];
             let char = getObj("character", token.get("represents")); 
-            log(token.get("name"));
+log(token.get("name"));
             let attributeArray = AttributeArray(char.id);
             let faction = attributeArray.faction;
             let player;
@@ -375,8 +375,9 @@ const TC = (() => {
             }
 
             let location = new Point(token.get("left"),token.get("top"));
-            let hex = pointToHex(location);
-            let hexLabel = hex.label();
+            let cube = location.toCube();
+            let offset = location.toOffset();
+            let hexLabel = offset.label();
 
             //abilities
             let move = parseInt(attributeArray.move);
@@ -392,12 +393,11 @@ const TC = (() => {
                     keywords.push(word);
                 }
             })
-
             let weaponArray = {};
             let types = ["melee","ranged"];
             for (let j=0;j<types.length;j++) {
-                let type = types[j] + i;
                 for (let i=1;i<4;i++) {
+                    let type = types[j] + i;
                     let wname = attributeArray[type+"name"];
                     let wequipped = attributeArray[type+"equipped"];
                     if (wequipped !== "Equipped") {continue};
@@ -487,6 +487,7 @@ const TC = (() => {
 
             //eliminate duplicates from keywords
             keywords = [...new Set(keywords)];
+    log(keywords)
             //update character sheet
             for (let i=0;i<keywords.length;i++) {
                 let keyword = keywords[i];
@@ -507,7 +508,7 @@ const TC = (() => {
             this.player = player;
             this.faction = faction;
             this.location = location;
-            this.hex = hex;
+            this.cube = cube;
             this.hexLabel = hexLabel;
 
             this.move = move;
