@@ -1,0 +1,70 @@
+let TerrainArray = {};
+//first look for graphic lines outlining hills etc
+let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "path",layer: "map"});
+paths.forEach((pathObj) => {
+    let vertices = [];
+    toFront(pathObj);
+    let colour = pathObj.get("stroke").toLowerCase();
+    let t = TerrainInfo[colour];
+    if (!t) {return};    
+    let path = JSON.parse(pathObj.get("path"));
+    let centre = new Point(pathObj.get("left"), pathObj.get("top"));
+    let w = pathObj.get("width");
+    let h = pathObj.get("height");
+    let rot = pathObj.get("rotation");
+    let scaleX = pathObj.get("scaleX");
+    let scaleY = pathObj.get("scaleY");
+
+    //covert path vertices from relative coords to actual map coords
+    path.forEach((vert) => {
+        let tempPt = getAbsoluteControlPt(vert, centre, w, h, rot, scaleX, scaleY);
+        if (isNaN(tempPt.x) || isNaN(tempPt.y)) {return}
+        vertices.push(tempPt);            
+    });
+    let id = stringGen();
+    if (TerrainArray[id]) {
+        id += stringGen();
+    }
+    let info = {
+        name: t.name,
+        id: id,
+        vertices: vertices,
+        centre: centre,
+        height: t.height,
+        cover: t.cover,
+        los: t.los,
+        difficult: t.difficult,
+        dangerous: t.dangerous,
+        obstacle: t.obstacle,
+    };
+    TerrainArray[id] = info;
+});
+//add tokens on map eg woods, crops
+let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+mta.forEach((token) => {
+    let truncName = token.get("name").replace(/[0-9]/g, '');
+    truncName = truncName.trim();
+    let t = MapTokenInfo[truncName];
+    if (!t) {return};
+    let vertices = TokenVertices(token);
+    let centre = new Point(token.get('left'),token.get('top'));
+    let id = stringGen();
+    if (TerrainArray[id]) {
+        id += stringGen();
+    }
+    let info = {
+        name: t.name,
+        id: id,
+        vertices: vertices,
+        centre: centre,
+        height: t.height,
+        cover: t.cover,
+        los: t.los,
+        difficult: t.difficult,
+        dangerous: t.dangerous,
+        obstacle: t.obstacle,
+    };
+    TerrainArray[id] = info;
+});
+
+//now run through hexMap and see if a hex fits into any of terrain above

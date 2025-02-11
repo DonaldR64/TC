@@ -109,46 +109,42 @@ const TC = (() => {
 
 
 
-
+    //los - if "Inside" - then only characters at edge of the terrain can see in/out, otherwise if los just crossing then is based on height - and if both inside LOS is open 
+    //obstacle - can be defended behind - so if combat occuring across then gets bonus - for buildings this is if one of 2 models is 'outside'
     const TerrainInfo = {
-        "#000000": {name: "Hill 1", height: 1,los: "Open",cover: false,move: "Normal"},
-        "#434343": {name: "Hill 2", height: 2,los: "Open",cover: false,move: "Normal"},  
-        "#666666": {name: "Hill 3",height:3,los: "Open",cover: false,move: "Normal"},
-        "#c0c0c0": {name: "Hill 4",height:4,los: "Open",cover: false,move: "Normal"},
-        "#d9d9d9": {name: "Hill 5",height:5,los: "Open",cover: false,move: "Normal"},
-    
-        "#ffffff": {name: "Spire", height: 2,los: "Blocked",cover: false,move: "Impassable"}, 
-        "#00ffff": {name: "Stream", height: 0,los: "Partial",cover: false,move: "Difficult"}, 
-        "#00ff00": {name: "Woods",height: 2,los: "Partial",cover: true,move: "Difficult"},
-        "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,move: "Normal"},
-        "#9900ff": {name: "Ditch Hill",height: -1,los: "Open",cover: false,move: "Normal"},
-        "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,move: "Difficult"},
-        "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,move: "Difficult"}, 
-        "#6aa84f": {name: "Jungle", height: 2,los: "Partial",cover: true,move: "Difficult"}, 
-        "#0000ff": {name: "Lake", height: 0,los: "Open",cover: true,move: "Difficult"}, 
+        "#000000": {name: "Hill 1", height: 1,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#434343": {name: "Hill 2", height: 2,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#666666": {name: "Hill 3",height:3,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#c0c0c0": {name: "Hill 4",height:4,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#895129": {name: "Trench",height:-1,los: "Inside",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
+        "#00ff00": {name: "Woods",height: 3,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: false},
+//fix burnt woods
+        "#ffffff": {name: "Burnt Woods",height: 2,los: "",cover: true,difficult: true,dangerous: false,obstacle: false},
 
-        "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,move: "Difficult"}, 
+        "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
+
+        "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
+//fix
+        "?????": {name: "Ruins",height: 1,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "Building Height 1": {name: "Building",height: 1,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 2": {name: "Building",height: 2,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 3": {name: "Building",height: 3,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
+
 
     };
 
 
     const MapTokenInfo = {
-        "Woods": {name: "Woods",height: 2,los: "Partial",cover: true,move: "Difficult"},
-        "Hedge": {name: "Hedge",height: 0,los: "Open",cover: true,move: "Normal"},
-        "Crops": {name: "Crops",height: 0,los: "Open",cover: true,move: "Normal"},
-        "Ruins": {name: "Ruins",height: 1,los: "Partial",cover: true,move: "Dangerous if Rush/Charge"},
-        "Imperial Building A": {name: "Building",height: 1,los: "Blocked",cover: true,move: "Difficult"},
-        "Imperial Building B": {name: "Building",height: 2,los: "Blocked",cover: true,move: "Difficult"},
-        "Imperial Building C": {name: "Building",height: 3,los: "Blocked",cover: true,move: "Difficult"},
-        "Wood Building A": {name: "Building",height: 1,los: "Blocked",cover: true,move: "Difficult"},
-        "Minefield": {name: "Minefield",height: 0,los: "Open",cover: false,move: "Dangerous"},
-        "Razorwire": {name: "Razorwire",height: 0,los: "Open",cover: false,move: "Dangerous for Infantry"},
-        "Drums": {name: "Storage Drums",height: .5,los: "Partial",cover: true,move:"Normal"},
-        "Pipe": {name: "Pipe",height: .5,los: "Partial",cover: true,move:"Difficult"},
-        "Crater": {name: "Crater",height: 0,los: "Open",cover: true,move:"Difficult"},
-
-
-
+        "Hedge": {name: "Hedge",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Minefield": {name: "Minefield",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
+        "Barbed Wire": {name: "Barbed Wire",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
+        "Drums": {name: "Storage Drums",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Crater": {name: "Crater",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "Boxes": {name: "Boxes",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Sandbags": {name: "Sandbags",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
     }
 
 
@@ -922,8 +918,8 @@ const TC = (() => {
         pageInfo.hexesH = h;
 
         //terrain
-        
-        
+        //AddTerrain();
+        //AddTokens
             
         let elapsed = Date.now()-startTime;
         log("Hex Map Built in " + elapsed/1000 + " seconds");
