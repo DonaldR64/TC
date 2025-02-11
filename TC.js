@@ -1145,7 +1145,6 @@ const TC = (() => {
 
     const AddModels = (msg) => {
         if (!msg.selected) {return};
-        let Tag = msg.content.split(";");
         let tokenIDs = [];
         for (let i=0;i<msg.selected.length;i++) {
             tokenIDs.push(msg.selected[i]._id);
