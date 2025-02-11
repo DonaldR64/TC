@@ -58,9 +58,9 @@ const TC = (() => {
             "image": "https://s3.amazonaws.com/files.d20.io/images/428505453/sjIHroRj6jS1pvF1WKnLGQ/thumb.png?1739231545",
             "backgroundColour": "#2F4F4F",
             "titlefont": "Arial",
-            "fontColour": "#000000",
+            "fontColour": "#FFFFFF",
             "borderColour": "#000000",
-            "borderStyle": "5px groove",
+            "borderStyle": "5px ridge",
             "dice": "Antioch",
 
         },
@@ -111,12 +111,10 @@ const TC = (() => {
 
     //los - if "Inside" - then only characters at edge of the terrain can see in/out, otherwise if los just crossing then is based on height - and if both inside LOS is open 
     //obstacle - can be defended behind - so if combat occuring across then gets bonus - for buildings this is if one of 2 models is 'outside'
+    //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
-        "#000000": {name: "Hill 1", height: 1,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#434343": {name: "Hill 2", height: 2,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#666666": {name: "Hill 3",height:3,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#c0c0c0": {name: "Hill 4",height:4,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#895129": {name: "Trench",height:-1,los: "Inside",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#000000": {name: "Hill", height: 1,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#895129": {name: "Trench",height: -1,los: "Inside",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 3,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
@@ -346,11 +344,16 @@ const TC = (() => {
             this.offset = offset;
             this.cube = offset.toCube();
             this.label = offset.label();
-            this.terrain = "Empty Space";
-            this.terrainID = "";
-            this.shipIDs = [];
-            this.ordnanceIDs = [];
-            this.gravityWell = ""; //should be centre hex of planet generating the well, used for turning hulks
+            this.terrain = "Open Ground";
+            this.terrainID = [];
+            this.modelIDs = [];
+            this.elevation = 0;
+            this.height = 0;
+            this.los = "Open";
+            this.cover = false;
+            this.difficult = false;
+            this.dangerous = false;
+            this.obstacle = false;
             hexMap[this.label] = this;
 
         }
@@ -918,19 +921,136 @@ const TC = (() => {
         pageInfo.hexesH = h;
 
         //terrain
-        //AddTerrain();
-        //AddTokens
-            
+        //AddTerrain();    
+        AddTokens();        
         let elapsed = Date.now()-startTime;
         log("Hex Map Built in " + elapsed/1000 + " seconds");
-        //TA();
     };
+
+    const AddTerrain = () => {
+        let TerrainArray = {};
+        //first look for graphic lines outlining hills etc
+        let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map"});
+        paths.forEach((pathObj) => {
+            let vertices = [];
+            toFront(pathObj);
+            let colour = pathObj.get("stroke").toLowerCase();
+            let t = TerrainInfo[colour];
+            if (!t) {return};    
+            let points = JSON.parse(pathObj.get("points"));
+            let centre = new Point(pathObj.get("x"), pathObj.get("y"));
+    
+            //covert path points from relative coords to actual map coords
+            let minX = Infinity,minY = Infinity, maxX = 0, maxY = 0;
+            _.each(points,pt => {
+                minX = Math.min(pt[0],minX);
+                minY = Math.min(pt[1],minY);
+                maxX = Math.max(pt[0],maxX);
+                maxY = Math.max(pt[0],maxY);
+            })
+            //now C relative to the 0,0 of points
+            midX = (Math.abs(minX) + Math.abs(maxX))/2 + minX;
+            midY = (Math.abs(minY) + Math.abs(maxY))/2 + minY;
+
+            let id = stringGen();
+            if (TerrainArray[id]) {
+                id += stringGen();
+            }
+            let info = {
+                name: t.name,
+                id: id,
+                vertices: vertices,
+                centre: centre,
+                height: t.height,
+                cover: t.cover,
+                los: t.los,
+                difficult: t.difficult,
+                dangerous: t.dangerous,
+                obstacle: t.obstacle,
+            };
+            TerrainArray[id] = info;
+        });
+        //add tokens on map eg woods, crops
+        let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        mta.forEach((token) => {
+            let truncName = token.get("name").replace(/[0-9]/g, '');
+            truncName = truncName.trim();
+            let t = MapTokenInfo[truncName];
+            if (!t) {return};
+            let vertices = TokenVertices(token);
+            let centre = new Point(token.get('left'),token.get('top'));
+            let id = stringGen();
+            if (TerrainArray[id]) {
+                id += stringGen();
+            }
+            let info = {
+                name: t.name,
+                id: id,
+                vertices: vertices,
+                centre: centre,
+                height: t.height,
+                cover: t.cover,
+                los: t.los,
+                difficult: t.difficult,
+                dangerous: t.dangerous,
+                obstacle: t.obstacle,
+            };
+            TerrainArray[id] = info;
+        });
+        
+        //now run through hexMap and see if a hex fits into any of terrain above
+        let terrainKeys = Object.keys(TerrainArray);
+        let mapKeys = Object.keys(hexMap);
+        const burndown = () => {
+            let mapKey = mapKeys.shift();
+            if (key){
+                let hex = hexMap[mapKey];
+                let c = hex.centre;
+                if (c.x > MapEdge) {
+                    hex.terrain = ["Offboard"];
+                } else {
+                    _.each(terrainKeys,terrainKey => {
+                        let polygon = TerrainArray[terrainKey];
+                        if (hex.terrain.includes(polygon.name)) {return};
+                        let pts = XHEX(c);
+                        pts.push(c);
+                        let num = 0;
+                        _.each(pts,pt => {
+                            let check = pointInPolygon(pt,polygon);
+                            if (check === true) {num++};
+                        })
+                        if (num > 2) {
+                            //hex is in the terrain polygon
+                            hex.terrain.push(polygon.name);
+                            if (polygon.los === "Inside") {hex.los = "Inside"};
+                            if (polygon.cover === true) {hex.cover = true};
+                            if (polygon.difficult === true) {hex.difficult = true};
+                            if (polygon.dangerous === true) {hex.dangerous = true};
+                            if (polygon.obstacle === true) {hex.obstacle = true};
+                            if (polygon.height !== 0) {
+                                if (polygon.name = "Hill") {
+                                    hex.elevation = hex.elevation + polygon.height;
+                                } else if (polygon.name.includes("Trench")) {
+                                    hex.elevation = hex.elevation - 1;
+                                } else {
+                                    hex.height = Math.max(hex.elevation + polygon.height,hex.height);
+                                }
+                            }
+                        };
+                    });
+                };
+                hexMap[mapKey] = hex;
+                setTimeout(burndown,0);
+            }
+        }
+        burndown();
+    }
 
 
 
 
      
-    const TA = () => {
+    const AddTokens = () => {
         //add tokens on token layer
         ModelArray = {};
         //create an array of all tokens
@@ -950,8 +1070,8 @@ const TC = (() => {
             if (character === null || character === undefined) {
                 return;
             };
-            //add to model array
-
+            let model = new Model(token.id);
+            model.name = token.get("name");
 
 
 
@@ -1092,7 +1212,7 @@ const TC = (() => {
             players: {},
             playerInfo: [[],[]],
             turn: 0,
-            
+            firstPlayer: -1,
         }
         
         
@@ -1117,6 +1237,77 @@ const TC = (() => {
         })
     }
 
+    const NextTurn = () => {
+        if (state.TC.turn === 0) {
+            //start of game stuff
+
+
+        }
+
+
+        state.TC.turn++;
+
+        //check for end of game
+
+
+        let currentTurn = state.TC.turn;
+        let models = [0,0];
+        _.each(ModelArray,model => {
+            models[model.player]++;
+        })
+        let firstPlayer,line0,line1,blurb;
+        let fewestModels = false;
+        if (models[0] < models[1]) {
+            firstPlayer = 0;
+            fewestModels = true;
+        } else if (models[1] > models[0]) {
+            firstPlayer = 1;
+            fewestModels = true;
+        } else {
+            let roll0 = randomInteger(6);
+            let roll1 = randomInteger(6);
+            line0 = state.TC.factions[0] + ": " + DisplayDice(roll0,Factions[state.TC.factions[0]],24);
+            line1 = state.TC.factions[1] + ": " + DisplayDice(roll1,Factions[state.TC.factions[1]],24);
+            if (roll0 < roll1) {
+                firstPlayer = 1;
+            } else if (roll0 > roll1) {
+                firstPlayer = 0;
+            } else {
+                firstPlayer = (state.TC.firstPlayer === 0) ? 1:0;
+            }
+        }
+        state.TC.firstPlayer = firstPlayer;
+        if (fewestModels === true) {
+            blurb = "Fewest Models";
+        } else {
+            blurb = "Roll Off";
+        }
+        SetupCard("Turn " + currentTurn,blurb,state.TC.factions[firstPlayer]);
+        outputCard.body.push("First Activation goes to " + state.TC.factions[firstPlayer]);
+        if (fewestModels === false) {
+            outputCard.body.push(line0);
+            outputCard.body.push(line1);
+        }
+        PrintCard();
+
+        //update turn indicator on side
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     const RollD6 = (msg) => {
         let Tag = msg.content.split(";");
         PlaySound("Dice");
@@ -1137,6 +1328,8 @@ const TC = (() => {
             } else if (!state.TC.players[playerID] || state.TC.players[playerID] === undefined) {
                 sendChat("","Click on one of your Units then select Roll again");
                 return;
+            } else {
+                faction = state.TC.players[playerID];
             }
             let res = "/direct " + DisplayDice(roll,Factions[faction].dice,40);
             sendChat("player|" + playerID,res);
@@ -1157,6 +1350,7 @@ const TC = (() => {
             let name = model.charName || "Unnamed";
             name = name.replace(model.faction,"");
             name = name.trim();
+            model.name = name;
             //special names here
 
 
@@ -1217,6 +1411,14 @@ const TC = (() => {
         let faction = model.faction;
         if (!faction) {faction = "Neutral"};
         SetupCard(model.name,model.hexLabel,model.faction);
+        outputCard.body.push("Terrain: " + h.terrain.toString());
+        outputCard.body.push("Elevation: " + h.elevation); //modify for character height - using token markers
+        if (model.token.get("aura1_color") === "#FF0000") {
+            outputCard.body.push("Model is Down");
+        }
+        if (h.cover === true) {
+            outputCard.body.push("Target is in Cover");
+        }
 
         PrintCard();
         
@@ -1371,6 +1573,9 @@ const TC = (() => {
                 break;
             case '!AddAbilities':
                 AddAbilities(msg);
+                break;
+            case '!NextTurn':
+                NextTurn();
                 break;
             
         }

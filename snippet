@@ -1,70 +1,2804 @@
-let TerrainArray = {};
-//first look for graphic lines outlining hills etc
-let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "path",layer: "map"});
-paths.forEach((pathObj) => {
-    let vertices = [];
-    toFront(pathObj);
-    let colour = pathObj.get("stroke").toLowerCase();
-    let t = TerrainInfo[colour];
-    if (!t) {return};    
-    let path = JSON.parse(pathObj.get("path"));
-    let centre = new Point(pathObj.get("left"), pathObj.get("top"));
-    let w = pathObj.get("width");
-    let h = pathObj.get("height");
-    let rot = pathObj.get("rotation");
-    let scaleX = pathObj.get("scaleX");
-    let scaleY = pathObj.get("scaleY");
+const Blucher = (() => {
+    const version = '2025.1.1';
+    if (!state.Blucher) {state.Blucher = {}};
 
-    //covert path vertices from relative coords to actual map coords
-    path.forEach((vert) => {
-        let tempPt = getAbsoluteControlPt(vert, centre, w, h, rot, scaleX, scaleY);
-        if (isNaN(tempPt.x) || isNaN(tempPt.y)) {return}
-        vertices.push(tempPt);            
+
+    const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
+    const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","BB","CC","DD","EE","FF","GG","HH","II","JJ","KK","LL","MM","NN","OO","PP","QQ","RR","SS","TT","UU","VV","WW","XX","YY","ZZ","AAA","BBB","CCC","DDD","EEE","FFF","GGG","HHH","III","JJJ","KKK","LLL","MMM","NNN","OOO","PPP","QQQ","RRR","SSS","TTT","UUU","VVV","WWW","XXX","YYY","ZZZ"];
+
+    let UnitArray = {}; //Units
+    let AttackerArray = [];
+    let DefenderArray = [];
+    let ObjectiveArray = [];
+
+    let ucInfo = {}; //used in unit setup
+    let momentumDiceNum = 3;
+    let currentPlayer = 0;
+    let momentumUsed = 0;
+
+    let hexMap = {}; 
+    let MapEdges = {};
+
+    //Regular Hexagons, 'width' in Roll20 is 70
+    let HexSize = 70/Math.sqrt(3);
+    const HexInfo = {
+        size: HexSize,
+        pixelStart: {
+            x: 35,
+            y: HexSize,
+        },
+        width: 70,
+        height: 2*HexSize,
+        xSpacing: 70,
+        ySpacing: 3/2 * HexSize,
+        directions: {},
+    }
+    //to reduce overhead re calculating sqrts
+    const M = {
+        f0: Math.sqrt(3),
+        f1: Math.sqrt(3)/2,
+        f2: 0,
+        f3: 3/2,
+        b0: Math.sqrt(3)/3,
+        b1: -1/3,
+        b2: 0,
+        b3: 2/3,
+    };
+
+    const DIRECTIONS = ["Northeast","East","Southeast","Southwest","West","Northwest"];
+
+    const colours = {
+        red: "#ff0000",
+        blue: "#00ffff",
+        yellow: "#ffff00",
+        green: "#00ff00",
+        purple: "#800080",
+        black: "#000000",
+    }
+
+
+    const SM = {
+        moved: "status_Advantage-or-Up::2006462", //if unit moved
+        prepared: "status_brown",
+        charge: "status_Fast::5868456",
+        red: "status_red",
+        black: "status_black",
+    }; 
+
+    let outputCard = {title: "",subtitle: "",nation: "",body: [],buttons: [],};
+
+    const Symbols = {
+        "France": {
+            "I": "status_French_I::7076005",
+            "II": "status_French_II::7076003",
+            "III": "status_French_III::7076001",
+            "IV": "status_French_IV::7076150",
+            "V": "status_French_V::7076148",
+            "VI": "status_French_VI::7076149",
+          
+            "I Cavalry": "status_French_Cav_I::7076152",
+            "II Cavalry": "status_French_Cav_II::7076151",
+            "III Cavalry": "status_French_Cav_III::7076153",
+            "Reserve": "status_Reserve_Cavalry::7076146",
+           
+            "Guard": "status_Guard_Corps::7076145",
+            "HQ": "",
+        },
+        "Austria": {
+            "I": "status_Aus_I_Corps::7076285",
+            "II": "status_Aus_II_Corps::7076284",
+            "III": "status_Aus_III_Corps::7076283",
+            "IV": "status_Aus_IV_Corps::7076282",
+          
+            "I Cavalry": "status_A_Cav_I_Corps::7076281",
+            "II Cavalry": "status_A_Cav_II_Corps::7076280",
+
+            "Reserve": "status_Aus_Reserves::7076279",
+            "Austrian": "status_Aus_I_Corps::7076286",
+
+            "HQ": "",
+        }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    }
+
+
+    const Nations = {
+        "France": {
+            "alt": "French",
+            "image": "https://s3.amazonaws.com/files.d20.io/images/420890694/J6gudhYQzZHT34VzoYCYow/thumb.jpg?1734054181",
+            "dice": "French",
+            "backgroundColour": "#0072BB",
+            "titlefont": "Arial",
+            "fontColour": "#FFFFFF",
+            "borderColour": "#ED2939",
+            "borderStyle": "5px ridge", 
+            "hiddenImage": "https://s3.amazonaws.com/files.d20.io/images/422858645/Ntt1XEbWdmy9BZQerjEMhg/thumb.png?1735663918",
+            "genericChar": "-OFDuCYFgG_3NcP1iEVQ", //for hidden unit
+            
+        },
+        "Austria": {
+            "alt": "Austrian",
+            "image": "https://s3.amazonaws.com/files.d20.io/images/421464213/Fq0qtf79_SjJDJFtl5gcng/thumb.png?1734466951",
+            "dice": "Austrian",
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#000000",
+            "borderStyle": "5px ridge", 
+            "genericChar": "-OFDuCYFgG_3NcP1iEVQ", //for hidden unit
+            "hiddenImage": "https://s3.amazonaws.com/files.d20.io/images/422858650/eI4EwdimQwZlHJO2_TkS3A/thumb.png?1735663922",
+
+        },
+        "Neutral": {
+            "image": "",
+            "dice": "Neutral",
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#00FF00",
+            "borderStyle": "5px ridge",
+        },
+
+    };
+
+    const TerrainInfo = {
+        //Obstruct - obstructs LOS
+        //Cover - cover vs artillery
+        //Difficult - true if difficult, also put impassable here
+        //cc: true if cavalry can charge this hex
+        //height: used for close combat
+        "Marsh": {name: "Marsh",obstruct: false,cover: false, difficult: false,cc: true,height: 0},
+        "Hill Crest": {name: "Hill Crest",obstruct: true,cover: true, difficult: false,cc: true,height: 2},
+        "Hill Crest with Woods": {name: "Hill Crest with Woods",obstruct: true,cover: true, difficult: true,cc: false,height: 2},
+        "Broken Ground": {name: "Broken Ground",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Crops": {name: "Plowed Fields",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Crops 2": {name: "Plowed Fields",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Town 1": {name: "Urban",obstruct: true,cover: true, difficult: true,cc: false,height: 0},
+        "Town 2": {name: "Urban",obstruct: true,cover: true, difficult: true,cc: false,height: 0},
+        "Town 3": {name: "Urban",obstruct: true,cover: true, difficult: true,cc: false,height: 0},
+        "Hill Slope": {name: "Hill Slope",obstruct: false,cover: false, difficult: false,cc: true,height: 2},
+        "Hill Slope with Woods": {name: "Hill Slope with Woods",obstruct: true,cover: true, difficult: true,cc: false,height: 2},
+        "Woods": {name: "Woods",obstruct: true,cover: true, difficult: true,cc: false,height: 0},
+        "Orchard": {name: "Orchard",obstruct: true,cover: true, difficult: true,cc: false,height: 0},
+        "Minor River": {name: "Minor River",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Minor River 2": {name: "Minor River",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Minor River 3": {name: "Minor River",obstruct: false,cover: false, difficult: true,cc: true,height: 0},
+        "Major River": {name: "Major River",obstruct: false,cover: false, difficult: "impassable",cc: false,height: 0},
+        "Major River 2": {name: "Major River",obstruct: false,cover: false, difficult: "impassable",cc: false,height: 0},
+        "Water": {name: "Water",obstruct: false,cover: false, difficult: "impassable",cc: false,height: 0},
+        "Minor River with Bridge": {name: "Crossing",obstruct: false,cover: false, difficult: false,cc: true,height: 0},
+        "Minor River with Bridge 2": {name: "Crossing",obstruct: false,cover: false, difficult: false,cc: true,height: 0},
+        "Minor River with Bridge 3": {name: "Crossing",obstruct: false,cover: false, difficult: false,cc: true,height: 0},
+        "Major River with Bridge": {name: "Crossing",obstruct: false,cover: false, difficult: false,cc: true,height: 0},
+
+    };
+
+
+    //Classes
+    class Point {
+        constructor(x,y) {
+            this.x = x;
+            this.y = y;
+        };
+        toOffset() {
+            let cube = this.toCube();
+            let offset = cube.toOffset();
+            return offset;
+        };
+        toCube() {
+            let x = this.x - HexInfo.pixelStart.x;
+            let y = this.y - HexInfo.pixelStart.y;
+            let q = (M.b0 * x + M.b1 * y) / HexInfo.size;
+            let r = (M.b3 * y) / HexInfo.size;
+
+            let cube = new Cube(q,r,-q-r).round();
+            return cube;
+        };
+    }
+
+    class Offset {
+        constructor(col,row) {
+            this.col = col;
+            this.row = row;
+        }
+        label() {
+            let label = rowLabels[this.row] + (this.col + 1).toString();
+            return label;
+        }
+        toCube() {
+            let q = this.col - (this.row - (this.row&1)) / 2;
+            let r = this.row;
+            let cube = new Cube(q,r,-q-r);
+            cube = cube.round(); 
+            return cube;
+        }
+        toPoint() {
+            let cube = this.toCube();
+            let point = cube.toPoint();
+            return point;
+        }
+    };
+
+    class Cube {
+        constructor(q,r,s) {
+            this.q = q;
+            this.r =r;
+            this.s = s;
+        }
+
+        add(b) {
+            return new Cube(this.q + b.q, this.r + b.r, this.s + b.s);
+        }
+        angle(b) {
+            //angle between 2 hexes
+            let origin = this.toPoint();
+            let destination = b.toPoint();
+
+            let x = Math.round(origin.x - destination.x);
+            let y = Math.round(origin.y - destination.y);
+            let phi = Math.atan2(y,x);
+            phi = phi * (180/Math.PI);
+            phi = Math.round(phi);
+            phi -= 90;
+            phi = Angle(phi);
+            return phi;
+        }        
+        subtract(b) {
+            return new Cube(this.q - b.q, this.r - b.r, this.s - b.s);
+        }
+        static direction(direction) {
+            return HexInfo.directions[direction];
+        }
+        neighbour(direction) {
+            //returns a hex (with q,r,s) for neighbour, specify direction eg. hex.neighbour("NE")
+            return this.add(HexInfo.directions[direction]);
+        }
+        neighbours() {
+            //all 6 neighbours
+            let results = [];
+            for (let i=0;i<DIRECTIONS.length;i++) {
+                results.push(this.neighbour(DIRECTIONS[i]));
+            }
+            return results;
+        }
+
+        len() {
+            return (Math.abs(this.q) + Math.abs(this.r) + Math.abs(this.s)) / 2;
+        }
+        distance(b) {
+            return this.subtract(b).len();
+        }
+        lerp(b, t) {
+            return new Cube(this.q * (1.0 - t) + b.q * t, this.r * (1.0 - t) + b.r * t, this.s * (1.0 - t) + b.s * t);
+        }
+        linedraw(b) {
+            //returns array of hexes between this hex and hex 'b'
+            var N = this.distance(b);
+            var a_nudge = new Cube(this.q + 1e-06, this.r + 1e-06, this.s - 2e-06);
+            var b_nudge = new Cube(b.q + 1e-06, b.r + 1e-06, b.s - 2e-06);
+            var results = [];
+            var step = 1.0 / Math.max(N, 1);
+            for (var i = 0; i < N; i++) {
+                results.push(a_nudge.lerp(b_nudge, step * i).round());
+            }
+            return results;
+        }
+        label() {
+            let offset = this.toOffset();
+            let label = offset.label();
+            return label;
+        }
+        radius(rad) {
+            //returns array of hexes in radius rad
+            //Not only is x + y + z = 0, but the absolute values of x, y and z are equal to twice the radius of the ring
+            let results = [];
+            let h;
+            for (let i = 0;i <= rad; i++) {
+                for (let j=-i;j<=i;j++) {
+                    for (let k=-i;k<=i;k++) {
+                        for (let l=-i;l<=i;l++) {
+                            if((Math.abs(j) + Math.abs(k) + Math.abs(l) === i*2) && (j + k + l === 0)) {
+                                h = new Cube(j,k,l);
+                                results.push(this.add(h));
+                            }
+                        }
+                    }
+                }
+            }
+            return results;
+        }
+        round() {
+            var qi = Math.round(this.q);
+            var ri = Math.round(this.r);
+            var si = Math.round(this.s);
+            var q_diff = Math.abs(qi - this.q);
+            var r_diff = Math.abs(ri - this.r);
+            var s_diff = Math.abs(si - this.s);
+            if (q_diff > r_diff && q_diff > s_diff) {
+                qi = -ri - si;
+            }
+            else if (r_diff > s_diff) {
+                ri = -qi - si;
+            }
+            else {
+                si = -qi - ri;
+            }
+            return new Cube(qi, ri, si);
+        }
+        toPoint() {
+            let x = (M.f0 * this.q + M.f1 * this.r) * HexInfo.size;
+            x += HexInfo.pixelStart.x;
+            let y = 3/2 * this.r * HexInfo.size;
+            y += HexInfo.pixelStart.y;
+            let point = new Point(x,y);
+            return point;
+        }
+        toOffset() {
+            let col = this.q + (this.r - (this.r&1)) / 2;
+            let row = this.r;
+            let offset = new Offset(col,row);
+            return offset;
+        }
+
+
+     
+    };
+
+    class Hex {
+        constructor(point) {
+            this.centre = point;
+            let offset = point.toOffset();
+            this.offset = offset;
+            this.cube = offset.toCube();
+            this.label = offset.label();
+            this.terrain = "Open Ground";
+            this.tokenIDs = [];
+            this.obstruct = false;
+            this.cover = false;
+            this.difficult = false;
+            this.cc = true;
+            this.height = 0;
+        }
+    }
+
+
+    class Unit {
+        constructor(tokenID,corpsName,player,refID){
+            let token = findObjs({_type:"graphic", id: tokenID})[0];
+            let char = getObj("character", token.get("represents")); 
+log(token.get("name"));
+            let attributeArray = AttributeArray(char.id);
+            let nation = attributeArray.nation;
+            let type = attributeArray.type;
+            let location = new Point(token.get("left"),token.get("top"));
+            let hexLabel = location.toOffset().label();
+            //attributes
+            let elan = parseInt(attributeArray.elan) || 1;
+            let ammoTrack = [];
+            if (attributeArray.ammo) {
+                ammoTrack = attributeArray.ammo.split("/").map(Number)
+            }
+
+            for (let i=0;i<ammoTrack.length;i++) {
+                ammoTrack[i] = parseInt(ammoTrack[i]);
+            }
+            let temp = attributeArray.traits;
+            let traits = [];
+            _.each(temp,trait => {
+                if (trait !== "") {
+                    traits.push(trait);
+                }
+            })
+            if (traits.length === 0) {
+                traits = " ";
+            } else {
+                traits = traits.toString();
+            }
+
+log(traits)
+            this.name = token.get("name");
+            this.type = type;
+            this.id = tokenID;
+            this.player= player;
+            this.nation = nation;
+            this.location = location;
+            this.hexLabel = hexLabel;
+            this.lastHexLabel = hexLabel;
+            this.elan = elan;
+            this.ammoTrack = ammoTrack;
+            this.traits = traits;
+            this.token = token;
+            this.charID = char.id;
+            this.tokenImg = getCleanImgSrc(token.get("imgsrc"));
+            this.corpsName = corpsName;
+            this.concealedID = "";
+            this.referenceID = refID; //used by a concealed token to identify the original token
+
+
+            this.fired = false; //reset each turn
+
+            if (this.name.includes("Hidden")) {
+                this.origID = this.name.replace("Hidden","");
+                this.name = "Hidden";
+            }
+
+            UnitArray[tokenID] = this;
+
+            hexMap[hexLabel].tokenIDs.push(tokenID);
+
+        }
+
+        damage(hits) {
+            let message = [];
+            if (this.type !== "Artillery") {
+                let currentElan = parseInt(this.token.get("bar1_value"));
+
+                currentElan -= hits;
+                if (currentElan > 0) {
+
+                    this.token.set("bar1_value",currentElan);
+                }
+                if (currentElan === 1) {
+                    //Fatigued
+                    this.token.set("tint_color",colours.black);
+                    message.push(this.name + " is Fatigued and close to Breaking"); 
+                } else if (currentElan < 1) {
+                    //Unit Destroyed - mark/text, adjust Corps
+                    message.push(this.name + " Breaks and Routs from the Field!");
+                    this.breaks();
+                }   
+                return message;
+            } else {
+                //Artillery taking fire
+                if (this.token.get(SM.red) === true || hits > 1) {
+                    message.push(this.name + ", under heavy fire, Retires from the Field!");
+                    if (this.token) {
+                        this.token.remove();
+                    }
+                    state.Blucher.retired[this.player]++;
+                    delete UnitArray[this.id];
+                } else {
+                    message.push(this.name + " will have to retreat at the end of the Fire Phase");
+                    this.token.set(SM.red,true);
+                }
+            }
+        };
+
+        frontal() {
+            //passes back IDs of enemies in front that are eligble combatants in a charge situation
+            let rot = Angle(this.token.get("rotation"))/60;
+            if (rot === 6) {rot = 0};
+            let dirs = [rot-1,rot];
+            if ((rot-1) < 0) {dirs[0] = 5};
+            dirs = [DIRECTIONS[dirs[0]],DIRECTIONS[dirs[1]]];
+            let cube = hexMap[this.hexLabel].cube;
+            let frontalCubes = [cube.neighbour(dirs[0]),cube.neighbour(dirs[1])];
+            let frontalLabels = [frontalCubes[0].label(),frontalCubes[1].label()];
+            let enemies = [];
+            for (let i=0;i<2;i++) {
+                let h = hexMap[frontalLabels[i]];
+                if (h) {
+                    let enemyIDs = hexMap[frontalLabels[i]].tokenIDs;
+                    if (enemyIDs.length > 0) {
+                        let enemyID = enemyIDs[0];
+                        if (UnitArray[enemyID].player === this.player) {
+                            continue;
+                        }
+                        if (h.difficult === "impassable") {
+                            continue;
+                        }
+                        if (this.type === "Cavalry" && h.cc === false) {
+                            continue;
+                        }
+                        if (UnitArray[enemyID].type === "Leader") {
+                            continue;
+                        }
+                        enemies.push(enemyID);
+                    }
+                }
+            }
+            return enemies;
+        }
+
+        breaks() {
+            if (this.token) {
+                this.token.set({
+                    status_dead: true,
+                    layer: "map",
+                    name: "Dead"
+                })
+                toFront(this.token);
+            }
+            state.Blucher.broken[this.player]++;
+            delete UnitArray[this.id];
+        }
+
+
+
+
+
+
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //Various Functions
+    const simpleObj = (o) => {
+        let p = JSON.parse(JSON.stringify(o));
+        return p;
+    };
+
+    const getCleanImgSrc = (imgsrc) => {
+        let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/);
+        if(parts) {
+            return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
+        }
+        return;
+    };
+
+    const tokenImage = (img) => {
+        //modifies imgsrc to fit api's requirement for token
+        img = getCleanImgSrc(img);
+        img = img.replace("%3A", ":");
+        img = img.replace("%3F", "?");
+        img = img.replace("med", "thumb");
+        return img;
+    };
+
+    const stringGen = () => {
+        let text = "";
+        let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < 6; i++) {
+            text += possible.charAt(Math.floor(randomInteger(possible.length)));
+        }
+        return text;
+    };
+
+    const findCommonElements = (arr1,arr2) => {
+        //iterates through array 1 and sees if array 2 has any of its elements
+        //returns true if the arrays share an element
+        return arr1.some(item => arr2.includes(item));
+    };
+
+    const DeepCopy = (variable) => {
+        variable = JSON.parse(JSON.stringify(variable))
+        return variable;
+    };
+
+    const PlaySound = (name) => {
+        let sound = findObjs({type: "jukeboxtrack", title: name})[0];
+        if (sound) {
+            sound.set({playing: true,softstop:false});
+        }
+    };
+
+    const FX = (fxname,model1,model2) => {
+        //model2 is target, model1 is shooter
+        //if its an area effect, model1 isnt used
+        if (fxname.includes("System")) {
+            //system fx
+            fxname = fxname.replace("System-","");
+            if (fxname.includes("Blast")) {
+                fxname = fxname.replace("Blast-","");
+                spawnFx(model2.location.x,model2.location.y, fxname);
+            } else {
+                spawnFxBetweenPoints(model1.location, model2.location, fxname);
+            }
+        } else {
+            let fxType =  findObjs({type: "custfx", name: fxname})[0];
+            if (fxType) {
+                spawnFxBetweenPoints(model1.location, model2.location, fxType.id);
+            }
+        }
+    }
+
+
+    //Retrieve Values from Character Sheet Attributes
+    const Attribute = (character,attributename) => {
+        //Retrieve Values from Character Sheet Attributes
+        let attributeobj = findObjs({type:'attribute',characterid: character.id, name: attributename})[0]
+        let attributevalue = "";
+        if (attributeobj) {
+            attributevalue = attributeobj.get('current');
+        }
+        return attributevalue;
+    };
+
+    const AttributeArray = (characterID) => {
+        let aa = {}
+        let attributes = findObjs({_type:'attribute',_characterid: characterID});
+        for (let j=0;j<attributes.length;j++) {
+            let name = attributes[j].get("name")
+            let current = attributes[j].get("current")   
+            if (!current || current === "") {current = " "} 
+            aa[name] = current;
+
+        }
+        return aa;
+    };
+
+    const AttributeSet = (characterID,attributename,newvalue,max) => {
+        if (!max) {max = false};
+        let attributeobj = findObjs({type:'attribute',characterid: characterID, name: attributename})[0]
+        if (attributeobj) {
+            if (max === true) {
+                attributeobj.set("max",newvalue)
+            } else {
+                attributeobj.set("current",newvalue)
+            }
+        } else {
+            if (max === true) {
+                createObj("attribute", {
+                    name: attributename,
+                    current: newvalue,
+                    max: newvalue,
+                    characterid: characterID,
+                });            
+            } else {
+                createObj("attribute", {
+                    name: attributename,
+                    current: newvalue,
+                    characterid: characterID,
+                });            
+            }
+        }
+    };
+
+    const DeleteAttribute = (characterID,attributeName) => {
+        let attributeObj = findObjs({type:'attribute',characterid: characterID, name: attributeName})[0]
+        if (attributeObj) {
+            attributeObj.remove();
+        }
+    }
+
+
+
+
+    const ButtonInfo = (phrase,action) => {
+        let info = {
+            phrase: phrase,
+            action: action,
+        }
+        outputCard.buttons.push(info);
+    };
+
+    const SetupCard = (title,subtitle,nation) => {
+        outputCard.title = title;
+        outputCard.subtitle = subtitle;
+        outputCard.nation = nation;
+        outputCard.body = [];
+        outputCard.buttons = [];
+        outputCard.inline = [];
+    };
+
+    const DisplayDice = (roll,nation,size) => {
+        roll = roll.toString();
+        if (!Nations[nation] || !nation) {
+            nation = "Neutral";
+        }
+        let tablename = Nations[nation].dice;
+        let table = findObjs({type:'rollabletable', name: tablename})[0];
+        let obj = findObjs({type:'tableitem', _rollabletableid: table.id, name: roll })[0];        
+        let avatar = obj.get('avatar');
+        let out = "<img width = "+ size + " height = " + size + " src=" + avatar + "></img>";
+        return out;
+    };
+
+
+    const getAbsoluteControlPt = (controlArray, centre, w, h, rot, scaleX, scaleY) => {
+        let len = controlArray.length;
+        let point = new Point(controlArray[len-2], controlArray[len-1]);
+        //translate relative x,y to actual x,y 
+        point.x = scaleX*point.x + centre.x - (scaleX * w/2);
+        point.y = scaleY*point.y + centre.y - (scaleY * h/2);
+        point = RotatePoint(centre.x, centre.y, rot, point);
+        return point;
+    }
+
+
+    const Angle = (theta) => {
+        while (theta < 0) {
+            theta += 360;
+        }
+        while (theta > 360) {
+            theta -= 360;
+        }
+        return theta
+    }   
+
+    const RotatePoint = (cX,cY,angle, p) => {
+        //cx, cy = coordinates of the centre of rotation
+        //angle = clockwise rotation angle
+        //p = point object
+        let s = Math.sin(angle);
+        let c = Math.cos(angle);
+        // translate point back to origin:
+        p.x -= cX;
+        p.y -= cY;
+        // rotate point
+        let newX = p.x * c - p.y * s;
+        let newY = p.x * s + p.y * c;
+        // translate point back:
+        p.x = Math.round(newX + cX);
+        p.y = Math.round(newY + cY);
+        return p;
+    }
+
+
+    const PrintCard = (id) => {
+        let output = "";
+        if (id) {
+            let playerObj = findObjs({type: 'player',id: id})[0];
+            let who = playerObj.get("displayname");
+            output += `/w "${who}"`;
+        } else {
+            output += "/desc ";
+        }
+
+        if (!outputCard.nation || !Nations[outputCard.nation]) {
+            outputCard.nation = "Neutral";
+        }
+
+        //start of card
+        output += `<div style="display: table; border: ` + Nations[outputCard.nation].borderStyle + " " + Nations[outputCard.nation].borderColour + `; `;
+        output += `background-color: #EEEEEE; width: 100%; text-align: centre; `;
+        output += `border-radius: 1px; border-collapse: separate; box-shadow: 5px 3px 3px 0px #aaa;;`;
+        output += `"><div style="display: table-header-group; `;
+        output += `background-color: ` + Nations[outputCard.nation].backgroundColour + `; `;
+        output += `background-image: url(` + Nations[outputCard.nation].image + `), url(` + Nations[outputCard.nation].image + `); `;
+        output += `background-position: left,right; background-repeat: no-repeat, no-repeat; background-size: contain, contain; align: centre,centre; `;
+        output += `border-bottom: 2px solid #444444; "><div style="display: table-row;"><div style="display: table-cell; padding: 2px 2px; text-align: centre;"><span style="`;
+        output += `font-family: ` + Nations[outputCard.nation].titlefont + `; `;
+        output += `font-style: normal; `;
+
+        let titlefontsize = "1.4em";
+        if (outputCard.title.length > 12) {
+            titlefontsize = "1em";
+        }
+
+        output += `font-size: ` + titlefontsize + `; `;
+        output += `line-height: 1.2em; font-weight: strong; `;
+        output += `color: ` + Nations[outputCard.nation].fontColour + `; `;
+        output += `text-shadow: none; `;
+        output += `">`+ outputCard.title + `</span><br /><span style="`;
+        output += `font-family: Arial; font-variant: normal; font-size: 13px; font-style: normal; font-weight: bold; `;
+        output += `color: ` +  Nations[outputCard.nation].fontColour + `; `;
+        output += `">` + outputCard.subtitle + `</span></div></div></div>`;
+
+        //body of card
+        output += `<div style="display: table-row-group; ">`;
+
+        let inline = 0;
+
+        for (let i=0;i<outputCard.body.length;i++) {
+            let out = "";
+            let line = outputCard.body[i];
+            if (!line || line === "") {continue};
+            if (line.includes("[INLINE")) {
+                let end = line.indexOf("]");
+                let substring = line.substring(0,end+1);
+                let num = substring.replace(/[^\d]/g,"");
+                if (!num) {num = 1};
+                line = line.replace(substring,"");
+                out += `<div style="display: table-row; background: #FFFFFF;; `;
+                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: centre; display:block;'>`;
+                out += line + " ";
+
+                for (let q=0;q<num;q++) {
+                    let info = outputCard.inline[inline];
+                    out += `<a style ="background-color: ` + Nations[outputCard.nation].backgroundColour + `; padding: 5px;`
+                    out += `color: ` + Nations[outputCard.nation].fontColour + `; text-align: centre; vertical-align: middle; border-radius: 5px;`;
+                    out += `border-color: ` + Nations[outputCard.nation].borderColour + `; font-family: Tahoma; font-size: x-small; `;
+                    out += `"href = "` + info.action + `">` + info.phrase + `</a>`;
+                    inline++;                    
+                }
+                out += `</div></span></div></div>`;
+            } else {
+                line = line.replace(/\[hr(.*?)\]/gi, '<hr style="width:95%; align:centre; margin:0px 0px 5px 5px; border-top:2px solid $1;">');
+                line = line.replace(/\[\#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})\](.*?)\[\/[\#]\]/g, "<span style='color: #$1;'>$2</span>"); // [#xxx] or [#xxxx]...[/#] for color codes. xxx is a 3-digit hex code
+                line = line.replace(/\[[Uu]\](.*?)\[\/[Uu]\]/g, "<u>$1</u>"); // [U]...[/u] for underline
+                line = line.replace(/\[[Bb]\](.*?)\[\/[Bb]\]/g, "<b>$1</b>"); // [B]...[/B] for bolding
+                line = line.replace(/\[[Ii]\](.*?)\[\/[Ii]\]/g, "<i>$1</i>"); // [I]...[/I] for italics
+                let lineBack = (i % 2 === 0) ? "#D3D3D3" : "#EEEEEE";
+                out += `<div style="display: table-row; background: ` + lineBack + `;; `;
+                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: centre; display:block;'>`;
+                out += line + `</div></span></div></div>`;                
+            }
+            output += out;
+        }
+
+        //buttons
+        if (outputCard.buttons.length > 0) {
+            for (let i=0;i<outputCard.buttons.length;i++) {
+                let out = "";
+                let info = outputCard.buttons[i];
+                out += `<div style="display: table-row; background: #FFFFFF;; `;
+                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: centre; display:block;'>`;
+                out += `<a style ="background-color: ` + Nations[outputCard.nation].backgroundColour + `; padding: 5px;`
+                out += `color: ` + Nations[outputCard.nation].fontColour + `; text-align: centre; vertical-align: middle; border-radius: 5px;`;
+                out += `border-color: ` + Nations[outputCard.nation].borderColour + `; font-family: Tahoma; font-size: x-small; `;
+                out += `"href = "` + info.action + `">` + info.phrase + `</a></div></span></div></div>`;
+                output += out;
+            }
+        }
+
+        output += `</div></div><br />`;
+        sendChat("",output);
+        outputCard = {title: "",subtitle: "",nation: "",body: [],buttons: [],};
+    }
+
+    //related to building hex map
+    const LoadPage = () => {
+        //build Page Info and flesh out Hex Info
+        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
+        pageInfo.name = pageInfo.page.get("name");
+        pageInfo.scale = pageInfo.page.get("snapping_increment");
+        pageInfo.width = pageInfo.page.get("width") * 70;
+        pageInfo.height = pageInfo.page.get("height") * 70;
+
+        HexInfo.directions = {
+            "Northeast": new Cube(1, -1, 0),
+            "East": new Cube(1, 0, -1),
+            "Southeast": new Cube(0, 1, -1),
+            "Southwest": new Cube(-1, 1, 0),
+            "West": new Cube(-1, 0, 1),
+            "Northwest": new Cube(0, -1, 1),
+        }
+
+        //'edges' - will be based on rectangles on map that define edge of map
+        let edges = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",fill: "#7f6000"});
+        //let all = findObjs({_pageid: Campaign().get("playerpageid"),layer: "map"});
+        //log(all)
+        let minX = pageInfo.width;
+        let maxX = 0;
+        let minY = pageInfo.height;
+        let maxY = 0;
+
+        let i =0
+        _.each(edges,edge => {
+            let points = JSON.parse(edge.get("points"));
+            i++
+            let c = new Point(edge.get("x"),edge.get("y"));
+            let halfW = Math.ceil(points[1][0]/2);
+            let halfH = Math.ceil(points[1][1]/2);
+            let topLeft = new Point(Math.ceil(c.x - halfW),Math.ceil(c.y - halfH));
+            let bottomRight = new Point(Math.ceil(c.x + halfW),Math.ceil(c.y + halfH));
+
+            if (points[1][0] === 0 && points[1][1] === 0) {
+                log("removed")
+                edge.remove();
+            } else {
+                if (bottomRight.x < minX) {
+                    minX = bottomRight.x
+                }
+                if (topLeft.x > maxX) {
+                    maxX = topLeft.x;
+                }
+                if (bottomRight.y < minY) {
+                    minY = bottomRight.y;
+                }
+                if (topLeft.y > maxY) {
+                    maxY = topLeft.y;
+                }
+            }
+        });
+        MapEdges = {
+            minX: minX,
+            maxX: maxX,
+            minY: minY,
+            maxY: maxY,
+        }
+
+    }
+
+    const BuildMap = () => {
+        let startTime = Date.now();
+        hexMap = {};
+        //builds a hex map, assumes Hex(V) page setting
+        let halfToggleX = 35;
+        let rowLabelNum = 0;
+        let columnLabel = 1;
+
+        let startX = HexInfo.pixelStart.x;
+        let startY = HexInfo.pixelStart.y;
+
+        for (let j = startY; j <= pageInfo.height;j+=HexInfo.ySpacing){
+            for (let i = startX;i<= pageInfo.width;i+=HexInfo.xSpacing) {
+                let point = new Point(i,j);     
+                let hex = new Hex(point);
+                if (point.x > MapEdges.maxX || point.x < MapEdges.minX || point.y > MapEdges.maxY || point.y < MapEdges.minY) {
+                    hex.terrain = "Off Map";
+                }
+                hexMap[hex.label] = hex;
+                columnLabel++;
+            }
+            startX += halfToggleX;
+            halfToggleX = -halfToggleX;
+            rowLabelNum += 1;
+            columnLabel = 1
+        }
+
+        //add tokens on map
+        let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        
+        let l = 0;
+        mta.forEach((token) => {
+            let t = TerrainInfo[token.get("name")];
+            if (!t) {return};
+            let centre = new Point(token.get('left'),token.get('top'));
+            let label = centre.toCube().label();
+            if (!hexMap[label]) {return};
+            l++;
+            hexMap[label].terrain = t.name;
+            hexMap[label].obstruct = t.obstruct;
+            hexMap[label].cover = t.cover;
+            hexMap[label].difficult = t.difficult;
+            hexMap[label].cc = t.cc;
+            hexMap[label].height = parseInt(t.height);
+        });
+    
+        let elapsed = Date.now()-startTime;
+        log("Hex Map Built in " + elapsed/1000 + " seconds");
+        log(l + " Terrain Elements added to Map");
+        TA();
+    };
+
+
+    const TA = () => {
+        //add tokens on token layer
+        UnitArray = {};
+        //create an array of all tokens
+        let start = Date.now();
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            layer: "objects",
+        });
+
+        let c = tokens.length;
+        let s = (1===c?'':'s');     
+        tokens.forEach((token) => {
+            let character = getObj("character", token.get("represents"));           
+            if (character === null || character === undefined) {return};
+            let unitInfo = decodeURIComponent(token.get("gmnotes")).toString();
+            if (!unitInfo) {return}; //not added to unit array
+            unitInfo = unitInfo.split(";");
+            let player = unitInfo[0];
+            let corpsName = unitInfo[1];
+            let refID = unitInfo[2] || "";
+            let unit = new Unit(token.id,corpsName,player,refID);
+        });
+
+
+        let elapsed = Date.now()-start;
+        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(UnitArray).length + " placed in Unit Array");
+
+
+
+    }
+
+
+    //game functions
+    const ClearState = () => {
+        //clear arrays
+        UnitArray = {};
+        //clear token info
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            layer: "objects",
+        })
+        tokens.forEach((token) => {
+            if (token.get("name").includes("Objective") === true) {return};
+
+            token.set({
+                name: "",
+                tint_color: "transparent",
+                aura1_color: "transparent",
+                aura1_radius: 0,
+                showplayers_bar1: true,
+                showname: true,
+                showplayers_aura1: true,
+                bar1_value: 0,
+                bar1_max: "",
+                gmnotes: "",
+                statusmarkers: "",
+                tooltip: "",
+            });                
+        });
+    
+        state.Blucher = {
+            nations: [[],[]],
+            players: {},
+            playerInfo: [[],[]],
+            markers: [[],[]],
+            turn: 0,
+            nightFall: 30,
+            morale: [0,0],
+            broken: [0,0],
+            retired: [0,0],
+            objectives: [],
+            firstPlayer: -1,
+            corners: ["",""], 
+        }
+
+        sendChat("","Cleared State/Arrays");
+    }
+
+
+
+
+    const RollD6 = (msg) => {
+        let Tag = msg.content.split(";");
+        PlaySound("Dice");
+        let roll = randomInteger(6);
+        if (Tag.length === 1) {
+            let playerID = msg.playerid;
+            let nation = "Neutral";
+            if (msg.selected) {
+                let id = msg.selected[0]._id;
+                if (id) {
+                    let tok = findObjs({_type:"graphic", id: id})[0];
+                    let char = getObj("character", tok.get("represents")); 
+                    nation = Attribute(char,"nation");
+                    if (!state.Blucher.players[playerID] || state.Blucher.players[playerID] === undefined) {
+                        state.Blucher.players[playerID] = nation;
+                    }
+                }
+            } else if (!state.Blucher.players[playerID] || state.Blucher.players[playerID] === undefined) {
+                sendChat("","Click on one of your Units then select Roll again");
+                return;
+            }
+            let res = "/direct " + DisplayDice(roll,nation,40);
+            sendChat("player|" + playerID,res);
+        } else {
+            let type = Tag[1];
+            //type being used for times where fed back by another function
+        }
+    }
+
+    const AddUnits = (msg) => {
+        let Tag = msg.content.split(";");
+        let stage = parseInt(Tag[1]);
+        if (stage === 1) {
+            //add tokenIDs to Unit creation info
+            let tokenIDs = [];
+            for (let i=0;i<msg.selected.length;i++) {
+                tokenIDs.push(msg.selected[i]._id);
+            }
+            if (tokenIDs.length === 0) {return};
+            let refToken = findObjs({_type:"graphic", id: tokenIDs[0]})[0];
+            let refChar = getObj("character", refToken.get("represents")); 
+            let nation = Attribute(refChar,"nation");
+            ucInfo = {
+                tokenIDs: tokenIDs,
+                nation: nation,
+                player: -1, //not known yet
+            }
+            if (!state.Blucher.nations[0] || state.Blucher.nations[0].length === 0) {
+                state.Blucher.nations[0].push(nation);
+                ucInfo.player = 0;
+            } else if (state.Blucher.nations[0].includes(nation)) {
+                ucInfo.player = 0;
+            } else if (!state.Blucher.nations[1] || state.Blucher.nations[1].length === 0) {
+                state.Blucher.nations[1].push(nation);
+                ucInfo.player = 1;
+            } else if (state.Blucher.nations[1].includes(nation)) {
+                ucInfo.player = 1;
+            } else {
+                //check whom allied with as both 0 and 1 have at least 1 faction
+                SetupCard("Allies","","Neutral");
+                ButtonInfo("Allied with " + state.Blucher.nations[0][0],"!AddUnits;2;0;"+nation);
+                ButtonInfo("Allied with " + state.Blucher.nations[1][0],"!AddUnits;2;1;"+nation);
+                PrintCard();
+                return;
+            }
+            SetupCard("Corps","",nation);
+            let corps = Object.keys(Symbols[nation]);
+            _.each(corps,corps => {
+                ButtonInfo(corps + " Corps","!AddUnits;3;" + corps)
+            })
+            PrintCard();
+            return;
+        } else if (stage === 2) {
+            //allied units
+            let player  = parseInt(Tag[2]);
+            let nation = Tag[3];
+            ucInfo.player = player;
+            state.Blucher.nations[player].push(nation);
+            SetupCard("Corps","",nation);
+            let corps = Object.keys(Symbols[nation]);
+            _.each(corps,corps => {
+                ButtonInfo(corps + " Corps","!AddUnits;3;" + corps)
+            })
+            PrintCard();
+            return;
+        } else if (stage === 3) {
+            corpsName = Tag[2];
+            let player = ucInfo.player;
+            let nation = ucInfo.nation;
+            let tokenIDs = ucInfo.tokenIDs;
+            let corpsSymbol = Symbols[nation][corpsName];
+            let cName = corpsName;
+            if (cName === "Reserve") {cName = "R"};
+            let gmNotes = player + ";" + corpsName;
+
+            for (let i=0;i<tokenIDs.length;i++) {
+                let tokenID = tokenIDs[i];
+                let unit = new Unit(tokenID,corpsName,player);
+                let hp = ""
+                let ammoPos = "";
+                if (unit.type === "Artillery") {
+                    hp = parseInt(unit.ammoTrack[0]);
+                    ammoPos = 0;
+                } else if (unit.type !== "Leader") {
+                    hp = parseInt(unit.elan);
+                }
+                let nameFlag = true;
+                let char = getObj("character", unit.charID); 
+                let name = char.get("name");
+                name = name.replace(unit.nation + " ","");
+                name = name.replace(Nations[unit.nation].alt + " ","");
+
+                if (unit.type !== "Leader") {
+                    let words = ["Infantry","Regiment","Brigade"];
+                    _.each(words,word => {
+                        name = name.replace(" " + word,"");
+                    });
+                    
+                    name = cName + "/" + name;
+                }
+                let tooltip = unit.traits;
+                let show = true;
+                if (unit.traits === " ") {show = false};
+                unit.name = name;
+                unit.token.set({
+                    name: name,
+                    tint_color: "transparent",
+                    showplayers_bar1: true,
+                    showname: nameFlag,
+                    bar1_value: hp,
+                    bar2_value: ammoPos,
+                    gmnotes: gmNotes,
+                    tooltip: tooltip,
+                    show_tooltip: show,
+                })
+                unit.token.set(corpsSymbol,true);
+                if (hp > 1) {
+                    unit.token.set({
+                        bar1_max: hp,
+                    });
+                }
+            }
+          
+
+
+
+
+            sendChat("",corpsName + " Created");
+        }
+    }
+
+    
+
+    const TokenInfo = (msg) => {
+        if (!msg.selected) {
+            sendChat("","No Token Selected");
+            return;
+        };
+        let id = msg.selected[0]._id;
+        let unit = UnitArray[id];
+        if (!unit) {
+            sendChat("","Not in Unit Array Yet");
+            return;
+        };
+        let nation = unit.nation;
+        if (!nation) {nation = "Neutral"};
+        SetupCard(unit.name,"",nation);
+        let h = hexMap[unit.hexLabel];
+        let terrain = h.terrain;
+        let cover = h.cover;
+        outputCard.body.push(unit.hexLabel);
+        outputCard.body.push("Col: " + h.offset.col + " / Row: " + h.offset.row);
+        outputCard.body.push("Q: " + h.cube.q + " / R: " + h.cube.r + " / S: " + h.cube.s);
+        outputCard.body.push("Terrain: " + terrain);
+        if (cover === true) {
+            outputCard.body.push("In Cover vs. Artillery");
+        }
+        let refUnit = unit;
+//fix to be only owning player later if > 1 player
+        if (unit.name === "Hidden") {
+            let refUnit = UnitArray[unit.referenceID];
+            outputCard.body.push("Reference Unit: " + refUnit.name);
+        } 
+
+        if (refUnit.type === "Artillery") {
+            outputCard.body.push("Current Ammo: " + refUnit.token.get("bar1_value"));
+            outputCard.body.push("Ammo Track: " + refUnit.ammoTrack.toString());
+        } else if (refUnit.type === "Leader") {
+
+        } else {
+            outputCard.body.push("Elan: " + refUnit.token.get("bar1_value") + "/" + refUnit.elan);
+        }
+        if (unit.traits !== " ") {
+            outputCard.body.push("Traits: " + unit.traits);
+        }
+
+        PrintCard();
+    }
+
+    const CheckLOS = (msg) => {
+        let Tag = msg.content.split(";");
+        let shooterID = Tag[1];
+        let shooter = UnitArray[shooterID];
+
+        let targetID = Tag[2];
+        let target = UnitArray[targetID];
+
+        SetupCard(shooter.name,"LOS",shooter.nation);
+        let losResult = LOS(shooter,target);
+
+        outputCard.body.push("Target is " + losResult.range + " hexes away.");
+        outputCard.body.push("[hr]");
+
+        if (losResult.los === true) {
+            outputCard.body.push("Target is in LOS and in Range/Arc of Weapons");
+            if (shooter.type === "Artillery" && losResult.cover === true) {
+                outputCard.body.push("Target has Cover");
+            }
+        } else {
+            _.each(losResult.reasons,reason => {
+                outputCard.body.push(reason);
+            });
+        };
+
+
+        PrintCard();
+    }
+
+    const LOS = (shooter,target) => {
+        let los = true;
+        let arc = true;
+        let validTarget = true;
+        let reasons = [];
+        let shooterHex = hexMap[shooter.hexLabel];
+        let targetHex = hexMap[target.hexLabel];
+
+        let range = shooterHex.cube.distance(targetHex.cube);
+
+        let cover = targetHex.cover;
+
+        if (range > 8) {
+            los = "Range > 8"
+        } else {
+            let theta = shooterHex.cube.angle(targetHex.cube);
+            let phi = Angle(theta - shooter.token.get("rotation")); //angle from shooter to target taking into account shooters direction
+
+            if (phi > 60 && phi < 300) {
+                arc = false;
+            }
+
+            if (shooterHex.terrain.includes("Urban")) {
+                validTarget = "Shooter is in Urban Terrain and cannot Fire";
+            }
+            if (shooterHex.terrain.includes("Woods") || shooterHex.terrain.includes("Orchard")) {
+                validTarget = "Shooter is in Woods and cannot Fire";
+            }
+            if (shooterHex.terrain.includes("Marsh")) {
+                validTarget = "Shooter is in Marsh and cannot Fire";
+            }
+            if (shooterHex.terrain.includes("Crossing")) {
+                validTarget = "Shooter is at a Crossing and cannot Fire";
+            }
+            if (target.type === "Leader") {
+                validTarget = "Cannot Fire at Leaders Directly";
+            }
+
+            if (target.type === "Infantry" && shooter.type === "Infantry" && targetHex.terrain.includes("Urban")) {
+                validTarget = "Target is in Urban Terrain and cannot be fired at by Infantry";
+            }
+            if (target.type === "Infantry" && shooter.type === "Infantry" && (targetHex.terrain.includes("Woods") || targetHex.terrain.includes("Orchard"))) {
+                validTarget = "Target is in Woods and cannot be fired at by Infantry";
+            }
+
+
+
+            //do interHexes both ways, if either is good, use that        
+            //A: Shooter to Target
+            let interHexes = shooterHex.cube.linedraw(targetHex.cube);
+            let losA = true;
+            for (let i=1;i<interHexes.length;i++) {
+                let qrs = interHexes[i];
+                let interHex = hexMap[qrs.label()];
+                if (interHex.tokenIDs.length > 0) {
+                    losA = "Blocked by another Unit";
+                    break;
+                }
+                if (interHex.obstruct === true) {
+                    losA = "Blocked by Terrain";
+                    break;
+                }
+            }
+
+            if (losA !== true) {
+                //B: Target to Shooter 
+                //check other direction in case of midline
+                //if hits something, take losA's reason, else if runs true, use that
+                //ie: if target can see shooter, shooter can see target...
+                interHexes = targetHex.cube.linedraw(shooterHex.cube);
+                let losB = true;
+                for (let i=1;i<interHexes.length;i++) {
+                    let qrs = interHexes[i];
+                    let interHex = hexMap[qrs.label()];
+                    if (interHex.tokenIDs.length > 0) {
+                        losB = false;
+                        break;
+                    }
+                    if (interHex.obstruct === true) {
+                        losB = false;
+                        break;
+                    }
+                }
+                if (losB === false) {
+                    los = losA;
+                } 
+            } 
+
+        }
+
+        if (range > 8) {
+            reasons.push("Target is too far away to be seen")
+            los = false;
+        } else {
+            if (los !== true) {
+                reasons.push("LOS is " + los);
+                los = false;
+            } else {
+                if (validTarget !== true) {
+                    reasons.push("Target is in LOS but " + validTarget);
+                    los = false;
+                }
+                if (arc === false) {
+                    reasons.push("Target is out of firing Arc");
+                    los = false;
+                }
+                if (shooter.type === "Infantry" && range > 2) {
+                    reasons.push("Target is out of Range");
+                    los = false;
+                }
+            }
+        }
+
+        let result = {
+            range: range,
+            los: los,
+            cover: cover,
+            reasons: reasons,
+        }
+
+        return result;
+    }
+
+
+    const SetupGame = () => {
+        state.Blucher.turn = 0;
+        SetupCard("Starting Nation","","Neutral");
+        let nation0 = state.Blucher.nations[0][0];
+        let nation1 = state.Blucher.nations[1][0];
+        ButtonInfo("1st Turn by " + nation0,"!Start;1;0");
+        ButtonInfo("1st Turn by " + nation1,"!Start;1;1");
+        PrintCard();
+    }
+
+    const Start = (msg) => {
+        let Tag = msg.content.split(";");
+        let part = parseInt(Tag[1]);
+        if (part === 1) {
+            SetupCard("Game Turns","","Neutral");
+            state.Blucher.firstPlayer = parseInt(Tag[2]); 
+            ButtonInfo("# of Turns until Nightfall", "!Start;2;?{Turns|0}");
+            PrintCard();
+        } else if (part === 2) {
+            state.Blucher.nightFall = parseInt(Tag[2]);
+            SetupCard("Home Edge","","Neutral");
+            ButtonInfo("Home Edge of " + state.Blucher.nations[state.Blucher.firstPlayer][0], "!Start;3;?{Home Edge|Top|Bottom|Left|Right}");
+            PrintCard();
+        } else if (part === 3) {
+            let p1 = state.Blucher.firstPlayer;
+            let p2 = (p1 === 0) ? 1:0;
+            let homeEdge = Tag[2];
+            let indexes = Object.keys(hexMap)
+            let endLabel = indexes[indexes.length - 2];
+            if (homeEdge === "Top" || homeEdge === "Left") {
+                state.Blucher.corners[p1] = "A2";
+                state.Blucher.corners[p2] = endLabel;
+            } else {
+                state.Blucher.corners[p1] = endLabel;
+                state.Blucher.corners[p2] = "A2";
+            }
+            sendChat("","Setup Done");
+        } else if (part === 4) {
+            //calculate starting morale (without reinforcements)
+            let totalUnits = [0,0];
+            _.each(UnitArray,unit => {
+                if (unit.type !== "Artillery") {
+                    if (hexMap[unit.hexLabel].terrain !== "Off Map") {
+                        totalUnits[unit.player]++;
+                    }
+                }            
+            })
+            let morale = [Math.ceil(totalUnits[0]/3),Math.ceil(totalUnits[1]/3)];
+            state.Blucher.morale = morale;
+            state.Blucher.broken = [0,0];
+            state.Blucher.turn = 0;
+            SetupCard("Summary","","Neutral");
+            outputCard.body.push("Turn 1 will be " + state.Blucher.nations[state.Blucher.firstPlayer][0]);
+            outputCard.body.push("[hr]")
+            outputCard.body.push("Nightfall is in " + state.Blucher.nightFall + " Turns");
+            outputCard.body.push("[hr]");
+            outputCard.body.push("[U]Army Morale[/u]");
+            outputCard.body.push(state.Blucher.nations[0][0] + ": " + state.Blucher.morale[0]);
+            outputCard.body.push(state.Blucher.nations[1][0] + ": " + state.Blucher.morale[1]);
+            outputCard.body.push("[hr]");
+            PrintCard();
+            NewTurn();
+        }
+    }
+
+    const NewTurn = () => {
+        currentTurn = state.Blucher.turn + 1;
+        state.Blucher.turn = currentTurn;
+        currentPlayer = state.Blucher.firstPlayer;
+        if (currentTurn % 2 === 0) {
+            currentPlayer = (state.Blucher.firstPlayer === 0) ? 1:0;
+        }
+
+        SetupCard("Turn " + currentTurn,"",state.Blucher.nations[currentPlayer][0]);
+        //Information Phase - check re concealed units
+        let revealedUnits = [];
+        _.each(UnitArray,unit1 => {
+            if (unit1.name === "Hidden" && unit1.player !== currentPlayer) {
+                let losTest = false;
+                let four = false;
+                //any units within 4 hexes or with LOS
+                _.each(UnitArray,unit2 => {
+                    if ((losTest === false || four === false) && unit2.player !== unit1.player) {
+                        let losResult = LOS(unit2,unit1);
+                        if (losResult.range <= 4) {
+                            four = true;
+                        };
+                        if (losResult.los === true) {
+                            losTest = true;
+                        };
+                    };
+                });
+                if (losTest === true && four === true) {
+                    revealedUnits.push(UnitArray[unit1.referenceID].name);
+                    Reveal2(unit1.id);
+                };
+            };
+        });
+        if (revealedUnits.length > 0) {
+            outputCard.body.push("[U]Revealed Units[/u]");
+            outputCard.body.push(revealedUnits.toString());
+            outputCard.body.push("[hr]");
+        }
+
+
+        //Roll MO Dice
+        state.Blucher.currentMomentum = 0;
+        momentumUsed = 0;
+        for (let i=0;i<momentumDiceNum;i++) {
+            state.Blucher.currentMomentum += randomInteger(6);
+        }
+log(state.Blucher.currentMomentum)
+
+        outputCard.body.push("[U]Phases in Order[/u]");
+        outputCard.body.push("Movement Phase");
+        outputCard.body.push("Fire Phase");
+        outputCard.body.push("Combat Phase");
+        outputCard.body.push("Status/End Phase");
+
+        PrintCard();
+
+        //reset flags here
+        cleanMap();
+        _.each(UnitArray,unit => {
+            unit.fired = false;
+            unit.token.set(SM.moved, false);
+            unit.token.set(SM.charge, false);
+            unit.lastHexLabel = unit.hexLabel;
+            unit.token.set(SM.red,false);
+        }) 
+        ChargeArray = [];
+        state.Blucher.turn = currentTurn;
+
+
+
+
+
+
+
+
+    }
+
+    const EndTurn = () => {
+        SetupCard("End Turn","",state.Blucher.nations[currentPlayer][0]);
+        let endGame = false;
+        //Reinforcements - may prevent army collapse due to morale/retirement
+//code
+
+
+        //Check Morale
+        if (state.Blucher.broken[currentPlayer] > state.Blucher.morale[currentPlayer]) {
+            EndGame(currentPlayer,"Morale");
+            endGame = true;
+        }
+        //Check Retirement
+        let onTable = 0;
+        _.each(UnitArray,unit => {
+            if (unit.player === currentPlayer && hexMap[unit.hexLabel].terrain !== "Off Map") {
+                onTable++;
+            }
+        })
+        if (state.Blucher.retired[currentPlayer] > onTable) {
+            EndGame(currentPlayer,"Retired");
+            endGame = true;
+        }
+        
+        //add up objectives
+        let objectives = [0,0];
+        _.each(ObjectiveArray,objective => {
+            objectives[objective.controlling]++;
+        })
+        //Check 'Nightfall' - turn limit
+        if (state.Blucher.turn >= state.Blucher.nightFall) {
+            if (objectives[0] > objectives[1]) {
+                EndGame(0,"Objectives");
+            } else if (objectives[1] > objectives[0]) {
+                EndGame(1,"Objectives");
+            } else {
+                EndGame(-1,"Objectives");
+            }
+            endGame = true;
+        }
+
+        if (endGame === false) {
+            outputCard.body.push("Check any Special Objectives/Victory Conditions");
+            outputCard.body.push("If the Game is not over, click button to advance to next turn");
+            ButtonInfo("Advance to Next Turn","!NewTurn");
+        }
+
+        PrintCard();
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+    const Activate = (msg) => {
+        if (!msg.selected) {
+            sendChat("","No Token Selected");
+            return;
+        };
+        let Tag = msg.content.split(";");
+        let action = Tag[1];
+        let id = msg.selected[0]._id;
+        let unit = UnitArray[id];
+        if (!unit) {
+            sendChat("","Not in Unit Array Yet");
+            return;
+        };
+        let nation = unit.nation;
+        if (!nation) {nation = "Neutral"};
+
+        if (action === "Charge") {
+            if (unit.traits.includes("Conscript")) {
+                let engaged = false;
+                let cubeNeigh = hexMap[unit.hexLabel].cube.neighbours();
+                _.each(cubeNeigh,cube => {
+                    let hex = hexMap[cube.label()];
+                    if (hex.tokenIDs.length > 0) {
+                        let unit2 = UnitArray[hex.tokenIDs[0]];
+                        if (unit2.type === "Cavalry" && unit2.player !== unit.player) {
+                            let frontalCheck = unit2.frontal();
+                            if (frontalCheck.includes(unit.id)) {
+                                engaged = true;
+                            }
+                        }
+                    }
+                })
+                if (engaged === true) {
+                    SetupCard(unit.name,"Charge",unit.nation);
+                    outputCard.body.push("These Conscripts are unable to charge adjacent facing Cavalry");
+                    PrintCard();
+                    return;
+                }
+            }
+            if (parseInt(unit.token.get("bar1_value")) === 1) {
+                SetupCard(unit.name,"Charge",unit.nation);
+                outputCard.body.push("Unit is Fatigued and unable to Charge");
+                PrintCard();
+                return;
+            }
+
+            let t1 = unit.token.get(SM.charge) === true ? false:true
+            let t2 = t1 === true ? false:true;
+            unit.token.set(SM.charge,t1);
+            //is the token back in original spot
+            if (unit.hexLabel === unit.oldHexLabel) {
+                unit.token.set(SM.moved,false);
+            } else {
+                unit.token.set(SM.moved,t2);
+            }
+        }
+        if (action === "Prepare") {
+            let h = hexMap[unit.hexLabel];
+            if (h.terrain.includes("Major River")) {
+                sendChat("","Can't Prepare on This Hex");
+            } else {
+                unit.token.set(SM.prepared,true);
+            }
+        }
+    }
+
+
+
+
+
+
+
+    const EndGame = (loser,reason) => {
+        let winner = (loser === 0) ? 1:0;
+        let winningNation = state.Blucher.nations[winner][0];
+        if (loser === -1) {
+            winningNation = "Neutral";
+        }
+        SetupCard("End Game","",winningNation);
+
+        if (reason === "Morale") {
+            outputCard.body.push(Nations[state.Blucher.nations[loser][0]].alt + " Morale Collapses");
+            outputCard.body.push("Their army routs from the field");
+            outputCard.body.push(winningNation + " is the Winner!");
+        } else if (reason === "Retired") {
+            outputCard.body.push("The " + Nations[state.Blucher.nations[loser][0]].alt + " army has too many Retired units to continue the battle.");
+            outputCard.body.push("The remainder of their army retires or routs from the field");
+            outputCard.body.push(winningNation + " is the Winner!");
+        } else if (reason === "Objectives") {
+            if (winningNation !== "Neutral") {
+                outputCard.body.push("Night Falls - " + winningNation + " wins on the basis of Objectives Captured and Held");
+            } else {
+                outputCard.body.push("Night Falls - neither side has a commanding advantage and the games ends in a Tie");
+            }
+        }
+
+
+
+
+
+    }
+
+    const Fire = (msg) => {
+        let Tag = msg.content.split(";");
+        let shooterID = Tag[1];
+        let targetID = Tag[2];
+        let shooter = UnitArray[shooterID];
+        let target = UnitArray[targetID];
+
+        //check LOS and Range
+        let losResult = LOS(shooter,target);
+        SetupCard(shooter.name,"Firing",shooter.nation);
+
+        let errors = [];
+        //check if shooter has moved
+        if (shooter.token.get(SM.moved) === true && shooter.traits.includes("Mobile") === false) {
+            errors.push("Unit has Moved and Cannot Fire")
+        }
+        if (shooter.token.get(SM.charge) === true) {
+            errors.push("Unit has Charged and Cannot Fire")
+        }
+        //check if fired
+        if (shooter.fired === true) {
+            errors.push("Unit has already Fired this turn");
+        }
+
+        //if not in arc, los, range etc
+        if (losResult.los === false) {
+            _.each(losResult.reasons,reason => {
+                errors.push(reason);
+            });
+        }
+
+        if (errors.length > 0) {
+            _.each(errors,error => {
+                outputCard.body.push(error);
+            });
+            PrintCard();
+            return;
+        }
+
+
+
+
+        //target is valid, in arc, in range etc
+        //number of dice = elan or current ammo
+        let numDice = parseInt(shooter.token.get("bar1_value"));
+        let tip = "Base: " + numDice + " Dice";
+        let pTips = [];
+        let bTips = [];
+        if (shooter.traits.includes("Overstrength")) {
+            numDice++;
+            tip += "<br>Overstrength +1 Dice";
+        }
+        if (shooter.traits.includes("Understrength")) {
+            numDice--;
+            tip += "<br>Understrength -1 Dice";
+        }
+        let penalty = false;
+        let bonus = false;
+        let bonusUsed = false;
+
+        
+        if (shooter.type === "Infantry") {
+            if (losResult.range === 2) {
+                penalty = true;
+                pTips.push("Skirmish Range");
+                if (shooter.traits.includes("Skirmish") && target.type === "Infantry") {
+                    if (target.traits.includes("Mixed Brigade")) {
+                        bTips.push("(Skirmish Trait Negated by Mixed Brigade)");
+                    } else {
+                        bonus = true;
+                        bTips.push("Skirmish Trait");
+                    }
+                }
+            } else if (shooter.traits.includes("Firepower") && target.type === "Infantry") {
+                bonus = true;
+                bTips.push("Firepower Trait");
+            }
+            if (target.type === "Artillery") {
+                penalty = true;
+                pTips.push("Firing at Artillery");
+            };
+            if (target.type === "Cavalry") {
+                penalty = true;
+                pTips.push("Firing at Cavalry");
+            };
+
+            if (shooter.traits.includes("Impetuous")) {
+                penalty = true;
+                pTips.push("Impetuous Trait");
+            }
+            if (losResult.cover === true && hexMap[shooter.hexLabel].terrain.includes("Hill Crest")) {
+                penalty = true;
+                pTips.push("Target is on Crest of Hill");
+            }
+        }
+        if (shooter.type === "Artillery") {
+            if (losResult.cover === true) {
+                penalty = true;
+                pTips.push("Target in Cover");
+            }
+            if (target.type === "Artillery") {
+                penalty = true;
+                pTips.push("Firing at Artillery");
+            }
+            if (target.name === "Hidden") {
+                penalty = true;
+                pTips.push("Firing at Concealed Unit");
+            }
+            if (losResult.range < 3) {
+                bonus = true; //Canister
+                bTips.push("Firing Canister");
+            }
+            if (shooter.traits.includes("Heavy Artillery") && losResult.range > 2) {
+                bonus = true;
+                bTips.push("Heavy Artillery Trait");
+            }
+            if (target.token.get(SM.prepared) === true && hexMap[shooter.hexLabel].terrain.includes("Urban") === false) {
+                bonus = true;
+                bTips.push("Target is Prepared");
+            }
+
+
+
+        }
+
+
+        if (penalty === true) {
+            numDice = Math.ceil(numDice/2);
+        }
+
+        let rolls = [];
+        let hits = 0;
+        for (let i=0;i<numDice;i++) {
+            let roll = randomInteger(6);
+            rolls.push(roll);
+            if (roll === 6) {hits++};
+            if (roll === 5 && bonus === true && bonusUsed === false) {
+                hits++;
+                bonusUsed = true;
+            }
+        }
+
+        rolls.sort();
+        rolls.reverse();
+
+        if (pTips.length > 0) {
+            tip += "<br>---Penalties---";
+            for (let i=0;i<pTips.length;i++) {
+                tip += "<br>" + pTips[i];
+            }
+        }
+        if (bTips.length > 0) {
+            tip += "<br>---Bonuses---";
+            for (let i=0;i<bTips.length;i++) {
+                tip += "<br>" + bTips[i];
+            }
+        }
+
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+        let bit = tip + " Rolls: ";
+        _.each(rolls,roll => {
+            bit += DisplayDice(roll,shooter.nation,24) + " ";
+        })
+
+        outputCard.body.push(bit);
+        if (hits === 0) {
+            outputCard.body.push("No Hits were scored");
+        } else {
+            let s = (hits > 1) ? "s were":" was";
+            outputCard.body.push("[#ff0000]" + hits + " Hit" + s + " scored[/#]");
+            if (bonusUsed === true) {
+                outputCard.body.push("(bonus hit)");
+            }
+
+            if (target.name === "Hidden") {
+                outputCard.body.push("[hr]");
+                let newTargetID = target.referenceID;
+                Reveal2(targetID);
+                targetID = newTargetID;
+                target = UnitArray[targetID];
+                outputCard.body.push("Revealing Concealed Unit");
+            }
+
+            //apply any hits to target
+            let message = target.damage(hits);
+            if (message.length > 0) {
+                _.each(message,line => {
+                        outputCard.body.push(line);
+                })
+            }
+        }
+
+        if (shooter.type === "Artillery") {
+            outputCard.body.push("[hr]");
+            outputCard.body.push("One Ammo is Used");
+            let ammoPos = parseInt(shooter.token.get("bar2_value"));
+            ammoPos += 1;
+            if (ammoPos > shooter.ammoTrack.length) {
+                outputCard.body.push("The artillery is out of ammo. After all Fire is done, Retire this Unit");
+                shooter.token.set(SM.black);
+            } else {
+                shooter.token.set("bar2_value",ammoPos);
+                let ammo = parseInt(shooter.ammoTrack[ammoPos]);
+                shooter.token.set("bar1_value",ammo);
+                let remaining = shooter.ammoTrack.length + 1 - ammoPos;
+                outputCard.body.push("Ammo Remaining: " + remaining);
+                outputCard.body.push("The next shot uses " + ammo + " Dice");
+            }
+        }
+
+
+
+
+
+        PrintCard();
+        
+
+//Sound
+        GunFX(shooter,target);
+        shooter.fired = true;
+
+
+
+
+
+
+
+
+    }
+
+
+    const FiringPoint = (object) => {
+        let tokX = object.token.get("left");
+        let tokY = object.token.get("top");
+        let h = object.token.get("height");
+        let rot = object.token.get("rotation") * (Math.PI/180);
+        let point = RotatePoint(tokX,tokY,rot, new Point(tokX,tokY - h/2))
+        return point;
+    }
+
+    const GunFX = (shooter,target) => {
+        let point = FiringPoint(shooter);
+        let shooterHex = hexMap[shooter.hexLabel];
+        let targetHex = hexMap[target.hexLabel];
+
+        let phi = Angle(shooterHex.cube.angle(targetHex.cube));
+        let img,w,h;
+        if (shooter.type === "Artillery") {
+            img = "https://s3.amazonaws.com/files.d20.io/images/421660442/lN1NGZpdHdT0KYDiZQkztg/med.png?1734635356";
+            w = 80;           
+            h = 50;
+        } else {
+            img = "https://files.d20.io/images/196609276/u8gp3vcjYAunqphuw6tgWw/max.png?1611938031";
+            w = 100;
+            h = 50
+        }
+
+        let newToken = createObj("graphic", {   
+            left: point.x,
+            top: point.y,
+            width: w, 
+            height: h,  
+            rotation: phi,
+            name: "Fire",
+            isdrawing: true,
+            pageid: Campaign().get("playerpageid"),
+            imgsrc: img,
+            layer: "objects",
+        });
+        toBack(newToken)
+
+
+
+
+
+    }
+
+    const cleanMap = () => {
+        let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token"});
+        tokens.forEach((token) => {
+            if (token.get("name") === "Fire" || token.get("name") === "Dead") {
+                token.remove();
+            }
+        });
+
+
+
+        
+
+    }
+
+    const CheckMomentum = (msg) => {
+        let Tag = msg.content.split(";");
+        let nation = state.Blucher.nations[currentPlayer][0];
+        addMom = parseInt(Tag[1]);
+        momentumUsed += addMom;
+        SetupCard("Momentum",momentumUsed + " Used",nation);
+        if (momentumUsed >= state.Blucher.currentMomentum) {
+            outputCard.body.push(nation + " has run out of Momentum for this turn");
+            outputCard.body.push(state.Blucher.currentMomentum + " was Rolled");
+            outputCard.body.push("Proceed to the Fire Phase");
+        } else {
+            outputCard.body.push("The " + Nations[nation].alt + " have Momentum remaining this turn");
+        }
+        PrintCard();
+    }
+
+    const CloseCombat = () => {
+        DefenderArray = [];
+        AttackerArray = [];
+        Conscripts = []; //tracking conscript infantry charged by cavalry
+        //build up array of charging units, and identify which could be their defenders
+        _.each(UnitArray,unit => {
+            if (unit.token.get(SM.charge) === true) {
+                let ah = hexMap[unit.hexLabel];
+                let dice = unit.token.get("bar1_value");
+                let notes = "Base: " + dice + " Dice";
+                if (unit.traits.includes("Shock")) {
+                    dice++;
+                    notes += "<br>Shock +1";
+                }
+                if (unit.traits.includes("Overstrength")) {
+                    dice++;
+                    notes += "<br>Overstrength +1";
+                }
+                if (unit.traits.includes("Understrength")) {
+                    dice--;
+                    notes += "<br>Understrength -1";
+                }
+                let uphillFlag = false; //can only be penalized once for uphill and difficult terrain
+                let difficultFlag = false;
+                let mixedFlag = false;
+                if (ah.difficult === true) {
+                    dice--;
+                    difficultFlag = true;
+                    notes += "<br>Difficult Terrain -1";
+                }
+    
+                let attackerInfo = {id: unit.id, dice: 0, notes: ""};
+                let defenderIDs = unit.frontal();
+                if (defenderIDs.length === 0) {return};
+                let defIndexes = [];
+                
+                _.each(defenderIDs,defID => {
+                    let defIndex = DefenderArray.findIndex(i => i.id === defID);
+                    let defUnit = UnitArray[defID];
+                    let dh = hexMap[defUnit.hexLabel];
+                    if (dh.height > ah.height && uphillFlag === false) {
+                        dice --;
+                        uphillFlag = true;
+                        notes += "<br>Attacking Uphill -1"; //attacker notes
+                    }
+                    if (dh.diffficult === true && difficultFlag === false) {
+                        dice--;
+                        difficultFlag = true;
+                        notes += "<br>Difficult Terrain -1"; //attacker notes
+                    }
+                    if (unit.traits.includes("Mixed Brigade") && ah.cc === true && dh.cc === true && mixedFlag === false) {
+                        dice++;
+                        notes += "<br>Mixed Brigade +1";
+                        mixedFlag = true;
+                    }
+
+                    let cavAttack = false;
+                    let attackerRerolls = false;
+                    let defenderRerolls = false;
+                    //Cavalry attacking Infantry
+                    if (unit.type === "Cavalry" && defUnit.type === "Infantry") {
+                        cavAttack = true;
+                        if (defUnit.traits.includes("Conscript") && Conscripts.includes(defUnit.id) === false) {
+                            Conscripts.push(defUnit.id);
+                        }
+                        if (defUnit.token.get(SM.prepared) === true) {
+                            attackerRerolls = true;
+                            notes += "Cavalry Attacking Prepared Infantry";
+                        } else {
+                            defenderRerolls = true;
+                            notes += "Cavalry Attacking Unprepared Infantry";
+                        }
+                    }   
+                    //Infantry attacking Cavalry
+                    if (unit.type === "Infantry" && defUnit.type === "Cavalry") {
+                        cavAttack = true;
+                        if (dh.cc === true) {
+                            notes += "Infantry attacking Cavalry in Close Terrain";
+                        } else {
+                            defenderRerolls = true;
+                            notes += "Infantry attacking Cavalry in Open";
+                        }
+                    }
+
+
+                    if (defIndex > -1) {
+                        DefenderArray[defIndex].attackerInfo.push(attackerInfo);
+                    } else {
+                        DefenderArray.push(
+                            {
+                                id: defID,
+                                x: dh.centre.x,
+                                attackerInfo: [attackerInfo],
+                                defenderDice: 0,
+                                defenderNotes: "",
+                                flanked: false,
+                                cavAttack: cavAttack,
+                                defenderRerolls: defenderRerolls,
+                                attackerRerolls: attackerRerolls,
+                            }
+                        )
+                        defIndex = DefenderArray.length - 1;
+                    }
+
+                    defIndexes.push(defIndex);
+
+
+
+                })
+    
+                dice = Math.max(1,dice); //minimum of 1 dice
+                AttackerArray.push(unit.id);
+
+                //allocate dice
+
+                if (defenderIDs.length === 1) {
+                    let attIndex = DefenderArray[defIndexes[0]].attackerInfo.findIndex(i => i.id === unit.id);
+                    DefenderArray[defIndexes[0]].attackerInfo[attIndex].dice = dice;
+                    DefenderArray[defIndexes[0]].attackerInfo[attIndex].notes = notes;                } else {
+                    let rem = dice%2;
+                    dice = Math.floor(dice/2);
+                    let rand = randomInteger(2) - 1; //which defender gets remainder if any
+                    for (let j=0;j<2;j++) {
+                        let attIndex = DefenderArray[defIndexes[j]].attackerInfo.findIndex(i => i.id === unit.id);
+                        DefenderArray[defIndexes[j]].attackerInfo[attIndex].dice = dice;
+                        DefenderArray[defIndexes[j]].attackerInfo[attIndex].notes = notes + "<br>Split";
+                        if (j===rand) {
+                            DefenderArray[defIndexes[j]].attackerInfo[attIndex].dice += rem;
+                        }
+                    }
+                }
+            }
+        });
+
+        //calculate defender dice
+        _.each(DefenderArray,defender => {
+            let unit = UnitArray[defender.id];
+            let dh = hexMap[unit.hexLabel];
+            let dice = unit.token.get("bar1_value");
+            let notes = "Base: " + dice + " Dice";
+            if (unit.traits.includes("Steady")) {
+                dice++;
+                notes += "<br>Steady +1";
+            }
+            if (unit.traits.includes("Overstrength")) {
+                dice++;
+                notes += "<br>Overstrength +1";
+            }
+            if (unit.traits.includes("Understrength")) {
+                dice--;
+                notes += "<br>Understrength -1";
+            }
+            if (dh.difficult === true) {
+                if (dh.terrain.includes("Urban") && unit.token.get(SM.prepared) === true) {
+                    dice += 2;
+                    notes += "<br>Garrisoned Infantry +2";
+                } else {
+                    dice--;
+                    notes += "<br>Difficult Terrain -1";
+                }
+            }
+            if (Conscripts.includes(defender.id)) {
+                dice--;
+                notes += "<br>Conscript Infantry Charged by Cavalry";
+            }
+            if (unit.traits.includes("Mixed Brigade") && dh.cc === true) {
+                dice++;
+                notes += "<br>Mixed Brigade +1";
+            }
+
+
+            if (unit.token.get(SM.prepared) === false) {
+                let frontals = unit.frontal();
+                for (let i=0;i<defender.attackerInfo.length;i++) {
+                    let aID = defender.attackerInfo[i].id;
+                    if (frontals.includes(aID) === false) {
+                        defender.flanked = true;
+                        break;
+                    }
+                }
+            }
+            dice = Math.max(1,dice);
+            defender.defenderDice = dice;
+            defender.defenderNotes = notes;
+        })
+    
+        DefenderArray.sort((a,b) =>{
+            return (a.x - b.x); //left to right
+        })
+
+        log(DefenderArray)
+        log(AttackerArray)
+        CloseCombat2();
+
+    }
+
+    const CloseCombat2 = () => {
+        let defInfo = DefenderArray.shift();
+        if (defInfo) {
+            let defender = UnitArray[defInfo.id];
+            sendPing(defender.token.get("left"),defender.token.get("top"),Campaign().get("playerpageid"),null,true);
+            let defenderSuccesses = 0;
+            let defenderRolls = [];
+            let message,broken;
+            for (let i=0;i<defInfo.defenderDice;i++) {
+                let roll = randomInteger(6);
+                if (roll > 3) {
+                    if (defInfo.flanked === true || defInfo.defenderRerolls === true) {
+                        roll = randomInteger(6);
+                    }
+                    if (roll > 3) {
+                        defenderSuccesses++;
+                    }
+                }
+                defenderRolls.push(roll);
+            }
+
+            defenderRolls.sort();
+            defenderRolls.reverse();
+
+            let defTip = defenderRolls.toString() + " vs 4+<br>";
+            defTip += defInfo.defenderNotes;
+            if (defInfo.flanked === true || defInfo.defenderRerolls === true) {
+                defTip += "<br>Successes were rerolled";
+                if (defInfo.flanked === true) {defTip += " - Flanked"};
+            }
+
+            defTip = '[🎲](#" class="showtip" title="' + defTip + ')' + "Defender Successes: " + defenderSuccesses + " of " + defInfo.defenderDice + " Dice";
+
+
+            let totalAttackerSuccesses = 0;
+            let totalAttackDice = 0;
+            let attackerInfo = defInfo.attackerInfo;
+            let attTips = "";
+
+
+            let line = false;
+            _.each(attackerInfo,aInfo => {
+                let attacker = UnitArray[aInfo.id];
+                let attackerSuccesses = 0;
+                let attackerRolls = [];
+                if (line === true) {
+                    attTips += "------------------<br>";
+                }
+                if (line === false) {
+                    line = true;
+                }
+                attTips += "Attacker: " + attacker.name;
+                totalAttackDice += aInfo.dice;
+                for (let i=0;i<aInfo.dice;i++) {
+                    let roll = randomInteger(6);
+                    if (roll > 3) {
+                        if (defInfo.attackerRerolls === true) {
+                            roll = randomInteger(6);
+                        }
+                        if (roll > 3) {
+                            totalAttackerSuccesses++;
+                            attackerSuccesses++;
+                        }
+                    }
+                    attackerRolls.push(roll);
+                }
+                attackerRolls.sort();
+                attackerRolls.reverse();
+                attTips += "<br>Successes: " + attackerSuccesses;
+                attTips += "<br>" + attackerRolls.toString() + " vs 4+<br>";
+                attTips += aInfo.notes;
+                if (defInfo.attackerRerolls === true) {
+                    attTips += "<br>Successes were rerolled";
+                }
+                attTips += "<br>";
+            })
+
+            attTips = '[🎲](#" class="showtip" title="' + attTips + ')' + "Attacker Successes: " + totalAttackerSuccesses + " of " + totalAttackDice + " Dice";
+
+            SetupCard(defender.name,"Close Combat",defender.nation);
+
+            outputCard.body.push(attTips);
+            outputCard.body.push(defTip);
+            outputCard.body.push("[hr]");
+            let difference = totalAttackerSuccesses - defenderSuccesses;
+            broken = false;
+            if (difference <= 0) {
+                //defender wins
+                outputCard.body.push("The Defender wins the combat");
+                if (defender.type === "Artillery") {
+                    outputCard.body.push("The attackers are driven off!");
+                } else {
+                    outputCard.body.push("It takes 1 Fatigue");
+                    message = defender.damage(1);
+                    broken = false;
+                    if (message.length > 0) {
+                        _.each(message,line => {
+                            outputCard.body.push("Defender: " + line);
+                            if (line.includes("Breaks")) {
+                                    broken = true;
+                            }
+                        })
+                    }
+                }
+                if (broken === false) {
+                    outputCard.body.push("Attackers will be forced to Retreat at the end of the Combat Phase");
+                    _.each(attackerInfo,aInfo => {
+                        let attacker = UnitArray[aInfo.id];
+                        attacker.token.set(SM.red,true);
+                    })
+                }
+            } else {
+                //attackers won
+                outputCard.body.push("The Defender Loses the Combat");
+                if (defender.type === "Artillery") {
+                    if (totalAttackerSuccesses >= (defenderSuccesses * 2)) {
+                        outputCard.body.push("The Defender breaks and flees from the field!");
+                        defender.breaks();
+                        broken = true;
+                    } else {
+                        outputCard.body.push("The Defender will be forced to Retreat at the end of the Combat Phase");
+                        defender.token.set(SM.red,true);
+                    }
+                } else {
+                    outputCard.body.push("It takes " + difference + " Fatigue");
+                    message = defender.damage(difference);
+                    broken = false;
+                    if (message.length > 0) {
+                        _.each(message,line => {
+                                outputCard.body.push("Defender: " + line);
+                                if (line.includes("Breaks")) {
+                                    broken = true;
+                                }
+                        })
+                    }
+                    if (broken === false) {
+                        if (defInfo.cavAttack === true) {
+                            outputCard.body.push("The Infantry stands its ground");
+                            outputCard.body.push("Attackers will be forced to Retreat at the end of the Combat Phase");
+                            _.each(attackerInfo,aInfo => {
+                                let attacker = UnitArray[aInfo.id];
+                                attacker.token.set(SM.red,true);
+                            })
+                        } else {
+                            outputCard.body.push("The Defender will be forced to Retreat at the end of the Combat Phase");
+                            defender.token.set(SM.red,true);
+                        }
+                    }
+                }
+            }
+
+            if (defender.type === "Artillery" && broken === false) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push("One Ammo is Used");
+                let ammoPos = parseInt(defender.token.get("bar2_value")) || 0;
+                ammoPos += 1;
+                if (ammoPos > defender.ammoTrack.length) {
+                    outputCard.body.push("The artillery is out of ammo. After all Combat is done, Retire this Unit");
+                    defender.token.set(SM.black,true);
+                    let index = outputCard.body.indexOf("The Defender will be forced to Retreat at the end of the Combat Phase");
+                    if (index > -1) {
+                        outputCard.body.splice(index,1);
+                        defender.token.set(SM.red,false)
+                    }
+                } else {
+                    defender.token.set("bar2_value",ammoPos);
+                    let ammo = parseInt(defender.ammoTrack[ammoPos]);
+                    defender.token.set("bar1_value",ammo);
+                    let remaining = defender.ammoTrack.length + 1 - ammoPos;
+                    outputCard.body.push("Ammo Remaining: " + remaining);
+                    outputCard.body.push("The next shot uses " + ammo + " Dice");
+                }
+            }
+
+            ButtonInfo("Next Combat","!CloseCombat2");
+            PrintCard();
+        } else {
+
+            SetupCard("Close Combat Over","","Neutral");
+            outputCard.body.push("All Attackers take 1 Fatigue");
+            outputCard.body.push("Those forced to retreat take an additional Fatigue");
+
+            let impet = [];
+            _.each(AttackerArray,attackerID => {
+                let unit = UnitArray[attackerID];
+                let hits = 1;
+                if (unit.token.get(SM.red) === true) {
+                    hits = 2;
+                }
+               
+                let message = unit.damage(hits);
+                let broken = false;
+                if (message.length > 0) {
+                    _.each(message,line => {
+                            outputCard.body.push(line);
+                            if (line.includes("Breaks")) {
+                                broken = true;
+                            }
+                    })
+                }
+                if (broken === false) {
+                    if (unit.traits.includes("Impetuous") && unit.token.get(SM.red) === false) {
+                        impet.push(unit.name);
+                    }
+                }
+            })
+
+            outputCard.body.push("[hr]");
+            outputCard.body.push("Both players should conduct and retreats and advances");
+           
+            if (impet.length > 0) {
+                outputCard.body.push("[hr]");
+                _.each(impet,imp => {
+                    outputCard.body.push(imp + " must advance due to Impetuous");
+                })
+            }
+
+
+            PrintCard();
+        }
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+    const Conceal = (msg) => { 
+
+        let tokenIDs = [];
+        for (let i=0;i<msg.selected.length;i++) {
+            tokenIDs.push(msg.selected[i]._id);
+        }
+        if (tokenIDs.length === 0) {return};
+        //create units that are 'blinds' for above ids
+        let refUnit = UnitArray[tokenIDs[0]];
+        if (!refUnit) {
+            sendChat("","Unit not Setup");
+            return
+        }
+        if (state.Blucher.corners[refUnit.player] === "") {
+            sendChat("","Setup Not Complete")
+            return
+        }
+        let img = getCleanImgSrc(Nations[refUnit.nation].hiddenImage);
+        let player = refUnit.player;
+
+        _.each(tokenIDs,id => {
+            let unit = UnitArray[id];
+            let token = unit.token;
+            let gmNotes = player + ";Hidden;" + id;
+
+            let newToken = createObj("graphic", {   
+                left: token.get("left"),
+                top: token.get("top"),
+                width: 70, 
+                height: 60,  
+                rotation: token.get("rotation"),
+                name: "Hidden",
+                showplayers_bar1: false,
+                showname: false,
+                isdrawing: false,
+                pageid: Campaign().get("playerpageid"),
+                imgsrc: img,
+                represents: Nations[unit.nation].genericChar,
+                layer: "objects",
+                tint_color: "transparent",
+                gmnotes: gmNotes,
+            });
+
+/// ?? Allow some Dummy ??
+            newToken.set(Symbols[unit.nation][unit.corpsName],true);
+            toFront(newToken);
+            let concealedUnit = new Unit(newToken.id,"Hidden",player);
+            concealedUnit.referenceID = id;
+            unit.concealedID = newToken.id;
+            unit.token.set({
+                top: hexMap[state.Blucher.corners[unit.player]].centre.y,
+                left: hexMap[state.Blucher.corners[unit.player]].centre.x,
+            })
+            ChangeUnitHex(unit,unit.hexLabel,state.Blucher.corners[unit.player]);
+        })
+    }
+
+    const Reveal = (msg) => {
+        let id = msg.selected[0]._id;
+        Reveal2(id);
+    }
+
+    const Reveal2 = (id) => {
+        let hiddenUnit = UnitArray[id];
+        let refID = hiddenUnit.referenceID;
+        let refUnit = UnitArray[refID];
+        let hiddenToken = hiddenUnit.token;
+        let refToken = refUnit.token;
+        refToken.set({
+            left: hiddenToken.get("left"),
+            top: hiddenToken.get("top"),
+            rotation: hiddenToken.get("rotation"),
+        })
+        ChangeUnitHex(refUnit,refUnit.hexLabel,hiddenUnit.hexLabel);
+        hiddenToken.remove();
+        delete UnitArray[id];
+    }
+
+    const ArmyStatus = () => {
+        SetupCard("Army Statuses","","Neutral");
+        for (let i=0;i<2;i++) {
+            outputCard.body.push("[U][B]" + state.Blucher.nations[i][0] + "[/b][/u]");
+            outputCard.body.push("Total Morale: " + state.Blucher.morale[i]);
+            outputCard.body.push("Broken Units: " + state.Blucher.broken[i]);
+            outputCard.body.push("Retired Units: " + state.Blucher.retired[i]);
+            outputCard.body.push("[hr]")
+        }
+        outputCard.body.push("Turn " + state.Blucher.turn);
+        outputCard.body.push("Nightfall at Turn " + state.Blucher.nightFall);
+
+        PrintCard();
+
+
+    }
+
+    const AddAbility = (abilityName,action,charID) => {
+        createObj("ability", {
+            name: abilityName,
+            characterid: charID,
+            action: action,
+            istokenaction: true,
+        })
+    }    
+
+
+    const AddAbilities = (msg) => {
+        let tokenIDs = [];
+        for (let i=0;i<msg.selected.length;i++) {
+            tokenIDs.push(msg.selected[i]._id);
+        }
+        if (!msg.selected || tokenIDs.length === 0) {
+            sendChat("","No Token Selected");
+            return;
+        };
+        _.each(tokenIDs,id => {
+            let unit = UnitArray[id];
+            if (!unit) {return};
+            let abilityName,action;
+            let abilArray = findObjs({_type: "ability", _characterid: unit.charID});
+            //clear old abilities
+            for(let a=0;a<abilArray.length;a++) {
+                abilArray[a].remove();
+            } 
+
+            abilityName = "Reveal/Activate";
+            action = "!Reveal";
+            if (unit.type === "Hidden") {
+                AddAbility(abilityName,action,unit.charID);
+            }
+            abilityName = "Fire";
+            action = "!Fire;@{selected|token_id};@{target|token_id}";
+            if (unit.type === "Infantry" || unit.type === "Artillery") {
+                AddAbility(abilityName,action,unit.charID);
+            }
+            abilityName = "Prepare";
+            action = "!Activate;Prepare";
+            if (unit.type === "Infantry") {
+                AddAbility(abilityName,action,unit.charID);
+            }
+            abilityName = "Charge!";
+            action = "!Activate;Charge"
+            if (unit.type === "Infantry" || unit.type === "Cavalry") {
+                AddAbility(abilityName,action,unit.charID);
+            }
+            abilityName = "Check LOS";
+            action = "!CheckLOS;@{selected|token_id};@{target|token_id}";
+            AddAbility(abilityName,action,unit.charID);
+            abilityName = "Conceal";
+            action = "!Conceal";
+            if (unit.type !== "Hidden") {
+                AddAbility(abilityName,action,unit.charID);
+            }
+            abilityName = "Unit Info";
+            action = "!TokenInfo";
+            AddAbility(abilityName,action,unit.charID);
+        })
+
+
+
+
+    }
+
+    const ChangeUnitHex = (unit,oldHexLabel,newHexLabel) => {
+        let index = hexMap[oldHexLabel].tokenIDs.indexOf(unit.id);
+        if (index > -1) {
+            hexMap[oldHexLabel].tokenIDs.splice(index,1);
+        }
+        if (newHexLabel) {
+            hexMap[newHexLabel].tokenIDs.push(unit.id);
+            unit.hexLabel = newHexLabel;
+            unit.location = hexMap[newHexLabel].centre;
+        }
+    }
+
+
+
+
+
+
+    const URL = (msg) => {
+        let id = msg.selected[0]._id;
+        let tok = getObj('graphic',id);
+        log(tok.get('imgsrc'));
+    }
+
+
+
+
+    const changeGraphic = (tok,prev) => {
+        if (tok.get('subtype') === "token") {
+            log(tok.get("name") + " moving");
+            if ((tok.get("left") !== prev.left) || (tok.get("top") !== prev.top) || (tok.get("rotation") !== prev.rotation)) {
+                let unit = UnitArray[tok.id];
+                if (!unit) {return};
+                
+                if (tok.get("name") === "Hidden" && hexMap[unit.lastHexLabel].terrain !== "Off Map" && state.Blucher.turn > 0) {
+                    sendChat("","Activate/Reveal Unit First");
+                    tok.set({
+                        left: prev.left,
+                        top: prev.top,
+                        rotation: prev.rotation,
+                    });
+                    return;
+                }
+
+                let newLocation = new Point(tok.get("left"),tok.get("top"));
+                let newHex = hexMap[newLocation.toOffset().label()];
+                let oldHexLabel = unit.hexLabel;
+                let oldRotation = Angle(prev.rotation);
+                let newRotation = Math.round(Angle(tok.get("rotation"))/60)*60;
+                newLocation = newHex.centre; //centres it in hex
+                //set angle to points
+                if (newHex.label === oldHexLabel && oldRotation === newRotation) {
+                    return;
+                }
+
+                if (tok.get(SM.charge) === false && state.Blucher.turn > 0) {
+                    tok.set(SM.moved,true);
+                }
+
+                if (unit.lastHexLabel === newHex.label && oldHexLabel && oldRotation === newRotation) {
+                    tok.set(SM.charge,false);
+                    tok.set(SM.moved,false);
+                } else if (state.Blucher.turn > 0) {
+                    if (tok.get(SM.charge) === false) {
+                        tok.set(SM.moved,true);
+                    }
+                    tok.set(SM.prepared,false);
+                }
+
+
+                let barloc = "below"
+                if (newRotation <= 60 || newRotation >= 300) {
+                    barloc = "above"
+                }
+                tok.set({
+                    left: newLocation.x,
+                    top: newLocation.y,
+                    rotation: newRotation,
+                    bar_location: barloc,
+                });
+                ChangeUnitHex(unit,oldHexLabel,newHex.label);
+                if (unit.type === "Leader") {
+                    tok.set(SM.moved,false);
+                    toFront(tok);
+                }
+            };
+        };
+    };
+
+    const handleInput = (msg) => {
+        if (msg.type !== "api") {
+            return;
+        }
+        let args = msg.content.split(";");
+        log(args);
+        switch(args[0]) {
+            case '!Dump':
+                log("STATE");
+                log(state.Blucher);
+                log("Unit Array");
+                log(UnitArray);
+                log("Hex Map");
+                log(hexMap)
+                break;
+            case '!ClearState':
+                ClearState();
+                break;
+            case '!Roll':
+                RollD6(msg);
+                break;
+            case '!AddUnits':
+                AddUnits(msg);
+                break;
+            case '!TokenInfo':
+                TokenInfo(msg);
+                break;
+            case '!CheckLOS':
+                CheckLOS(msg);
+                break;
+            case '!Setup':
+                SetupGame(msg);
+                break;
+            case '!Start':
+                Start(msg);
+                break;
+            case '!Fire':
+                Fire(msg);
+                break; 
+            case '!URL':
+                URL(msg);
+                break;
+            case '!CheckMomentum':
+                CheckMomentum(msg);
+                break;
+            case '!EndTurn':
+                EndTurn();
+                break;
+            case '!Activate':
+                Activate(msg);
+                break;
+            case '!CloseCombat':
+                CloseCombat();
+                break;
+            case '!CloseCombat2':
+                CloseCombat2();
+                break;
+            case '!NewTurn':
+                NewTurn();
+                break;
+            case '!Conceal':
+                Conceal(msg);
+                break;
+            case '!Reveal':
+                Reveal(msg);
+                break;
+            case '!Army':
+                ArmyStatus();
+                break;
+            case '!AddAbilities':
+                AddAbilities(msg);
+                break;
+        }
+    };
+    const registerEventHandlers = () => {
+        on('chat:message', handleInput);
+        on('change:graphic',changeGraphic);
+        //on('destroy:graphic',destroyGraphic); - might look to have units that are 'removed' be placed in retirement if game is underway
+    };
+    on('ready', () => {
+        log("===> Blucher Software Version: " + version + " <===");
+        LoadPage();
+        BuildMap();
+        registerEventHandlers();
+        sendChat("","API Ready, Map Loaded")
+        log("On Ready Done")
     });
-    let id = stringGen();
-    if (TerrainArray[id]) {
-        id += stringGen();
-    }
-    let info = {
-        name: t.name,
-        id: id,
-        vertices: vertices,
-        centre: centre,
-        height: t.height,
-        cover: t.cover,
-        los: t.los,
-        difficult: t.difficult,
-        dangerous: t.dangerous,
-        obstacle: t.obstacle,
+    return {
+        // Public interface here
     };
-    TerrainArray[id] = info;
-});
-//add tokens on map eg woods, crops
-let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
-mta.forEach((token) => {
-    let truncName = token.get("name").replace(/[0-9]/g, '');
-    truncName = truncName.trim();
-    let t = MapTokenInfo[truncName];
-    if (!t) {return};
-    let vertices = TokenVertices(token);
-    let centre = new Point(token.get('left'),token.get('top'));
-    let id = stringGen();
-    if (TerrainArray[id]) {
-        id += stringGen();
-    }
-    let info = {
-        name: t.name,
-        id: id,
-        vertices: vertices,
-        centre: centre,
-        height: t.height,
-        cover: t.cover,
-        los: t.los,
-        difficult: t.difficult,
-        dangerous: t.dangerous,
-        obstacle: t.obstacle,
-    };
-    TerrainArray[id] = info;
-});
 
-//now run through hexMap and see if a hex fits into any of terrain above
+
+
+
+
+
+})();
