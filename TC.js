@@ -1422,10 +1422,12 @@ const TC = (() => {
     const Action = (msg) => {
         let Tag = msg.content.split(";");
         if (!Tag) {return};
-        let type = Tag[1];
-        let modelID = Tag[2];
+        let modelID = Tag[1];
+        let type = Tag[2];
         let subtype = Tag[3];
+
         let model = ModelArray[modelID];
+        if (!model) {return};
         if (model.token.get("aura1_color") === "#000000") {
             sendChat("","Model has already been activated");
             return;
@@ -1441,7 +1443,7 @@ const TC = (() => {
 
 
 
-
+        SetupCard(model.name,type,model.faction);
 
         if (type === "Move") {
             //check if in combat
@@ -1462,6 +1464,19 @@ const TC = (() => {
                     }
                 }
             }
+            if (subtype === "Move") {
+                //no test
+                outputCard.body.push("Model can move " + model.move + " Hexes")
+                
+
+
+
+
+            }
+
+
+
+
 //will need a way to allow these free melee attacks without changing activation
 
 
