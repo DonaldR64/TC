@@ -1368,7 +1368,56 @@ const TC = (() => {
     }
 
 
+    const GameInfo = () => {
+        //use this to convey info re turn, objectives etc
+        SetupCard("Game Info","","Neutral");
+        outputCard.body.push("Turn " + state.TC.turn + " of " + state.TC.gameLength);
+        outputCard.body.push("[hr]");
+        let downModels = [0,0];
+        let models = [0,0];
+        _.each(ModelArray,model => {
+            models[model.player]++;
+            if (model.token.get("aura2_color") === "#FF0000") {
+                downModels[model.player]++;
+            }
+        })
+        let breakpoints = [Math.round(state.TC.models[0]/2),Math.round(state.TC.models[1]/2)];
 
+        for (let i=0;i<2;i++) {
+            let outModels = state.TC.models[i] - models[i];
+            let breakpoint = Math.round(state.TC.models[i]/2);
+            outputCard.body.push("[U]" + state.TC.factions[i] + "[/u]");
+            let breakable = false;
+            let active = models[i] - downModels[i];
+            let m = (state.TC.models[i] - models[i]) + downModels[i];
+            if (m > breakpoint) {breakable = true};
+            if (state.TC.broken[i] === true) {
+                outputCard.body.push("Warband is [#FF0000]Broken[/#] and will Rout if they fail another Morale Test");
+                if (state.TC.shaken[i] === true) {
+                    outputCard.body.push("The Warband is also currently Shaken and any actions are considered RISKY ACTIONS");
+                }
+            } else if (breakable === true) {
+                outputCard.body.push("Warband may Break if they fail a Morale Check at the end of this turn");
+            } else {
+                outputCard.body.push("Warband Morale is [#00FF00]Good[/#]");
+                outputCard.body.push("Currently there are:");
+                outputCard.body.push("Active: " + active);
+                outputCard.body.push("Currently Down: " + downModels[i]);
+                outputCard.body.push("Out of Action: " + outModels);
+                outputCard.body.push("Breakpoint: " + breakpoint);
+            }
+
+
+
+            outputCard.body.push("[hr]")
+        }
+
+
+
+
+
+        PrintCard();
+    }
 
 
 
@@ -1735,6 +1784,9 @@ const TC = (() => {
                 break;
             case '!ActionTest':
                 ActionTest(msg);
+                break;
+            case '!GameInfo':
+                GameInfo();
                 break;
             
         }
