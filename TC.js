@@ -1265,7 +1265,7 @@ const TC = (() => {
         let downModels = [0,0];
         _.each(ModelArray,model => {
             models[model.player]++;
-            if (model.get("aura2_color") === "#FF0000") {
+            if (model.token.get("aura2_color") === "#FF0000") {
                 downModels[model.player]++;
             }
         })
@@ -1276,6 +1276,19 @@ const TC = (() => {
             //save models for end of turn references
             state.TC.models = models;
         } else {
+            //check if any remaining unactivated models
+            let unactivated = [];
+            _.each(ModelArray,model => {
+                if (model.token.get("aura1_color") === "#00FF00") {
+                    unactivated.push(model);
+                }
+            })
+            if (unactivated.length > 0) {
+                sendPing(unacivated[0].token.get("left"),unit.token.get("top"),Campaign().get("playerpageid"),null,true);
+                sendChat("At least one model has not activated");
+                return;
+            }
+
             //check # of models vs starting
             for (let i=0;i<2;i++) {
                 state.TC.shaken[i] = false;
@@ -1293,6 +1306,7 @@ const TC = (() => {
                             outputCard.body.push("The " + state.TC.factions[i] + " Warband is Shaken");
                             outputCard.body.push("Actions taken by models in a Shaken Warband are considered RISKY ACTIONS.");
                             outputCard.body.push("After one turn, the warband recovers to its normal state and is no longer considered Shaken. If it fails a Morale test again (shaken or not), it flees as standard.");
+                            outputCard.body.push("The Warband may also choose to strategically retreat...");
                         }
                     } else {
                         outputCard.body.push("Morale Test Succeeds");
@@ -1304,11 +1318,12 @@ const TC = (() => {
 
 
         state.TC.turn++;
+        let currentTurn = state.TC.turn;
+
 
         //check for end of game
 
 
-        let currentTurn = state.TC.turn;
 
         let firstPlayer,line0,line1,blurb;
         let fewestModels = false;
