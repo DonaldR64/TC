@@ -6,7 +6,7 @@ const TC = (() => {
     const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI"];
 
     let ModelArray = {}; 
-
+    let activeModelID = "";
     let hexMap = {}; 
     
     //Regular Hexagons, 'width' in Roll20 is 70
@@ -1319,7 +1319,7 @@ const TC = (() => {
             }
         }
 
-
+        activeModelID = "";
         state.TC.turn++;
         let currentTurn = state.TC.turn;
 
@@ -1418,6 +1418,77 @@ const TC = (() => {
 
         PrintCard();
     }
+
+    const Action = (msg) => {
+        let Tag = msg.content.split(";");
+        if (!Tag) {return};
+        let type = Tag[1];
+        let modelID = Tag[2];
+        let subtype = Tag[3];
+        let model = ModelArray[modelID];
+        if (model.token.get("aura1_color") === "#000000") {
+            sendChat("","Model has already been activated");
+            return;
+        } else if (activeModelID !== "" && modelID !== activeModelID) {
+            lastModel = ModelArray[activeModelID];
+            lastModel.token.set("aura1_color","#000000");
+            activeModelID = modelID;
+        }
+
+//move has subtypes
+//dash is single
+//appropr displays and tests/notes/checking for blood/blessing markers
+
+
+
+
+
+        if (type === "Move") {
+            //check if in combat
+            let neighbourCubes = model.cube.neighbours();
+            ncloop1:
+            for (let i=0;i<neighbourCubes.length;i++) {
+                let nHex = hexMap[cube.label()];
+                if (nHex.modelIDs.length > 0) {
+                    for (let j=0;j<nHex.modelIDs.length;j++) {
+                        let m = ModelArray[nHex.modelIDs[j]];
+                        if (m) {
+                            if (m.faction !== model.faction) {
+                                outputCard.body.push("Model is in combat");
+                                outputCard.body.push("If it leaves combat with any enemy all enemies in contact get a free melee attack");
+                                break ncloop1;
+                            }
+                        }
+                    }
+                }
+            }
+//will need a way to allow these free melee attacks without changing activation
+
+
+
+           
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
 
 
 
@@ -1532,33 +1603,46 @@ const TC = (() => {
         } else {
             usedRolls = rolls.slice(-number); //highest
         }
+        log(rolls)
+        log(usedRolls)
         let total = 0;
         _.each(usedRolls,roll => {
             total += roll;
         })
+        log(total)
         total += modifier;
         let success = false;
         if (total > 6 && total < 12) {
-            success === true;
+            success = true;
         } else if (total > 11) {
-            success === "Critical";
+            success = "Critical";
         }
         let line1 = "";
-        if (results.sign < 0) {
-            line1 = "-" + results.extraDice + " Dice";
+        if (sign < 0) {
+            line1 = "-" + extraDice + " Dice";
         } else {
-            line1 = "+" + results.extraDice + " Dice";
+            line1 = "+" + extraDice + " Dice";
         }
-        if (results.modifier > 0) {
-            line1 += " +" + results.modifier;
-        } else if (results.modifier < 0) {
-            line1 += " -" + Math.abs(results.modifier);
+        if (modifier > 0) {
+            line1 += " +" + modifier;
+        } else if (modifier < 0) {
+            line1 += " -" + Math.abs(modifier);
         }
    
         let line2 = "Rolls: ";
-        _.each(results.rolls, roll => {
-            line2 += DisplayDice(roll,"Neutral",24) += " ";
-        })
+        for (let i=0;i<rolls.length;i++) {
+            line2 += DisplayDice(rolls[i],"Neutral",24) + " ";
+            if ((sign >=0 && i === (rolls.length - number - 1)) && rolls.length > number) {
+                line2 += "▶ ";
+            }
+            if ((sign < 0 && i === (number-1)) && rolls.length > number) {
+                line2 += "◀ "
+            }
+
+
+
+        }
+
 
         let results = {
             success: success,
@@ -1584,7 +1668,8 @@ const TC = (() => {
         let Tag = msg.content.split(";");
         let extraDice = Tag[1];
         let model = ModelArray[id];
-        let results = ActionSuccess(model,extraDice);
+        let results = ActionSuccess(extraDice);
+log(results)
         SetupCard("Action Text",results.line1,model.faction);
         outputCard.body.push(results.line2);
         if (results.success === false) {
@@ -1788,6 +1873,10 @@ const TC = (() => {
             case '!GameInfo':
                 GameInfo();
                 break;
+            case '!Action':
+                Action(msg);
+                break;
+
             
         }
     };
