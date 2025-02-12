@@ -1061,6 +1061,9 @@ log(traits)
         let Tag = msg.content.split(";");
         PlaySound("Dice");
         let roll = randomInteger(6);
+        sendChat("", "/r [[1d6]]", null, {use3d: true});
+
+
         if (Tag.length === 1) {
             let playerID = msg.playerid;
             let nation = "Neutral";
