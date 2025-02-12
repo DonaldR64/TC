@@ -21,6 +21,11 @@
         <div class="col">
             <h3>Attributes</h3>
             <label>Move:</label><input type="number" name="attr_move">
+            <label for="attr_movetype">Move Type:</label>
+            <select name="attr_movetype">
+                <option value="Foot" selected>Foot</option>
+                <option value="Flying">Flying</option>
+            </select>
             <label>Ranged:</label><input type="number" name="attr_ranged">
             <label>Melee:</label><input type="number" name="attr_melee">
             <label>Armour:</label><input type="number" name="attr_armour">
@@ -271,10 +276,12 @@
                 <h3>Attributes</h3>
                 <div class="attinfo">
                     <div><span>Move</span></div>
+                    <div><span>Move Type</span></div>
                     <div><span>Ranged</span></div>
                     <div><span>Melee</span></div>
                     <div><span>Base Armour</span></div>
                     <h4><span name="attr_move"></span></h4>
+                    <h4><span name="attr_movetype"></span></h4>
                     <h4><span name="attr_rangedtext"></span></h4>
                     <h4><span name="attr_meleetext"></span></h4>
                     <h4><span name="attr_armour"></span></h4>
