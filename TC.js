@@ -914,7 +914,6 @@ const TC = (() => {
             rowLabelNum += 1;
             columnLabel = 1
         }
-log(hexMap["N33"].centre)
 
         //terrain
         AddTerrain();    
@@ -976,7 +975,6 @@ log(hexMap["N33"].centre)
             TerrainArray[id] = info;
         });
 
-log(TerrainArray)
         //add tokens on map eg woods, crops
         let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
         mta.forEach((token) => {
