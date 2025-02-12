@@ -1233,6 +1233,9 @@ const TC = (() => {
             playerInfo: [[],[]],
             turn: 0,
             firstPlayer: -1,
+            models: [],
+            shaken: [false,false], //used to track if force is currently shaken
+            broken: [false,false], //used to track if force has failed a morale test
         }
         
         
@@ -1258,10 +1261,45 @@ const TC = (() => {
     }
 
     const NextTurn = () => {
+        let models = [0,0];
+        let downModels = [0,0];
+        _.each(ModelArray,model => {
+            models[model.player]++;
+            if (model.get("aura2_color") === "#FF0000") {
+                downModels[model.player]++;
+            }
+        })
+
+
         if (state.TC.turn === 0) {
             //start of game stuff
-
-
+            //save models for end of turn references
+            state.TC.models = models;
+        } else {
+            //check # of models vs starting
+            for (let i=0;i<2;i++) {
+                state.TC.shaken[i] = false;
+                let m = (state.TC.models[i] - models[i]) + downModels[i]; //dead + down models
+                if (m > Math.round(state.TC.models[i]/2)) {
+                    SetupCard("Morale Test","",state.TC.factions[i]);
+                    let results = ActionSuccess(0);    
+                    outputCard.body.push(results.line2);                 
+                    if (results.success === false) {
+                        if (state.TC.broken[i] === true) {
+                            outputCard.body.push("The " + state.TC.factions[i] + " Warband Routs from the Field");
+                        } else {
+                            state.TC.shaken[i] = true;
+                            state.TC.broken[i] = true;
+                            outputCard.body.push("The " + state.TC.factions[i] + " Warband is Shaken");
+                            outputCard.body.push("Actions taken by models in a Shaken Warband are considered RISKY ACTIONS.");
+                            outputCard.body.push("After one turn, the warband recovers to its normal state and is no longer considered Shaken. If it fails a Morale test again (shaken or not), it flees as standard.");
+                        }
+                    } else {
+                        outputCard.body.push("Morale Test Succeeds");
+                    }
+                    PrintCard();
+                }
+            }
         }
 
 
@@ -1271,10 +1309,6 @@ const TC = (() => {
 
 
         let currentTurn = state.TC.turn;
-        let models = [0,0];
-        _.each(ModelArray,model => {
-            models[model.player]++;
-        })
 
         let firstPlayer,line0,line1,blurb;
         let fewestModels = false;
@@ -1411,24 +1445,12 @@ const TC = (() => {
     }
 
 
-    const ActionSuccess = (model,extraDice,modifier,number) => {
+    const ActionSuccess = (extraDice,modifier,number) => {
         //extraDice to be either +X or -X and adds X dice, taking top or bottom 2
         //modifier is added or subtracted to roll
         //number = number of dice used, usually 2
         if (!number) {number = 2};
         if (!modifier) {modifier = 0};
-        let line,line2;
-        let sub = extraDice.toString() + " Dice";
-        if (extraDice >= 0) {
-            sub = "+" + sub;
-        }
-        if (modifier !== 0) {
-            let modText = modifier.toString;
-            if (modifier > 0) {modText = "+" + modText};
-            sub += " " + modText;
-        }
-        outputCard.subtitle = sub;
-
         let sign = Math.sign(extraDice);
         extraDice = Math.abs(extraDice);
         let dice = 2 + extraDice;
@@ -1441,51 +1463,71 @@ const TC = (() => {
         let usedRolls = [];
         if (sign < 0) {
             usedRolls = rolls.slice(0,number); //lowest 
-            line2 = "Left 2 Rolls";
         } else {
             usedRolls = rolls.slice(-number); //highest
-            line2 = "Right 2 Rolls";
         }
         let total = 0;
         _.each(usedRolls,roll => {
             total += roll;
         })
         total += modifier;
-    
-
-
-        line = "Rolls: ";
-        _.each(rolls,roll => {
-            line += DisplayDice(roll,Factions[model.faction].dice,24) + " ";
-        })
-        outputCard.body.push(line2);
-        outputCard.body.push(line);
-        outputCard.body.push("[hr]");
         let success = false;
         if (total > 6 && total < 12) {
             success === true;
-            outputCard.body.push("Action is a Success!");
         } else if (total > 11) {
             success === "Critical";
-            outputCard.body.push("Action is a Critical Success!");
-        } else {
-            outputCard.body.push("[#FF0000]Action Fails[/#]");
         }
-        return success;
+        let line1 = "";
+        if (results.sign < 0) {
+            line1 = "-" + results.extraDice + " Dice";
+        } else {
+            line1 = "+" + results.extraDice + " Dice";
+        }
+        if (results.modifier > 0) {
+            line1 += " +" + results.modifier;
+        } else if (results.modifier < 0) {
+            line1 += " -" + Math.abs(results.modifier);
+        }
+   
+        let line2 = "Rolls: ";
+        _.each(results.rolls, roll => {
+            line2 += DisplayDice(roll,"Neutral",24) += " ";
+        })
+
+        let results = {
+            success: success,
+            line1: line1,
+            line2: line2,
+        }
+        return results;
     }
+
+
+  
+
+
+
 
 
     const ActionTest = (msg) => {
 
-//can check for blood markers
+//can check for blood or blessing markers, would have to have an interrupt here for that
 
         let id = msg.selected[0]._id;
         if (!id) {return};
         let Tag = msg.content.split(";");
         let extraDice = Tag[1];
         let model = ModelArray[id];
-        SetupCard("Action Text","",model.faction);
-        let result = ActionSuccess(model,extraDice);
+        let results = ActionSuccess(model,extraDice);
+        SetupCard("Action Text",results.line1,model.faction);
+        outputCard.body.push(results.line2);
+        if (results.success === false) {
+            outputCard.body.push("[#FF0000]Test Fails![/#]");
+        } else if (results.success === "Critical") {
+            outputCard.body.push("Critical Success!");
+        } else {
+            outputCard.body.push("Test Succeeds!");
+        }
         PrintCard();
     }
 
