@@ -1284,8 +1284,8 @@ const TC = (() => {
                 }
             })
             if (unactivated.length > 0) {
-                sendPing(unacivated[0].token.get("left"),unit.token.get("top"),Campaign().get("playerpageid"),null,true);
-                sendChat("At least one model has not activated");
+                sendPing(unactivated[0].token.get("left"),unactivated[0].token.get("top"),Campaign().get("playerpageid"),null,true);
+                sendChat("","At least one model has not activated");
                 return;
             }
 
