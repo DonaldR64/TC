@@ -357,7 +357,7 @@ const TC = (() => {
             this.offset = offset;
             this.cube = offset.toCube();
             this.label = offset.label();
-            this.terrain = "Open Ground";
+            this.terrain = [];
             this.terrainID = [];
             this.modelIDs = [];
             this.elevation = 0;
@@ -904,8 +904,6 @@ const TC = (() => {
         let startY = HexInfo.pixelStart.y;
 
         for (let j = startY; j <= pageInfo.height;j+=HexInfo.ySpacing){
-            h++;
-            w = 0;
             for (let i = startX;i<= pageInfo.width;i+=HexInfo.xSpacing) {
                 let point = new Point(i,j);     
                 let hex = new Hex(point);
@@ -916,10 +914,10 @@ const TC = (() => {
             rowLabelNum += 1;
             columnLabel = 1
         }
-
+log(hexMap["N33"].centre)
 
         //terrain
-        //AddTerrain();    
+        AddTerrain();    
         AddTokens();        
         let elapsed = Date.now()-startTime;
         log("Hex Map Built in " + elapsed/1000 + " seconds");
@@ -929,7 +927,7 @@ const TC = (() => {
         let TerrainArray = {};
         //first look for graphic lines outlining hills etc
         let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map"});
-        paths.forEach((pathObj) => {
+        _.each(paths,pathObj => {
             let vertices = [];
             toFront(pathObj);
             let colour = pathObj.get("stroke").toLowerCase();
@@ -939,16 +937,25 @@ const TC = (() => {
             let centre = new Point(pathObj.get("x"), pathObj.get("y"));
     
             //covert path points from relative coords to actual map coords
+            //define 'bounding box;
             let minX = Infinity,minY = Infinity, maxX = 0, maxY = 0;
             _.each(points,pt => {
                 minX = Math.min(pt[0],minX);
                 minY = Math.min(pt[1],minY);
                 maxX = Math.max(pt[0],maxX);
-                maxY = Math.max(pt[0],maxY);
+                maxY = Math.max(pt[1],maxY);
             })
-            //now C relative to the 0,0 of points
-            midX = (Math.abs(minX) + Math.abs(maxX))/2 + minX;
-            midY = (Math.abs(minY) + Math.abs(maxY))/2 + minY;
+            //translate each point back based on centre of box
+            let halfW = (maxX - minX)/2 + minX;
+            let halfH = (maxY - minY)/2 + minY
+            let zeroX = centre.x - halfW;
+            let zeroY = centre.y - halfH;
+            _.each(points,pt => {
+                let x = Math.round(pt[0] + zeroX);
+                let y = Math.round(pt[1] + zeroY);
+                vertices.push(new Point(x,y));
+            })
+
 
             let id = stringGen();
             if (TerrainArray[id]) {
@@ -968,6 +975,8 @@ const TC = (() => {
             };
             TerrainArray[id] = info;
         });
+
+log(TerrainArray)
         //add tokens on map eg woods, crops
         let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
         mta.forEach((token) => {
@@ -995,26 +1004,28 @@ const TC = (() => {
             };
             TerrainArray[id] = info;
         });
-        
+
         //now run through hexMap and see if a hex fits into any of terrain above
         let terrainKeys = Object.keys(TerrainArray);
         let mapKeys = Object.keys(hexMap);
         const burndown = () => {
             let mapKey = mapKeys.shift();
-            if (key){
+            if (mapKey){
                 let hex = hexMap[mapKey];
                 let c = hex.centre;
                 _.each(terrainKeys,terrainKey => {
                     let polygon = TerrainArray[terrainKey];
                     if (hex.terrain.includes(polygon.name)) {return};
                     let pts = XHEX(c);
-                    pts.push(c);
+
                     let num = 0;
                     _.each(pts,pt => {
-                        let check = pointInPolygon(pt,polygon);
+                        let check = pointInPolygon(pt,polygon.vertices);
                         if (check === true) {num++};
                     })
-                    if (num > 2) {
+
+
+                    if (num > 0) {
                         //hex is in the terrain polygon
                         hex.terrain.push(polygon.name);
                         if (polygon.los === "Inside") {hex.los = "Inside"};
@@ -1023,7 +1034,7 @@ const TC = (() => {
                         if (polygon.dangerous === true) {hex.dangerous = true};
                         if (polygon.obstacle === true) {hex.obstacle = true};
                         if (polygon.height !== 0) {
-                            if (polygon.name = "Hill") {
+                            if (polygon.name.includes("Hill")) {
                                 hex.elevation = hex.elevation + polygon.height;
                             } else if (polygon.name.includes("Trench")) {
                                 hex.elevation = hex.elevation - 1;
@@ -1033,6 +1044,7 @@ const TC = (() => {
                         }
                     };
                 });
+                if (hex.terrain.length === 0) {hex.terrain = ["Open Ground"]};
                 hexMap[mapKey] = hex;
                 setTimeout(burndown,0);
             }
@@ -1041,6 +1053,25 @@ const TC = (() => {
     }
 
 
+
+
+    const TokenVertices = (tok) => {
+      //Create corners with final being the first
+      let corners = []
+      let tokX = tok.get("left")
+      let tokY = tok.get("top")
+      let w = tok.get("width")
+      let h = tok.get("height")
+      let rot = tok.get("rotation") * (Math.PI/180)
+      //define the four corners of the target token as new points
+      //also rotate those corners around the target tok centre
+      corners.push(RotatePoint(tokX, tokY, rot, new Point( tokX-w/2, tokY-h/2 )))     //Upper left
+      corners.push(RotatePoint(tokX, tokY, rot, new Point( tokX+w/2, tokY-h/2 )))     //Upper right
+      corners.push(RotatePoint(tokX, tokY, rot, new Point( tokX+w/2, tokY+h/2 )))     //Lower right
+      corners.push(RotatePoint(tokX, tokY, rot, new Point( tokX-w/2, tokY+h/2 )))     //Lower left
+      corners.push(RotatePoint(tokX, tokY, rot, new Point( tokX-w/2, tokY-h/2 )))     //Upper left
+      return corners
+    }
 
 
      
@@ -1137,14 +1168,12 @@ const TC = (() => {
 
     const pointInPolygon = (point,vertices) => {
         //evaluate if point is in the polygon
-        px = point.x
-        py = point.y
         collision = false
         len = vertices.length - 1
         for (let c=0;c<len;c++) {
             vc = vertices[c];
             vn = vertices[c+1]
-            if (((vc.y >= py && vn.y < py) || (vc.y < py && vn.y >= py)) && (px < (vn.x-vc.x)*(py-vc.y)/(vn.y-vc.y)+vc.x)) {
+            if (((vc.y >= point.y && vn.y < point.y) || (vc.y < point.y && vn.y >= point.y)) && (point.x < (vn.x-vc.x)*(point.y-vc.y)/(vn.y-vc.y)+vc.x)) {
                 collision = !collision
             }
         }
@@ -1154,7 +1183,7 @@ const TC = (() => {
 
     const XHEX = (point) => {
         //makes a small group of points for checking around centre
-        let points = [];
+        let points = [point];
         points.push(new Point(point.x - 20,point.y - 20));
         points.push(new Point(point.x + 20,point.y - 20));
         points.push(new Point(point.x + 20,point.y + 20));
