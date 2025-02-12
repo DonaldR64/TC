@@ -1411,7 +1411,80 @@ const TC = (() => {
     }
 
 
+    const ActionSuccess = (model,extraDice,modifier,number) => {
+        //extraDice to be either +X or -X and adds X dice, taking top or bottom 2
+        //modifier is added or subtracted to roll
+        //number = number of dice used, usually 2
+        if (!number) {number = 2};
+        if (!modifier) {modifier = 0};
+        let line,line2;
+        let sub = extraDice.toString() + " Dice";
+        if (extraDice >= 0) {
+            sub = "+" + sub;
+        }
+        if (modifier !== 0) {
+            let modText = modifier.toString;
+            if (modifier > 0) {modText = "+" + modText};
+            sub += " " + modText;
+        }
+        outputCard.subtitle = sub;
 
+        let sign = Math.sign(extraDice);
+        extraDice = Math.abs(extraDice);
+        let dice = 2 + extraDice;
+        let rolls = [];
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(6);
+            rolls.push(roll);
+        }
+        rolls.sort(); //will be lowest to highest
+        let usedRolls = [];
+        if (sign < 0) {
+            usedRolls = rolls.slice(0,number); //lowest 
+            line2 = "Left 2 Rolls";
+        } else {
+            usedRolls = rolls.slice(-number); //highest
+            line2 = "Right 2 Rolls";
+        }
+        let total = 0;
+        _.each(usedRolls,roll => {
+            total += roll;
+        })
+        total += modifier;
+    
+
+
+        line = "Rolls: ";
+        _.each(rolls,roll => {
+            line += DisplayDice(roll,Factions[model.faction].dice,24) + " ";
+        })
+        outputCard.body.push(line2);
+        outputCard.body.push(line);
+        outputCard.body.push("[hr]");
+        let success = false;
+        if (total > 6 && total < 12) {
+            success === true;
+            outputCard.body.push("Action is a Success!");
+        } else if (total > 11) {
+            success === "Critical";
+            outputCard.body.push("Action is a Critical Success!");
+        } else {
+            outputCard.body.push("[#FF0000]Action Fails[/#]");
+        }
+        return success;
+    }
+
+
+    const ActionTest = (msg) => {
+        let id = msg.selected[0]._id;
+        if (!id) {return};
+        let Tag = msg.content.split(";");
+        let extraDice = Tag[1];
+        let model = ModelArray[id];
+        SetupCard("Action Text","",model.faction);
+        let result = ActionSuccess(model,extraDice);
+        PrintCard();
+    }
 
 
 
@@ -1597,6 +1670,9 @@ const TC = (() => {
                 break;
             case '!NextTurn':
                 NextTurn();
+                break;
+            case '!ActionTest':
+                ActionTest(msg);
                 break;
             
         }
