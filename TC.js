@@ -2,13 +2,12 @@ const TC = (() => {
     const version = '2025.2.10';
     if (!state.TC) {state.TC = {}};
 
-    const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0, hexesW: 0, hexesH: 0};
+    const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
     const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI"];
 
     let ModelArray = {}; 
 
     let hexMap = {}; 
-    let MapEdge; //will be the x coord of the table edge
     
     //Regular Hexagons, 'width' in Roll20 is 70
     let HexSize = 70/Math.sqrt(3);
@@ -891,16 +890,6 @@ const TC = (() => {
             "Northwest": new Cube(0, -1, 1),
         }
 
-        
-        let edges = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",fill: "#000000"});
-        if (edges) {
-            MapEdge = edges[0].get("x");
-            if (edges.length > 1) {
-                sendChat("","More than one Edge");
-            } 
-        } else {
-            sendChat("","Need to add an Edge");
-        }
     }
 
     const BuildMap = () => {
@@ -914,21 +903,12 @@ const TC = (() => {
         let startX = HexInfo.pixelStart.x;
         let startY = HexInfo.pixelStart.y;
 
-        let w = 0;
-        let h = 0;
-
         for (let j = startY; j <= pageInfo.height;j+=HexInfo.ySpacing){
             h++;
             w = 0;
             for (let i = startX;i<= pageInfo.width;i+=HexInfo.xSpacing) {
                 let point = new Point(i,j);     
                 let hex = new Hex(point);
-
-                if (point.x >= MapEdge) {
-                    hexMap[hex.label].terrain = "Off Map";
-                } else {
-                    w++;
-                }
                 columnLabel++;
             }
             startX += halfToggleX;
@@ -937,8 +917,6 @@ const TC = (() => {
             columnLabel = 1
         }
 
-        pageInfo.hexesW = w;
-        pageInfo.hexesH = h;
 
         //terrain
         //AddTerrain();    
@@ -1026,39 +1004,35 @@ const TC = (() => {
             if (key){
                 let hex = hexMap[mapKey];
                 let c = hex.centre;
-                if (c.x > MapEdge) {
-                    hex.terrain = ["Offboard"];
-                } else {
-                    _.each(terrainKeys,terrainKey => {
-                        let polygon = TerrainArray[terrainKey];
-                        if (hex.terrain.includes(polygon.name)) {return};
-                        let pts = XHEX(c);
-                        pts.push(c);
-                        let num = 0;
-                        _.each(pts,pt => {
-                            let check = pointInPolygon(pt,polygon);
-                            if (check === true) {num++};
-                        })
-                        if (num > 2) {
-                            //hex is in the terrain polygon
-                            hex.terrain.push(polygon.name);
-                            if (polygon.los === "Inside") {hex.los = "Inside"};
-                            if (polygon.cover === true) {hex.cover = true};
-                            if (polygon.difficult === true) {hex.difficult = true};
-                            if (polygon.dangerous === true) {hex.dangerous = true};
-                            if (polygon.obstacle === true) {hex.obstacle = true};
-                            if (polygon.height !== 0) {
-                                if (polygon.name = "Hill") {
-                                    hex.elevation = hex.elevation + polygon.height;
-                                } else if (polygon.name.includes("Trench")) {
-                                    hex.elevation = hex.elevation - 1;
-                                } else {
-                                    hex.height = Math.max(hex.elevation + polygon.height,hex.height);
-                                }
+                _.each(terrainKeys,terrainKey => {
+                    let polygon = TerrainArray[terrainKey];
+                    if (hex.terrain.includes(polygon.name)) {return};
+                    let pts = XHEX(c);
+                    pts.push(c);
+                    let num = 0;
+                    _.each(pts,pt => {
+                        let check = pointInPolygon(pt,polygon);
+                        if (check === true) {num++};
+                    })
+                    if (num > 2) {
+                        //hex is in the terrain polygon
+                        hex.terrain.push(polygon.name);
+                        if (polygon.los === "Inside") {hex.los = "Inside"};
+                        if (polygon.cover === true) {hex.cover = true};
+                        if (polygon.difficult === true) {hex.difficult = true};
+                        if (polygon.dangerous === true) {hex.dangerous = true};
+                        if (polygon.obstacle === true) {hex.obstacle = true};
+                        if (polygon.height !== 0) {
+                            if (polygon.name = "Hill") {
+                                hex.elevation = hex.elevation + polygon.height;
+                            } else if (polygon.name.includes("Trench")) {
+                                hex.elevation = hex.elevation - 1;
+                            } else {
+                                hex.height = Math.max(hex.elevation + polygon.height,hex.height);
                             }
-                        };
-                    });
-                };
+                        }
+                    };
+                });
                 hexMap[mapKey] = hex;
                 setTimeout(burndown,0);
             }
@@ -1232,6 +1206,8 @@ const TC = (() => {
             players: {},
             playerInfo: [[],[]],
             turn: 0,
+            gameLength: 6,
+            scenario: 1,
             firstPlayer: -1,
             models: [],
             shaken: [false,false], //used to track if force is currently shaken
@@ -1360,7 +1336,6 @@ const TC = (() => {
         }
         PrintCard();
 
-        //update turn indicator on side
 
 
     }

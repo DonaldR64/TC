@@ -1795,8 +1795,6 @@ log(ta)
         let h = 0;
 
         for (let j = startY; j <= pageInfo.height;j+=HexInfo.ySpacing){
-            h++;
-            w = 0;
             for (let i = startX;i<= pageInfo.width;i+=HexInfo.xSpacing) {
                 let point = new Point(i,j);     
                 let hex = new Hex(point);
@@ -1814,8 +1812,6 @@ log(ta)
             columnLabel = 1
         }
 
-        pageInfo.hexesW = w;
-        pageInfo.hexesH = h;
 
         //add tokens on map
         let mta = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
