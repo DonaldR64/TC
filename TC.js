@@ -1476,6 +1476,9 @@ const TC = (() => {
 
 
     const ActionTest = (msg) => {
+
+//can check for blood markers
+
         let id = msg.selected[0]._id;
         if (!id) {return};
         let Tag = msg.content.split(";");
