@@ -43,7 +43,7 @@ const TC = (() => {
         moved: "status_Advantage-or-Up::2006462", //if model moved
         fired: "status_Shell::5553215",
         red: "status_red",
-
+        green: "status_green",
     }; 
 
 
@@ -572,44 +572,27 @@ const TC = (() => {
 
         }
 
-        AddBloodMarker(number) {
-            if (!number) {number = 1};
-            let current = parseInt(this.token.get("bar3_value"));
-            current += number;
-            this.token.set("bar3_value",current);
-            this.token.set(SM.red,true);
-        }
 
-        SpendBloodMarker(number) {
+        ChangeMarker(type,number) {
+            //number to be +X or -X
             if (!number) {number = 1};
-            let current = parseInt(this.token.get("bar3_value"));
-            current -= number;
-            this.token.set("bar3_value",current);
+            let bar,dot;
+            if (type === "Blood") {
+                bar = "bar3_value";
+                dot = SM.red;
+            } else if (type === "Blessing") {
+                bar = "bar1_value";
+                dot = SM.green;
+            }
+            let current = parseInt(this.token.get(bar));
+            current = Math.max(current + number,0);
+            this.token.set(bar,current);
             if (current === 0) {
-                this.token.set(SM.red,false);
+                this.token.set(dot,false);
+            } else {
+                this.token.set(dot,true);
             }
         }
-
-
-        AddBlessingMarker(number) {
-            if (!number) {number = 1};
-            let current = parseInt(this.token.get("bar1_value"));
-            current += number;
-            this.token.set("bar1_value",current);
-            this.token.set(SM.green,true);
-        }
-
-        SpendBlessingMarker(number) {
-            if (!number) {number = 1};
-            let current = parseInt(this.token.get("bar1_value"));
-            current -= number;
-            this.token.set("bar1_value",current);
-            if (current === 0) {
-                this.token.set(SM.green,false);
-            }
-        }
-
-
 
 
 
@@ -898,6 +881,7 @@ const TC = (() => {
         //buttons
         if (outputCard.buttons.length > 0) {
             for (let i=0;i<outputCard.buttons.length;i++) {
+                output += "<br>";
                 let out = "";
                 let info = outputCard.buttons[i];
                 out += `<div style="display: table-row; background: #FFFFFF;; `;
@@ -1746,7 +1730,7 @@ const TC = (() => {
         let extraDice = parseInt(Tag[1]);
         let model = ModelArray[id];
         let text = (extraDice < 0) ? "-":"+";
-        text += Math.abs(extraDice);
+        text += Math.abs(extraDice) + " Dice";
 
         SetupCard(model.name,text,model.faction);
         if (model.token.get(SM.red) === true) {
@@ -1787,9 +1771,9 @@ const TC = (() => {
     }
 
     const ActionTest3 = (id,extraDice) => {
-        let model = ModelArray(id);
+        let model = ModelArray[id];
         let text = (extraDice < 0) ? "-":"+";
-        text += Math.abs(extraDice);
+        text += Math.abs(extraDice) + " Dice";
         SetupCard(model.name,text,model.faction);
         let results = ActionSuccess(extraDice);
         outputCard.body.push(results.line2);
@@ -1803,7 +1787,37 @@ const TC = (() => {
         PrintCard();
     }
 
+    const Marker = (msg) => {
+        let Tag = msg.content.split(";");
+        let number = parseInt(Tag[1]);
+        let type = Tag[2];
+        let id = Tag[3];
+        let extraDice = parseInt(Tag[4]);
+        let model = ModelArray[id];
+        if (type === "Blood") {
+            extraDice -= number;
+        } else if (type === "Blessing") {
+            extraDice += number;
+        }
+        model.ChangeMarker(type,-number);
 
+        if (model.token.get(SM.green) === true && type === "Blood") {
+           SetupCard(model.name,"",model.faction);
+           let bm = parseInt(model.token.get("bar1_value"));
+           let s = (bm === 1) ? "":"s";
+           outputCard.body.push("Model also has " + bm + " Blessing Marker" + s);
+           ButtonInfo("No Blessing Markers","Marker;0;Blessing" + id + ";" + extraDice);
+           if (bm === 1) {
+               ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + extraDice);
+           } else if (bm > 1) {
+               ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + extraDice);
+           }
+           PrintCard();
+        } else {
+            ActionTest3(id,extraDice);
+        }
+    }
+    
 
 
 
@@ -2147,12 +2161,10 @@ const TC = (() => {
             case '!ActionTest2':
                 ActionTest2(msg);
                 break;
-            case '!BloodMarker':
-                BloodMarker(msg);
+            case '!Marker':
+                Marker(msg);
                 break;
-            case '!BlessingMarker':
-                BloodMarker(msg);
-                break;
+          
             
         }
     };
