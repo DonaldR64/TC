@@ -122,40 +122,40 @@ const TC = (() => {
 
 
 
-    //los - if "Inside" - then only characters at edge of the terrain can see in/out, otherwise if los just crossing then is based on height - and if both inside LOS is open 
+    //los - Open - no effect beyond height, blocked - blocks los past the 1 hex, partial - blocks los once transitions to other terrain
     //obstacle - can be defended behind - so if combat occuring across then gets bonus - for buildings this is if one of 2 models is 'outside'
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
-        "#000000": {name: "Hill", height: 1,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#895129": {name: "Trench",height: -1,los: "Inside",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#895129": {name: "Trench",height: -2,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-        "#00ff00": {name: "Woods",height: 3,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#00ff00": {name: "Woods",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
-        "#ffffff": {name: "Burnt Woods",height: 2,los: "",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#ffffff": {name: "Burnt Woods",height: 6,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
-        "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#b6d7a8": {name: "Scrub",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 
-        "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
+        "#ffff00": {name: "Rubble", height: 1,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 //fix
-        "?????": {name: "Ruins",height: 1,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "Building Height 1": {name: "Building",height: 1,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 2": {name: "Building",height: 2,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 3": {name: "Building",height: 3,los: "Inside",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "?????": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "Building Height 1": {name: "Building",height: 3,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 2": {name: "Building",height: 6,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 3": {name: "Building",height: 9,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
 
     };
 
 
     const MapTokenInfo = {
-        "Hedge": {name: "Hedge",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Hedge": {name: "Hedge",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
         "Minefield": {name: "Minefield",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
-        "Barbed Wire": {name: "Barbed Wire",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
-        "Drums": {name: "Storage Drums",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Barbed Wire": {name: "Barbed Wire",height: 1,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
+        "Drums": {name: "Storage Drums",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
         "Crater": {name: "Crater",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "Boxes": {name: "Boxes",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
-        "Sandbags": {name: "Sandbags",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Boxes": {name: "Boxes",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Sandbags": {name: "Sandbags",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
     }
 
 
