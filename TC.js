@@ -399,6 +399,7 @@ const TC = (() => {
 
             //abilities
             let move = parseInt(attributeArray.move);
+            let moveType = attributeArray.movetype;
             let rangedBonus = parseInt(attributeArray.ranged);
             let meleeBonus = parseInt(attributeArray.melee);
             let baseArmour = parseInt(attributeArray.armour);
@@ -535,6 +536,7 @@ const TC = (() => {
             this.hexLabel = hexLabel;
 
             this.move = move;
+            this.moveType = moveType;
             this.rangedBonus = rangedBonus;
             this.meleeBonus = meleeBonus;
             this.baseArmour = baseArmour;
@@ -546,6 +548,10 @@ const TC = (() => {
 
             this.token = token;
             
+            this.actionsTaken = [];
+
+
+
             ModelArray[tokenID] = this;
 
             //hexMap[hexLabel].tokenIDs.push(token.id);
@@ -565,6 +571,26 @@ const TC = (() => {
 
 
         }
+
+        AddBloodMarker(number) {
+            if (!number) {number = 1};
+            let current = parseInt(this.token.get("bar3_value"));
+            current += number;
+            this.token.set("bar3_value",current);
+            this.token.set(SM.red,true);
+        }
+
+        SpendBloodMarker(number) {
+            if (!number) {number = 1};
+            let current = parseInt(this.token.get("bar3_value"));
+            current -= number;
+            this.token.set("bar3_value",current);
+            if (current === 0) {
+                this.token.set(SM.red,false);
+            }
+        }
+
+
 
 
 
@@ -1365,6 +1391,16 @@ const TC = (() => {
 
 
 
+        _.each(ModelArray,model => {
+            //reset things
+            model.actionsTaken = [];
+            model.token.set("aura1_color","#00FF00");
+        })
+
+
+
+
+
     }
 
 
@@ -1429,19 +1465,18 @@ const TC = (() => {
         let model = ModelArray[modelID];
         if (!model) {return};
         if (model.token.get("aura1_color") === "#000000") {
+            PlaySound("Error");
             sendChat("","Model has already been activated");
+            return;
+        } else if (model.actionsTaken.includes(type)) {
+            PlaySound("Error");
+            sendChat("","Model has already been taken this action this turn");
             return;
         } else if (activeModelID !== "" && modelID !== activeModelID) {
             lastModel = ModelArray[activeModelID];
             lastModel.token.set("aura1_color","#000000");
             activeModelID = modelID;
         }
-
-//move has subtypes
-//dash is single
-//appropr displays and tests/notes/checking for blood/blessing markers
-
-
 
         SetupCard(model.name,type,model.faction);
 
@@ -1450,53 +1485,63 @@ const TC = (() => {
             let neighbourCubes = model.cube.neighbours();
             ncloop1:
             for (let i=0;i<neighbourCubes.length;i++) {
-                let nHex = hexMap[cube.label()];
+                let nHex = hexMap[neighbourCubes[i].label()];
                 if (nHex.modelIDs.length > 0) {
                     for (let j=0;j<nHex.modelIDs.length;j++) {
                         let m = ModelArray[nHex.modelIDs[j]];
                         if (m) {
                             if (m.faction !== model.faction) {
                                 outputCard.body.push("Model is in combat");
-                                outputCard.body.push("If it leaves combat with any enemy all enemies in contact get a free melee attack");
+                                outputCard.body.push("If it leaves combat with [U]any[/u] enemy all enemies in contact may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
                                 break ncloop1;
+//flag
                             }
                         }
                     }
                 }
             }
+
+            //if charge - check if has used ranged attack (with exceptions)
+
+
+
+            model.actionsTaken.push("Move");
+
             if (subtype === "Move") {
                 //no test
                 outputCard.body.push("Model can move " + model.move + " Hexes")
-                
-
-
-
-
+                if (model.moveType === "Flying") {
+                    outputCard.body.push(" Flying models treat Difficult and/or Dangerous Terrain as Open Terrain and they do not trigger mines and similar devices. Flying models can climb up and down and they can jump over gaps of up to their Movement characteristic without taking ACTIONS.");
+                }
+            } else if (subtype === "Charge") {
+                let d6 = randomInteger(6);                
+                let chargeMove = Math.min(model.move + d6,12);
+                outputCard.body.push("Roll: " + DisplayDice(d6,Factions[model.faction].dice),24);
+                outputCard.body.push("Model can charge " + chargeMove + " Hexes");
+                outputCard.body.push("Taking the shortest route. If the model cannot see the target, a RISKY ACTION TEST must be taken");
+            } else if (subtype === "Retreat") {
+                outputCard.body.push("The model moves up to its Movement characteristic and it may leave Melee Combat during this movement. Each enemy model in Melee Combat with the retreating model may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
+//flag  
             }
 
 
-
-
-//will need a way to allow these free melee attacks without changing activation
-
-
-
-           
-
+        } else if (type === "Dash") {
+            model.actionsTaken.push("Dash");
+            let results = ActionSuccess(0);
+            outputCard.body.push(results.line2);
+            if (results.success === false) {
+                outputCard.body.push("[#FF0000]Test Fails![/#]");
+                outputCard.body.push("The Model's Activation ends...");
+            } else {
+                outputCard.body.push("Success! The model may move " + model.move + " Hexes");
+            } 
 
 
 
 
         }
 
-
-
-
-
-
-
-
-
+        PrintCard();
     }
 
 
