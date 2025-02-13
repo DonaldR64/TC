@@ -1740,49 +1740,58 @@ const TC = (() => {
 
 
     const ActionTest = (msg) => {
-
-//can check for blood or blessing markers, would have to have an interrupt here for that
         let id = msg.selected[0]._id;
         if (!id) {return};
         let Tag = msg.content.split(";");
-        let extraDice = Tag[1];
+        let extraDice = parseInt(Tag[1]);
         let model = ModelArray[id];
-        SetupCard("Action Test",results.line1,model.faction);
+        let text = (extraDice < 0) ? "-":"+";
+        text += Math.abs(extraDice);
 
-
+        SetupCard(model.name,text,model.faction);
         if (model.token.get(SM.red) === true) {
             let bm = parseInt(model.token.get("bar3_value"));
             let s = (bm === 1) ? "":"s";
             outputCard.body.push("Model has " + bm + " Blood Marker" + s);
+            ButtonInfo("No Blood Markers","ActionTest2;" + id + ";" + extraDice);
             if (bm === 1) {
-                ButtonInfo("Use a Blood Marker","!BloodMarker;1;Action;" + id);
+                ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + extraDice);
             } else if (bm > 1) {
-                ButtonInfo("Use a Blood Marker","!BloodMarker;?{How Many|0};Action;" + id);
+                ButtonInfo("Use a Blood Marker","!Marker;?{How Many|0};Blood;" + id + ";" + extraDice);
             }
             //if also has blessings will be picked up in Blood Marker
         } else if (model.token.get(SM.green) === true) {
             let bm = parseInt(model.token.get("bar1_value"));
             let s = (bm === 1) ? "":"s";
             outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
+            ButtonInfo("No Blessing Markers","ActionTest2;" + id + ";" + extraDice);
             if (bm === 1) {
-                ButtonInfo("Use a Blessing Marker","!BlessingMarker;1;Action;" + id);
+                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + extraDice);
             } else if (bm > 1) {
-                ButtonInfo("Use a Blood Marker","!BlessingMarker;?{How Many|0};Action;" + id);
+                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + extraDice);
             }
         } 
-
         if (model.token.get(SM.red) === true || model.token.get(SM.green) === true) {
             PrintCard();
             return;
+        } else {
+            ActionTest3(id,extraDice);
         }
+    }
 
+    const ActionTest2 = (msg) => {
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        let extraDice = parseInt(Tag[2]);
+        ActionTest3(id,extraDice);
+    }
 
-
-        //proceed to below if no blood or blessing tokens
-
-
+    const ActionTest3 = (id,extraDice) => {
+        let model = ModelArray(id);
+        let text = (extraDice < 0) ? "-":"+";
+        text += Math.abs(extraDice);
+        SetupCard(model.name,text,model.faction);
         let results = ActionSuccess(extraDice);
-log(results)
         outputCard.body.push(results.line2);
         if (results.success === false) {
             outputCard.body.push("[#FF0000]Test Fails![/#]");
@@ -2135,7 +2144,15 @@ log(results)
             case '!Action':
                 Action(msg);
                 break;
-
+            case '!ActionTest2':
+                ActionTest2(msg);
+                break;
+            case '!BloodMarker':
+                BloodMarker(msg);
+                break;
+            case '!BlessingMarker':
+                BloodMarker(msg);
+                break;
             
         }
     };
