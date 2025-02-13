@@ -1799,6 +1799,10 @@ log(results)
         } else if (result.loscover === true) {
             outputCard.body.push("Target has cover due to intervening terrain");
         }
+
+        if (result.heightAdvantage === true) {
+            outputCard.body.push("Shooter has a Height Advantage");
+        }
         
         _.each(shooter.weaponArray.ranged,weapon => {
             let range = weapon.range;
@@ -1830,6 +1834,8 @@ log(results)
 
         let model1Height = 1//modelHeight(model1);
         let model2Height = 1//modelHeight(model2);
+        let heightAdvantage = (model1Height > model2Height) ? true:false;
+      
 
         //reduce to lowest level
         let modelLevel = Math.min(model1Height,model2Height);
@@ -1897,6 +1903,7 @@ log(results)
             cover: cover, //if target is IN cover terrain
             loscover: loscover,  //if intervening terrain offers cover 
             distance: distance,
+            heightAdvantage: heightAdvantage,
         }
 
 
