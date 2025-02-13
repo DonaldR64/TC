@@ -358,7 +358,7 @@ const TC = (() => {
             this.cube = offset.toCube();
             this.label = offset.label();
             this.terrain = [];
-            this.terrainID = [];
+            this.terrainIDs = [];
             this.modelIDs = [];
             this.elevation = 0;
             this.height = 0;
@@ -1040,6 +1040,7 @@ const TC = (() => {
                 _.each(terrainKeys,terrainKey => {
                     let polygon = TerrainArray[terrainKey];
                     if (hex.terrain.includes(polygon.name)) {return};
+                    hex.terrainIDs.push(polygon.id)
                     let pts = XHEX(c);
 
                     let num = 0;
@@ -1799,11 +1800,15 @@ log(results)
             outputCard.body.push("Target has cover due to intervening terrain");
         }
         
-        _.each(weaponArrray.ranged,weapon => {
+        _.each(shooter.weaponArray.ranged,weapon => {
             let range = weapon.range;
             if (range <= result.distance) {
-                outputCard.body.push("Target is in range of " + weapon.name);
-            }
+                if (result.distance > Math.round(range/2)) {
+                    outputCard.body.push("Target is in Long Range of " + weapon.name);
+                } else {
+                    outputCard.body.push("Target is in range of " + weapon.name);
+                }
+             }
         })
 
 
