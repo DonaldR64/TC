@@ -1787,7 +1787,27 @@ log(results)
         let result = LOS(shooter,target);
 
 
+        outputCard.body.push("Target is " + result.distance + " Hexes away");
+        if (result.los === true) {
+            outputCard.body.push("Target is in LOS");
+        } else {
+            outputCard.body.push("LOS is " + result.reason);
+        }
+        if (result.cover === true) {
+            outputCard.body.push("Target is IN COVER");
+        } else if (result.loscover === true) {
+            outputCard.body.push("Target has cover due to intervening terrain");
+        }
+        
+        _.each(weaponArrray.ranged,weapon => {
+            let range = weapon.range;
+            if (range <= result.distance) {
+                outputCard.body.push("Target is in range of " + weapon.name);
+            }
+        })
 
+
+        PrintCard();
         
 
     }
