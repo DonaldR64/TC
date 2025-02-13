@@ -1784,9 +1784,117 @@ log(results)
 
         SetupCard("LOS","",shooter.faction);
         
+        let result = LOS(shooter,target);
+
+
+
         
 
     }
+
+
+    const LOS = (model1,model2) => {
+        let cover = false;
+        let los = true;
+        let loscover = false;
+
+        let distance = model1.cube.distance(model2.cube);
+        let model1Hex = hexMap[model1.hexLabel];
+        let model2Hex = hexMap[model2.hexLabel];
+        cover = model2Hex.cover;
+
+        let model1Height = 1//modelHeight(model1);
+        let model2Height = 1//modelHeight(model2);
+
+        //reduce to lowest level
+        let modelLevel = Math.min(model1Height,model2Height);
+        model1Height -= modelLevel;
+        model2Height -= modelLevel;
+
+        let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
+
+        let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
+        if (sameTerrain === true) {
+
+
+
+
+        }
+
+
+    //factor heights into below
+        let reason = "";
+        for (let i=0;i<interCubes.length;i++) {
+            let interHex = hexMap[interCubes[i].label()];
+
+
+    //factor heights here
+           
+
+
+
+
+
+
+
+
+            if (interHex.los === "Inside") {
+                reason = "Blocked by Terrain";
+                los = false;
+                break;
+            }
+            if (interHex.cover === true) {
+                loscover = true;
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+        let result = {
+            los: los,
+            reason: reason,
+            cover: cover, //if target is IN cover terrain
+            loscover: loscover,  //if intervening terrain offers cover 
+            distance: distance,
+        }
+
+
+        return result;
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
