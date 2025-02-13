@@ -42,7 +42,7 @@ const TC = (() => {
     const SM = {
         moved: "status_Advantage-or-Up::2006462", //if model moved
         fired: "status_Shell::5553215",
-       
+        red: "status_red",
 
     }; 
 
@@ -587,6 +587,25 @@ const TC = (() => {
             this.token.set("bar3_value",current);
             if (current === 0) {
                 this.token.set(SM.red,false);
+            }
+        }
+
+
+        AddBlessingMarker(number) {
+            if (!number) {number = 1};
+            let current = parseInt(this.token.get("bar1_value"));
+            current += number;
+            this.token.set("bar1_value",current);
+            this.token.set(SM.green,true);
+        }
+
+        SpendBlessingMarker(number) {
+            if (!number) {number = 1};
+            let current = parseInt(this.token.get("bar1_value"));
+            current -= number;
+            this.token.set("bar1_value",current);
+            if (current === 0) {
+                this.token.set(SM.green,false);
             }
         }
 
@@ -1723,15 +1742,47 @@ const TC = (() => {
     const ActionTest = (msg) => {
 
 //can check for blood or blessing markers, would have to have an interrupt here for that
-
         let id = msg.selected[0]._id;
         if (!id) {return};
         let Tag = msg.content.split(";");
         let extraDice = Tag[1];
         let model = ModelArray[id];
+        SetupCard("Action Test",results.line1,model.faction);
+
+
+        if (model.token.get(SM.red) === true) {
+            let bm = parseInt(model.token.get("bar3_value"));
+            let s = (bm === 1) ? "":"s";
+            outputCard.body.push("Model has " + bm + " Blood Marker" + s);
+            if (bm === 1) {
+                ButtonInfo("Use a Blood Marker","!BloodMarker;1;Action;" + id);
+            } else if (bm > 1) {
+                ButtonInfo("Use a Blood Marker","!BloodMarker;?{How Many|0};Action;" + id);
+            }
+            //if also has blessings will be picked up in Blood Marker
+        } else if (model.token.get(SM.green) === true) {
+            let bm = parseInt(model.token.get("bar1_value"));
+            let s = (bm === 1) ? "":"s";
+            outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
+            if (bm === 1) {
+                ButtonInfo("Use a Blessing Marker","!BlessingMarker;1;Action;" + id);
+            } else if (bm > 1) {
+                ButtonInfo("Use a Blood Marker","!BlessingMarker;?{How Many|0};Action;" + id);
+            }
+        } 
+
+        if (model.token.get(SM.red) === true || model.token.get(SM.green) === true) {
+            PrintCard();
+            return;
+        }
+
+
+
+        //proceed to below if no blood or blessing tokens
+
+
         let results = ActionSuccess(extraDice);
 log(results)
-        SetupCard("Action Text",results.line1,model.faction);
         outputCard.body.push(results.line2);
         if (results.success === false) {
             outputCard.body.push("[#FF0000]Test Fails![/#]");
@@ -1843,6 +1894,7 @@ log(results)
         model2Height -= modelLevel;
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
+        interCubes.shift(); //1st hex is shooter Hex
 
         let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
         if (sameTerrain === true) {
@@ -1856,11 +1908,18 @@ log(results)
     //factor heights into below
         let reason = "";
         for (let i=0;i<interCubes.length;i++) {
-            let interHex = hexMap[interCubes[i].label()];
+            let label = interCubes[i].label()
+            let interHex = hexMap[label];
+            let interHeight = interHex.height - modelLevel;
 
+            if (interHeight > model1Height && interHeight > model2Height) {
+                los = false;
+                reason = "Blocked by Higher Terrain at " + label;
+                break;
+            }
 
-    //factor heights here
-           
+            //Triangles
+
 
 
 
@@ -1870,7 +1929,7 @@ log(results)
 
 
             if (interHex.los === "Inside") {
-                reason = "Blocked by Terrain";
+                reason = "Blocked by Terrain at " + label;
                 los = false;
                 break;
             }

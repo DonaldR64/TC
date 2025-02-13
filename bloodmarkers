@@ -1,0 +1,32 @@
+const BloodMarker = (msg) => {
+    let Tag = msg.content.split(";");
+    let number = parseInt(Tag[1]);
+    let type = Tag[2];
+    let id = Tag[3];
+
+    let model = ModelArray[id];
+
+    if (model.token.get(SM.green)) {
+        SetupCard("Action Test","",model.faction);
+        let bm = parseInt(model.token.get("bar1_value"));
+        let s = (bm === 1) ? "":"s";
+        outputCard.body.push("Model also has " + bm + " Blessing Marker" + s);
+        if (bm === 1) {
+            ButtonInfo("Use a Blessing Marker","!BlessingMarker;1;Action;" + id);
+        } else if (bm > 1) {
+            ButtonInfo("Use a Blood Marker","!BlessingMarker;?{How Many|0};Action;" + id);
+        }
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+}
