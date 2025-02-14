@@ -127,7 +127,7 @@ const TC = (() => {
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
         "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#895129": {name: "Trench",height: -3,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#ff0000": {name: "Trench",height: -3,los: "Blocked",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
@@ -607,6 +607,7 @@ const TC = (() => {
     const ModelHeight = (model) => {
         let hex = hexMap[model.hexLabel];
         let h = hex.elevation;
+        if (h < 0) {h=0};
         //bit about models higher in building etc using token markers
 
         if (model.size === "Large") {
@@ -2030,7 +2031,6 @@ log("S3 B: " + B)
         }
 
         let cover = model2Hex.cover;
-
 
         let result = {
             los: los,
