@@ -1920,7 +1920,7 @@ const TC = (() => {
         model2Height -= modelLevel;
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
-        interCubes.pop();
+        //interCubes.pop();
 
         let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
 
@@ -1962,7 +1962,8 @@ log(interHex)
                     flag = true;
                 }
             }
-
+log("Flag: " + flag)
+log("Partial Flag: " + partialFlag)
             if (flag === true) {
                 //LOS goes through the terrain
                 if (interHex.cover === true) {losCover = true};
@@ -1975,16 +1976,27 @@ log(interHex)
                     partialFlag = true;
                     losCover = true;
                 }
-                if (partialFlag === true && interHex.cover !== "Partial") {
-                    //leaving partially obscuring terrain
-                    los = false;
-                    reason = "Other Side of Obscuring Terrain at " + label;
-                    break;
-                }
+            } else if (partialFlag === true && interHex.los !== "Partial") {
+                //leaving partially obscuring terrain
+                los = false;
+                reason = "Other Side of Obscuring Terrain, LOS ending at " + label;
+                break;
             }
 
 
+
+
+
         }
+
+        if (los === true && model2Hex.los !== "Partial" && partialFlag === true) {
+            los = false;
+            reason = "Just on other side of Obscuring Terrain";
+        }
+
+
+
+
 
         let result = {
             los: los,
