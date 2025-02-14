@@ -127,35 +127,35 @@ const TC = (() => {
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
         "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#895129": {name: "Trench",height: -2,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#895129": {name: "Trench",height: -3,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
-        "#ffffff": {name: "Burnt Woods",height: 6,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#ffffff": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
-        "#b6d7a8": {name: "Scrub",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 
-        "#ffff00": {name: "Rubble", height: 1,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
+        "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 //fix
         "?????": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "Building Height 1": {name: "Building",height: 3,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 2": {name: "Building",height: 6,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 3": {name: "Building",height: 9,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 1": {name: "Building",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 2": {name: "Building",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "Building Height 3": {name: "Building",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
 
     };
 
 
     const MapTokenInfo = {
-        "Hedge": {name: "Hedge",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Hedge": {name: "Hedge",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
         "Minefield": {name: "Minefield",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
-        "Barbed Wire": {name: "Barbed Wire",height: 1,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
-        "Drums": {name: "Storage Drums",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Barbed Wire": {name: "Barbed Wire",height: 0,los: "Open",cover: false,difficult: true,dangerous: true,obstacle: false},
+        "Drums": {name: "Storage Drums",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
         "Crater": {name: "Crater",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "Boxes": {name: "Boxes",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
-        "Sandbags": {name: "Sandbags",height: 1,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Boxes": {name: "Boxes",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Sandbags": {name: "Sandbags",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
     }
 
 
@@ -1906,8 +1906,8 @@ const TC = (() => {
         let model2Hex = hexMap[model2.hexLabel];
         cover = model2Hex.cover;
 
-        let model1Height = 1//modelHeight(model1);
-        let model2Height = 1//modelHeight(model2);
+        let model1Height = 0//modelHeight(model1); - adjust to elevation of model
+        let model2Height = 0//modelHeight(model2);
         let heightAdvantage = (model1Height > model2Height) ? true:false;
       
 
@@ -1917,7 +1917,6 @@ const TC = (() => {
         model2Height -= modelLevel;
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
-        interCubes.shift(); //1st hex is shooter Hex
 
         let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
         if (sameTerrain === true) {
@@ -1930,8 +1929,17 @@ const TC = (() => {
 
     //factor heights into below
         let reason = "";
-        for (let i=0;i<interCubes.length;i++) {
-            let label = interCubes[i].label()
+        //where A is height of target, C is distance to target and D is the distance to obstacle
+        //B is height of obstacle that blocks - B = D * (A/C)
+        let AC = model2Height/distance;
+        let view; //'case' for model2 being same, higher or lower than model1
+        if (model1Height === model2Height) {view = 1};
+        if (model1Height > model2Height) {view = 2};
+        if (model1Height < model2Height) {view = 3};
+
+        for (let D=1;D<interCubes.length;D++) {
+            //D is distance in hexes to hex being checked for height/cover etc
+            let label = interCubes[D].label()
             let interHex = hexMap[label];
             let interHeight = interHex.height - modelLevel;
 
