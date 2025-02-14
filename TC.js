@@ -1798,10 +1798,12 @@ const TC = (() => {
         let extraDice = 0;
         if (type === "Blood") {
             extraDice -= number;
+            model.ChangeMarker(type,-number);
         } else if (type === "Blessing") {
             extraDice += number;
-        }
-        model.ChangeMarker(type,-number);
+            model.ChangeMarker(type,-number);
+        } 
+
 
         if (model.token.get(SM.green) === true && type === "Blood") {
            SetupCard(model.name,"",model.faction);
@@ -1880,6 +1882,7 @@ log(weapon)
         let shooter = attackInfo.attacker;
         let target = attackInfo.target;
         let weapon = attackInfo.weapon;
+        SetupCard(shooter.name,weapon.name,shooter.faction);
         let tip;
     
         let neighbourCubes = target.cube.neighbours()
@@ -1917,7 +1920,7 @@ log(weapon)
         //To Hit
         //shooter modifiers
         if (shooter.rangedBonus > 0) {
-            tip = "Base: +" + shooter.rangedBonus + " Dice";
+            tip = "<br>Base: +" + shooter.rangedBonus + " Dice";
         } else {
             tip = "Base: " + shooter.rangedBonus + " Dice";
         }
@@ -1931,12 +1934,11 @@ log(weapon)
         mods = mods.split(",");
         _.each(mods,mod => {
             let sign = 1;
-            let text = "+";
             if (mod.includes("-")) {
                 sign = -1;
-                text = "";
             }
             if (mod.includes("Hit")) {
+                let text = (mod.includes("-")) ? "":"+"
                 let bonus = sign * parseInt(mod)
                 extraDice += bonus;
                 tip += "<br>Weapon: " + text + bonus + " Dice";
@@ -1970,7 +1972,9 @@ log(weapon)
         let modifier = 0;
     //? any in weapons or characters - would be like +1 to hit vs +1 DIce
     
-        tip = tip = '[🎲](#" class="showtip" title="' + tip + ')';
+        let t = (extraDice >= 0) ? "+":"";
+        tip = "Total: " + t + extraDice + " Dice" + "<br>----------------------" + tip;
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
 
 
         let results = ActionSuccess(extraDice,modifier,2)
@@ -2008,7 +2012,7 @@ log(weapon)
             let bm = parseInt(model.token.get("bar3_value"));
             let s = (bm === 1) ? "":"s";
             outputCard.body.push("Model has " + bm + " Blood Marker" + s);
-            ButtonInfo("No Blood Markers",nextStep + ";0");
+            ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
             if (bm === 1) {
                 ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + nextStep);
             } else if (bm > 1) {
@@ -2019,7 +2023,7 @@ log(weapon)
             let bm = parseInt(model.token.get("bar1_value"));
             let s = (bm === 1) ? "":"s";
             outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
-            ButtonInfo("No Blessing Markers",nextStep + ";0");
+            ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep);
             if (bm === 1) {
                 ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
             } else if (bm > 1) {
