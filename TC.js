@@ -131,18 +131,17 @@ const TC = (() => {
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
-        //"#ffffff": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        //"": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
         "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-//fix
-        //"?????": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "Building Height 1": {name: "Building",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 2": {name: "Building",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
-        "Building Height 3": {name: "Building",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "#980000": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        //"": {name: "Building 2 ",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        //"": {name: "Building 3",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
 
     };
@@ -1048,6 +1047,7 @@ const TC = (() => {
 
         //now run through hexMap and see if a hex fits into any of terrain above
         let terrainKeys = Object.keys(TerrainArray);
+        let tNum = terrainKeys.length;
         let mapKeys = Object.keys(hexMap);
         const burndown = () => {
             let mapKey = mapKeys.shift();
@@ -1095,6 +1095,7 @@ const TC = (() => {
             }
         }
         burndown();
+        log(tNum + " Terrain Items added")
     }
 
 
@@ -2065,27 +2066,17 @@ log("S3 B: " + B)
 
 
     const ChangeHex = (model,oldHexLabel,newHexLabel) => {
-    
 
-
-        let index = hexMap[oldHexLabel][label].indexOf(model.id);
+        let index = hexMap[oldHexLabel].modelIDs.indexOf(model.id);
         if (index > -1) {
-            hexMap[oldHexLabel][label].splice(index,1);
+            hexMap[oldHexLabel].modelIDs.splice(index,1);
         }
         if (newHexLabel) {
-            hexMap[newHexLabel][label].push(model.id);
+            hexMap[newHexLabel].modelIDs.push(model.id);
             model.hexLabel = newHexLabel;
             model.location = hexMap[newHexLabel].centre;
-            if (model.hexLabel !== model.lastHexLabel && model.type !== "Ordnance" && model.type !== "Defence") {
-                let h1 = hexMap[model.hexLabel];
-                let h2 = hexMap[model.lastHexLabel];
-                let d = h1.cube.distance(h2.cube);
-                if (d <= 1 && model.type !== "Ordnance" && model.type !== "Defence") {
-                    model.token.set(SM.slow,true);
-                } else {
-                    model.token.set(SM.slow,false);
-                }
-            }
+            model.cube = hexMap[newHexLabel].cube;
+            model.offset = hexMap[newHexLabel].offset;
         }
     }
 
@@ -2160,7 +2151,7 @@ log("S3 B: " + B)
 
                
 
-                //ChangeHex(model,oldHexLabel,newHex.label);
+                ChangeHex(model,oldHexLabel,newHex.label);
 
             };
         };
