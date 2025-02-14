@@ -129,9 +129,9 @@ const TC = (() => {
         "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
         "#895129": {name: "Trench",height: -3,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-        "#00ff00": {name: "Woods",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 //fix burnt woods
-        "#ffffff": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        //"#ffffff": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
         "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
@@ -139,7 +139,7 @@ const TC = (() => {
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 //fix
-        "?????": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        //"?????": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
         "Building Height 1": {name: "Building",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         "Building Height 2": {name: "Building",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         "Building Height 3": {name: "Building",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
@@ -1043,7 +1043,6 @@ const TC = (() => {
                 _.each(terrainKeys,terrainKey => {
                     let polygon = TerrainArray[terrainKey];
                     if (hex.terrain.includes(polygon.name)) {return};
-                    hex.terrainIDs.push(polygon.id)
                     let pts = XHEX(c);
 
                     let num = 0;
@@ -1055,8 +1054,12 @@ const TC = (() => {
 
                     if (num > 0) {
                         //hex is in the terrain polygon
+                        hex.terrainIDs.push(polygon.id)
                         hex.terrain.push(polygon.name);
-                        if (polygon.los === "Inside") {hex.los = "Inside"};
+                        if (polygon.los === "Blocked") {hex.los = "Blocked"};
+                        if (polygon.los === "Partial" && hex.los !== "Blocked") {
+                            hex.los = "Partial"
+                        }
                         if (polygon.cover === true) {hex.cover = true};
                         if (polygon.difficult === true) {hex.difficult = true};
                         if (polygon.dangerous === true) {hex.dangerous = true};
@@ -1865,18 +1868,18 @@ const TC = (() => {
         outputCard.body.push("Target is " + result.distance + " Hexes away");
         if (result.los === true) {
             outputCard.body.push("Target is in LOS");
+            if (result.cover === true) {
+                outputCard.body.push("Target is IN COVER");
+            } else if (result.loscover === true) {
+                outputCard.body.push("Target has cover due to intervening terrain");
+            }
+            if (result.heightAdvantage === true) {
+                outputCard.body.push("Shooter has a Height Advantage");
+            }
         } else {
             outputCard.body.push("LOS is " + result.reason);
         }
-        if (result.cover === true) {
-            outputCard.body.push("Target is IN COVER");
-        } else if (result.loscover === true) {
-            outputCard.body.push("Target has cover due to intervening terrain");
-        }
-
-        if (result.heightAdvantage === true) {
-            outputCard.body.push("Shooter has a Height Advantage");
-        }
+       
         
         _.each(shooter.weaponArray.ranged,weapon => {
             let range = weapon.range;
@@ -1899,7 +1902,7 @@ const TC = (() => {
     const LOS = (model1,model2) => {
         let cover = false;
         let los = true;
-        let loscover = false;
+        let losCover = false;
 
         let distance = model1.cube.distance(model2.cube);
         let model1Hex = hexMap[model1.hexLabel];
@@ -1917,72 +1920,68 @@ const TC = (() => {
         model2Height -= modelLevel;
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
+        interCubes.pop();
 
         let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
-        if (sameTerrain === true) {
 
+      
 
-
-
-        }
-
-
-    //factor heights into below
         let reason = "";
         //where A is height of target, C is distance to target and D is the distance to obstacle
         //B is height of obstacle that blocks - B = D * (A/C)
-        let AC = model2Height/distance;
-        let view; //'case' for model2 being same, higher or lower than model1
-        if (model1Height === model2Height) {view = 1};
-        if (model1Height > model2Height) {view = 2};
-        if (model1Height < model2Height) {view = 3};
+        let AC,D;
 
-        for (let D=1;D<interCubes.length;D++) {
+        let partialFlag = false;
+        for (let i=1;i<interCubes.length;i++) {
+            let B;
+            let flag = false;
             //D is distance in hexes to hex being checked for height/cover etc
-            let label = interCubes[D].label()
+            let label = interCubes[i].label()
             let interHex = hexMap[label];
             let interHeight = interHex.height - modelLevel;
 
-            if (interHeight > model1Height && interHeight > model2Height) {
-                los = false;
-                reason = "Blocked by Higher Terrain at " + label;
-                break;
+         ///hills
+log(interHex)
+
+            if (model1Height === model2Height && interHeight > 0) {
+                flag = true;
+            } else if (model1Height > model2Height) {
+                //model1 is at higher height than model2
+                D = interCubes.length + 1 - i;
+                AC = model2Height/distance;
+                B = D * AC;
+                if (interHeight >= B) {
+                    flag = true;
+                }
+            } else if (model1Height < model2Height) {
+                //model2 is at higher height than model1
+                AC = model1Height/distance;
+                D = i;
+                B = D * AC;
+                if (interHeight >= B) {
+                    flag = true;
+                }
             }
 
-            //Triangles
-
-
-
-
-
-
-
-
-
-            if (interHex.los === "Inside") {
-                reason = "Blocked by Terrain at " + label;
-                los = false;
-                break;
+            if (flag === true) {
+                //LOS goes through the terrain
+                if (interHex.cover === true) {losCover = true};
+                if (interHex.los === "Blocked" && sameTerrain === false) {
+                    los = false;
+                    reason = "Blocked by Terrain at " + label;
+                    break;
+                } else if (interHex.los === "Partial" && partialFlag === false) {
+                    //entering partially obscuring terrain
+                    partialFlag = true;
+                    losCover = true;
+                }
+                if (partialFlag === true && interHex.cover !== "Partial") {
+                    //leaving partially obscuring terrain
+                    los = false;
+                    reason = "Other Side of Obscuring Terrain at " + label;
+                    break;
+                }
             }
-            if (interHex.cover === true) {
-                loscover = true;
-            }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         }
@@ -1991,7 +1990,7 @@ const TC = (() => {
             los: los,
             reason: reason,
             cover: cover, //if target is IN cover terrain
-            loscover: loscover,  //if intervening terrain offers cover 
+            loscover: losCover,  //if intervening terrain offers cover 
             distance: distance,
             heightAdvantage: heightAdvantage,
         }
