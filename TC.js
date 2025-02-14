@@ -1938,6 +1938,9 @@ const TC = (() => {
             //D is distance in hexes to hex being checked for height/cover etc
             let label = interCubes[i].label()
             let interHex = hexMap[label];
+            let interSame = findCommonElements(model1Hex.terrainIDs,interHex.terrainIDs);
+
+
             let interHeight = interHex.height - modelLevel;
 
          ///hills
@@ -1971,7 +1974,7 @@ log("Partial Flag: " + partialFlag)
                     los = false;
                     reason = "Blocked by Terrain at " + label;
                     break;
-                } else if (interHex.los === "Partial" && partialFlag === false) {
+                } else if (interHex.los === "Partial" && partialFlag === false && interSame === false) {
                     //entering partially obscuring terrain
                     partialFlag = true;
                     losCover = true;
