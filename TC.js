@@ -1914,14 +1914,12 @@ const TC = (() => {
 
 
     const LOS = (model1,model2) => {
-        let cover = false;
         let los = true;
         let losCover = false;
 
         let distance = model1.cube.distance(model2.cube);
         let model1Hex = hexMap[model1.hexLabel];
         let model2Hex = hexMap[model2.hexLabel];
-        cover = model2Hex.cover;
 
         let model1Height = ModelHeight(model1);
         let model2Height = ModelHeight(model2);
@@ -2030,6 +2028,7 @@ log("S3 B: " + B)
             reason = "Just on other side of Obscuring Terrain";
         }
 
+        let cover = model2Hex.cover;
 
 
         let result = {
