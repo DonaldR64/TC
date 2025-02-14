@@ -417,18 +417,19 @@ const TC = (() => {
             let weaponArray = {};
             let types = ["melee","ranged"];
             for (let j=0;j<types.length;j++) {
+                let type = types[j];
                 for (let i=1;i<4;i++) {
-                    let type = types[j] + i;
-                    let wname = attributeArray[type+"name"];
-                    let wequipped = attributeArray[type+"equipped"];
+                    let attName = type + i;
+                    let wname = attributeArray[attName+"name"];
+                    let wequipped = attributeArray[attName+"equipped"];
                     if (wequipped !== "Equipped") {continue};
                     if (!wname || wname === "" || wname === undefined || wname === " ") {continue};
-                    let wtype = attributeArray[type+"type"];       
-                    let wrange = parseInt(attributeArray[type+"range"]) || 0;
-                    let wmodifiers = attributeArray[type+"modifiers"] || " ";
-                    let wkeywords = attributeArray[type+"keywords"] || " ";
-                    let wsound = attributeArray[type+"sound"] || "";
-                    let wfx = attributeArray[type+"fx"] || "";
+                    let wtype = attributeArray[attName+"type"];       
+                    let wrange = parseInt(attributeArray[attName+"range"]) || 0;
+                    let wmodifiers = attributeArray[attName+"modifiers"] || " ";
+                    let wkeywords = attributeArray[attName+"keywords"] || " ";
+                    let wsound = attributeArray[attName+"sound"] || "";
+                    let wfx = attributeArray[attName+"fx"] || "";
                     let weapon = {
                         name: wname,
                         type: wtype,
@@ -1016,6 +1017,8 @@ const TC = (() => {
                 obstacle: t.obstacle,
             };
             TerrainArray[id] = info;
+
+
         });
 
         //add tokens on map eg woods, crops
@@ -1752,45 +1755,24 @@ const TC = (() => {
         text += Math.abs(extraDice) + " Dice";
 
         SetupCard(model.name,text,model.faction);
-        if (model.token.get(SM.red) === true) {
-            let bm = parseInt(model.token.get("bar3_value"));
-            let s = (bm === 1) ? "":"s";
-            outputCard.body.push("Model has " + bm + " Blood Marker" + s);
-            ButtonInfo("No Blood Markers","ActionTest2;" + id + ";" + extraDice);
-            if (bm === 1) {
-                ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + extraDice);
-            } else if (bm > 1) {
-                ButtonInfo("Use a Blood Marker","!Marker;?{How Many|0};Blood;" + id + ";" + extraDice);
-            }
-            //if also has blessings will be picked up in Blood Marker
-        } else if (model.token.get(SM.green) === true) {
-            let bm = parseInt(model.token.get("bar1_value"));
-            let s = (bm === 1) ? "":"s";
-            outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
-            ButtonInfo("No Blessing Markers","ActionTest2;" + id + ";" + extraDice);
-            if (bm === 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + extraDice);
-            } else if (bm > 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + extraDice);
-            }
-        } 
-        if (model.token.get(SM.red) === true || model.token.get(SM.green) === true) {
+        attackInfo = {
+            attacker: model,
+            target: "",
+            weapon: "",
+            extraDice: extraDice,
+        }
+
+        let check = CheckMarkers(id,"ActionTest2");
+        if (check === true) {
             PrintCard();
             return;
-        } else {
-            ActionTest3(id,extraDice);
         }
+        ActionTest2(0); //0 as no blood or blessings 
     }
 
-    const ActionTest2 = (msg) => {
-        let Tag = msg.content.split(";");
-        let id = Tag[1];
-        let extraDice = parseInt(Tag[2]);
-        ActionTest3(id,extraDice);
-    }
-
-    const ActionTest3 = (id,extraDice) => {
-        let model = ModelArray[id];
+    const ActionTest2 = (extraDice) => {
+        let model = attackInfo.attacker;
+        extraDice += attackInfo.extraDice; //as the initial entry would be for those from markers
         let text = (extraDice < 0) ? "-":"+";
         text += Math.abs(extraDice) + " Dice";
         SetupCard(model.name,text,model.faction);
@@ -1811,8 +1793,9 @@ const TC = (() => {
         let number = parseInt(Tag[1]);
         let type = Tag[2];
         let id = Tag[3];
-        let extraDice = parseInt(Tag[4]);
+        let nextStep = Tag[4];
         let model = ModelArray[id];
+        let extraDice = 0;
         if (type === "Blood") {
             extraDice -= number;
         } else if (type === "Blessing") {
@@ -1825,19 +1808,236 @@ const TC = (() => {
            let bm = parseInt(model.token.get("bar1_value"));
            let s = (bm === 1) ? "":"s";
            outputCard.body.push("Model also has " + bm + " Blessing Marker" + s);
-           ButtonInfo("No Blessing Markers","Marker;0;Blessing" + id + ";" + extraDice);
+           ButtonInfo("No Blessing Markers",nextStep + ";" + extraDice);
            if (bm === 1) {
-               ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + extraDice);
+                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
            } else if (bm > 1) {
-               ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + extraDice);
+                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + nextStep);
            }
            PrintCard();
         } else {
-            ActionTest3(id,extraDice);
+            if (nextStep === "Ranged2") {
+                Ranged2(extraDice);
+            }
+            if (nextStep === "ActionTest2") {
+                ActionTest2(extraDice);
+            }
+
+
         }
     }
     
 
+    const Ranged = (msg) => {
+        let Tag = msg.content.split(";");
+        let shooterID = Tag[1];
+        let targetID = Tag[2];
+        let weaponNum = Tag[3];
+        let shooter = ModelArray[shooterID];
+        let target = ModelArray[targetID];
+        let weapon = shooter.weaponArray.ranged[weaponNum]
+log(weapon)
+        let losResult = LOS(shooter,target);
+        let errorMsg = [];
+        if (losResult.distance > weapon.range) {
+            errorMsg.push("Target is Out of Range");
+        }
+    //check keyword
+        if (losResult.los === false && weapon.keywords.includes("Indirect") === false) {
+            errorMsg.push("Target is not in Line of Sight");
+            errorMsg.push(losResult.reaon);
+        }
+    
+        SetupCard(shooter.name,weapon.name,shooter.faction);
+        //errors re range, los
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                outputCard.body.push(msg);
+            })
+            PrintCard();
+            return;
+        }
+    
+        attackInfo = {
+            attacker: shooter,
+            target: target,
+            weapon: weapon,
+            extraDice: 0,
+        }
+    
+        let check = CheckMarkers(shooterID,"Ranged2");
+        if (check === true) {
+            //has markers
+            PrintCard();
+            return;
+        }
+        Ranged2(0);
+    }
+    
+    const Ranged2 = (extraDice) => {
+        //entry from Ranged or from Marker
+        //check if in melee
+        let shooter = attackInfo.attacker;
+        let target = attackInfo.target;
+        let weapon = attackInfo.weapon;
+        let tip;
+    
+        let neighbourCubes = target.cube.neighbours()
+        let friendlies = [];
+        _.each(neighbourCubes,cube => {
+            let nHex = hexMap[cube.label()];
+            if (nHex.modelIDs.length > 0) {
+                _.each(nHex.modelIDs,id => {
+                    let model = ModelArray[id];
+                    if (model) {
+                        if (model.faction === shooter.faction) {
+                            checkLOS = LOS(shooter,model);
+                            if (losResult.los === true) {
+                                friendlies.push(model);
+                            }
+                        }
+                    }
+                })
+            }
+        });
+        if (friendlies.length > 0) {
+            let roll = randomInteger(6);
+            if (roll < 4) {
+                let i = randomInteger(friendlies.length) - 1;
+                target = friendlies[i];
+                outputCard.body.push("[#FF0000]Shooting into Melee hits an Ally![/#]");
+                outputCard.body.push("[#FF0000]" + target.name + " is hit[/#]");
+            } else {
+                outputCard.body.push("Shooting into melee hits the targeted Enemy");
+            }
+            outputCard.body.push("[hr]");
+        }
+        let losResult = LOS(shooter,target);
+    
+        //To Hit
+        //shooter modifiers
+        if (shooter.rangedBonus > 0) {
+            tip = "Base: +" + shooter.rangedBonus + " Dice";
+        } else {
+            tip = "Base: " + shooter.rangedBonus + " Dice";
+        }
+        if (extraDice !== 0) {
+            tip += "<br>Markers: " + extraDice + " Dice"; 
+        }
+        extraDice += shooter.rangedBonus;
+    
+        //weapon modifiers
+        let mods = weapon.modifiers;
+        mods = mods.split(",");
+        _.each(mods,mod => {
+            let sign = 1;
+            let text = "+";
+            if (mod.includes("-")) {
+                sign = -1;
+                text = "";
+            }
+            if (mod.includes("Hit")) {
+                let bonus = sign * parseInt(mod)
+                extraDice += bonus;
+                tip += "<br>Weapon: " + text + bonus + " Dice";
+            }
+    
+        })
+    
+        let cover = false;
+        if (losResult.cover === true && weapon.modifiers.includes("Ignore Cover") === false) {
+            cover = true;
+        }
+        if (losResult.loscover === true && weapon.modifiers.includes("Ignore Cover") === false) {
+            cover = true;
+        }
+    
+        if (cover === true) {
+            extraDice--;
+            tip += "<br>Cover -1 Dice";
+        }
+    
+        if (losResult.distance > Math.round(weapon.range/2)) {
+            extraDice--;
+            tip += "<br>Long Range -1 Dice";
+        }
+    
+        if (losResult.heightAdvantage === true) {
+            extraDice++;
+            tip += "<br>Elevated Position +1 Dice";
+        }
+    
+        let modifier = 0;
+    //? any in weapons or characters - would be like +1 to hit vs +1 DIce
+    
+        tip = tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+
+        let results = ActionSuccess(extraDice,modifier,2)
+        outputCard.body.push(tip + " " + results.line2);
+        if (results.success === false) {
+            outputCard.body.push("Attack Misses");
+        } else if (results.success === "Critical") {
+            outputCard.body.push("Attack Hits and scores a Critical");
+    
+        } else {
+            outputCard.body.push("Attack Hits");
+    
+    
+        }
+    
+    
+        //Injuries
+        if (results.success !== false) {
+            outputCard.body.push("[hr]");
+    
+    
+    
+        }
+    
+    
+        PrintCard();
+    
+    }
+    
+    
+    
+    const CheckMarkers = (id,nextStep) => {
+        let model = ModelArray[id];
+        if (model.token.get(SM.red) === true) {
+            let bm = parseInt(model.token.get("bar3_value"));
+            let s = (bm === 1) ? "":"s";
+            outputCard.body.push("Model has " + bm + " Blood Marker" + s);
+            ButtonInfo("No Blood Markers",nextStep + ";0");
+            if (bm === 1) {
+                ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + nextStep);
+            } else if (bm > 1) {
+                ButtonInfo("Use a Blood Marker","!Marker;?{How Many|0};Blood;" + id + ";" + nextStep);
+            }
+            //if also has blessings will be picked up in Blood Marker
+        } else if (model.token.get(SM.green) === true) {
+            let bm = parseInt(model.token.get("bar1_value"));
+            let s = (bm === 1) ? "":"s";
+            outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
+            ButtonInfo("No Blessing Markers",nextStep + ";0");
+            if (bm === 1) {
+                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
+            } else if (bm > 1) {
+                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + nextStep);
+            }
+        } 
+        if (model.token.get(SM.red) === true || model.token.get(SM.green) === true) {
+            return true;
+        } else {
+            return false;
+        }
+    
+    
+    
+    
+    
+    }
+    
 
 
     const TokenInfo = (msg) => {
@@ -2201,8 +2401,8 @@ log("S3 B: " + B)
             case '!Action':
                 Action(msg);
                 break;
-            case '!ActionTest2':
-                ActionTest2(msg);
+            case '!Ranged':
+                Ranged(msg);
                 break;
             case '!Marker':
                 Marker(msg);
