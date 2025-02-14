@@ -389,7 +389,10 @@ const TC = (() => {
                 state.TC.factions[player] = faction
             }
 
-
+            let size = "Normal";
+            if (token.get("width") > 100) {
+                size = "Large";
+            }
 
 
             let location = new Point(token.get("left"),token.get("top"));
@@ -542,6 +545,8 @@ const TC = (() => {
             this.baseArmour = baseArmour;
             //this.armour = armour;
 
+            this.size = size;
+
             this.weaponArray = weaponArray;
             this.equipmentArray = equipmentArray;
             this.abilityArray = abilityArray;
@@ -600,7 +605,16 @@ const TC = (() => {
     }
 
 
+    const ModelHeight = (model) => {
+        let hex = hexMap[model.hexLabel];
+        let h = hex.elevation;
+        //bit about models higher in building etc using token markers
 
+        if (model.size === "Large") {
+            h++;
+        }
+        return h
+    }
 
 
 
@@ -1909,22 +1923,21 @@ const TC = (() => {
         let model2Hex = hexMap[model2.hexLabel];
         cover = model2Hex.cover;
 
-        let model1Height = 0//modelHeight(model1); - adjust to elevation of model
-        let model2Height = 0//modelHeight(model2);
+        let model1Height = ModelHeight(model1);
+        let model2Height = ModelHeight(model2);
         let heightAdvantage = (model1Height > model2Height) ? true:false;
       
-
         //reduce to lowest level
         let modelLevel = Math.min(model1Height,model2Height);
         model1Height -= modelLevel;
         model2Height -= modelLevel;
+log("m1H: " + model1Height)
+log("m2H: " + model2Height)
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
         //interCubes.pop();
 
         let sameTerrain = findCommonElements(model1Hex.terrainIDs,model2Hex.terrainIDs);
-
-      
 
         let reason = "";
         //where A is height of target, C is distance to target and D is the distance to obstacle
@@ -1938,35 +1951,55 @@ const TC = (() => {
             //D is distance in hexes to hex being checked for height/cover etc
             let label = interCubes[i].label()
             let interHex = hexMap[label];
+log(label)
             let interSame = findCommonElements(model1Hex.terrainIDs,interHex.terrainIDs);
 
-
             let interHeight = interHex.height - modelLevel;
+            let interElevation = interHex.elevation - modelLevel;
 
-         ///hills
-log(interHex)
+log("iH: " + interHeight)
+log("iE: " + interElevation)
 
-            if (model1Height === model2Height && interHeight > 0) {
-                flag = true;
+
+            if (model1Height === model2Height) {
+                if (interHex.elevation > model1Height) {
+                    los = false;
+                    reason = "Blocked by Hill at " + label;
+                    break;
+                }
+                if (interHeight > 0) {
+                    flag = true;
+                }
             } else if (model1Height > model2Height) {
                 //model1 is at higher height than model2
                 D = interCubes.length + 1 - i;
-                AC = model2Height/distance;
+                AC = model1Height/distance;
                 B = D * AC;
+log("S2 B: " + B)
+                if (interElevation >= B && interElevation > model1Height) {
+                    los = false;
+                    reason = "Blocked by Hill at " + label;
+                    break;
+                }
                 if (interHeight >= B) {
                     flag = true;
                 }
             } else if (model1Height < model2Height) {
                 //model2 is at higher height than model1
-                AC = model1Height/distance;
+                AC = model2Height/distance;
                 D = i;
                 B = D * AC;
+log("S3 B: " + B)
+                if (interElevation >= B && interElevation > model2Height) {
+                    los = false;
+                    reason = "Blocked by Hill at " + label;
+                    break;
+                }
                 if (interHeight >= B) {
                     flag = true;
                 }
             }
-log("Flag: " + flag)
-log("Partial Flag: " + partialFlag)
+
             if (flag === true) {
                 //LOS goes through the terrain
                 if (interHex.cover === true) {losCover = true};
@@ -1996,8 +2029,6 @@ log("Partial Flag: " + partialFlag)
             los = false;
             reason = "Just on other side of Obscuring Terrain";
         }
-
-
 
 
 
