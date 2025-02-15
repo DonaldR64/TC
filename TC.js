@@ -45,6 +45,7 @@ const TC = (() => {
         fired: "status_Shell::5553215",
         red: "status_red",
         green: "status_green",
+        wounded: "status_blue", //temp
     }; 
 
 
@@ -139,7 +140,7 @@ const TC = (() => {
         "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-        "#980000": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#9900ff": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#5b0f00": {name: "Building 1",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 2 ",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 3",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
@@ -600,7 +601,7 @@ const TC = (() => {
             if (current === 0) {
                 this.token.set(dot,false);
             } else {
-                this.token.set(dot,true);
+                this.token.set(dot,current);
             }
         }
 
@@ -623,7 +624,7 @@ return;
                 })
                 //remove from ModelArray
                 //adjust counters
-
+                //add info to end stuff for survival etc
             }
         }
 
@@ -2216,29 +2217,37 @@ log(weapon)
     
     const CheckMarkers = (id,nextStep) => {
         let model = ModelArray[id];
-        if (model.token.get(SM.red) === true) {
-            let bm = parseInt(model.token.get("bar3_value"));
-            let s = (bm === 1) ? "":"s";
-            outputCard.body.push("Model has " + bm + " Blood Marker" + s);
+        let blood = parseInt(model.token.get("bar3_value"));
+        let blessing = parseInt(model.token.get("bar1_value"));
+        if (blood > 0) {
+            let s = (blood === 1) ? "":"s";
+            outputCard.body.push("Model has " + blood + " Blood Marker" + s);
             ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
-            if (bm === 1) {
+            if (blood === 1) {
                 ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + nextStep);
-            } else if (bm > 1) {
+            } else if (blood > 1) {
+                //bloodbath option if in injury next step
+
+
+
+
+
                 ButtonInfo("Use a Blood Marker","!Marker;?{How Many|0};Blood;" + id + ";" + nextStep);
             }
+//bloodbath
+
             //if also has blessings will be picked up in Blood Marker
-        } else if (model.token.get(SM.green) === true) {
-            let bm = parseInt(model.token.get("bar1_value"));
-            let s = (bm === 1) ? "":"s";
-            outputCard.body.push("Model has " + bm + " Blessing Marker" + s);
+        } else if (blessing > 0) {
+            let s = (blessing === 1) ? "":"s";
+            outputCard.body.push("Model has " + blessing + " Blessing Marker" + s);
             ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep);
-            if (bm === 1) {
+            if (blessing === 1) {
                 ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
-            } else if (bm > 1) {
+            } else if (blessing > 1) {
                 ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + nextStep);
             }
         } 
-        if (model.token.get(SM.red) === true || model.token.get(SM.green) === true) {
+        if (blood > 0 || blessing > 0) {
             return true;
         } else {
             return false;
