@@ -2058,7 +2058,10 @@ log(weapon)
 
             //any bonus from attacker
 
-
+            if (result === "Critical") {
+                extraDice++;
+                tip += "<br>Critical: +1 Dice";
+            }
 
             //Defender Modifiers
             if (defender.token.get("aura2_color") === "#FF0000") {
@@ -2086,6 +2089,12 @@ log(weapon)
                     modifier += bonus;
                     tip += "<br>Weapon: " + text + bonus + " To Roll";
                 }
+                if (result === "Critical" && weapon.mod.includes("Critical")) {
+                    extraDice++;
+                    tip += "<br>Weapon Critical +1 Dice";
+                }
+
+
 
 
             })
