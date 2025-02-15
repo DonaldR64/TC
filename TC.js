@@ -1797,6 +1797,7 @@ return;
             defender: "",
             weapon: "",
             extraDice: extraDice,
+            result: "",
         }
 
         let check = CheckMarkers(id,"ActionTest2");
@@ -1861,7 +1862,9 @@ return;
             if (nextStep === "ActionTest2") {
                 ActionTest2(extraDice);
             }
-
+            if (nextStep === "Injury") {
+                Injury(extraDice);
+            }
 
         }
     }
@@ -1902,6 +1905,7 @@ log(weapon)
             defender: target,
             weapon: weapon,
             extraDice: 0,
+            result: "",
         }
     
         let check = CheckMarkers(shooterID,"Ranged2");
@@ -2030,34 +2034,31 @@ log(weapon)
         //Injuries
         if (results.success !== false) {
             outputCard.body.push("[hr]");
-
-
-
-
-
-            let injuryResults = Injury(results.success);
-            _.each(injuryResults,injury => {
-                outputCard.body.push(injury);
-            })
-
+            let check = CheckMarkers(shooterID,"Injury");
+            if (check === false) {
+                Injury(0);
+            }
         }
-    
-    
         PrintCard();
     
     }
+
+
+
     
 
-    const Injury = (result) => {
-            //attackInfo
-    
+    const Injury = (extraDice) => {    
         let attacker = attackInfo.attacker;
         let defender = attackInfo.defender;
         let weapon = attackInfo.weapon;
+        let result = attackInfo.result;
         let tip = "Base 2 Dice";
+        if (extraDice !== 0) {
+            if (extraDice > 0) {tip += "+"};
+            tip += extraDice + " Dice from Markers";
+        }
 
         let numberDice = 2; //# of dice picked from all those rolled
-        let extraDice = 0; //+ or - Dice
         let modifier = 0; //added to final roll
         let finalResult = [];
 
@@ -2075,6 +2076,7 @@ log(weapon)
         }
 
         //bonus from weapon
+        let ignoreArmour = false;
         _.each(weapon.modifiers,modifier => {
             let sign = 1;
             if (modifier.includes("-")) {
@@ -2096,46 +2098,46 @@ log(weapon)
                 extraDice++;
                 tip += "<br>Weapon Critical +1 Dice";
             }
-
+            if (modifier.includes("Ignore Armour")) {
+                tip += "<br>Ignores Armour";
+                ignoreArmour = true;
+            }
 
 
 
         })
 
         //armour and such
-        _.each(defender.equipmentArray,equipment => {
-            let name = equipment.name;
-            let shieldFlag = false;
+        if (ignoreArmour === false) {
+            _.each(defender.equipmentArray,equipment => {
+                let name = equipment.name;
+                let shieldFlag = false;
 
-            if (name === "Trench Shield") {
-                tip += "<br>Trench Shield: -1 To Roll";
-                modifier--;
-                shieldFlag = true;
-            }
-            if (name === "Standard Armour") {
-                tip += "<br>Standard Armour: -1 To Roll";
-                modifier--;
-            }
-            if (name === "Reinforced Armour") {
-                tip += "<br>Reinforced Armour: -2 To Roll";
-                modifier -= 2;
-            }
-            if (name === "Machine Armour") {
-                if (shieldFlag === false) {
-                    modifier -= 3
-                    tip += "<br>Machine Armour: -3 To Roll";
-                } else {
-                    tip += "<br>Machine Armour: -2 To Roll";
-                    modifier -= 2
-                };
-            }
-
-
-
-
-
-
-        })
+                if (name === "Trench Shield") {
+                    tip += "<br>Trench Shield: -1 To Roll";
+                    modifier--;
+                    shieldFlag = true;
+                }
+                if (name === "Standard Armour") {
+                    tip += "<br>Standard Armour: -1 To Roll";
+                    modifier--;
+                }
+                if (name === "Reinforced Armour") {
+                    tip += "<br>Reinforced Armour: -2 To Roll";
+                    modifier -= 2;
+                }
+                if (name === "Machine Armour") {
+                    if (shieldFlag === false) {
+                        modifier -= 3
+                        tip += "<br>Machine Armour: -3 To Roll";
+                    } else {
+                        tip += "<br>Machine Armour: -2 To Roll";
+                        modifier -= 2
+                    };
+                }
+            })
+        }
+  
 
         let dice = numberDice + extraDice;
         let sign = Math.sign(extraDice);
