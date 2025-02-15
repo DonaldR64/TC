@@ -8,6 +8,7 @@ const TC = (() => {
     let ModelArray = {}; 
     let activeModelID = "";
     let hexMap = {}; 
+    let attackInfo;
     
     //Regular Hexagons, 'width' in Roll20 is 70
     let HexSize = 70/Math.sqrt(3);
@@ -427,6 +428,10 @@ const TC = (() => {
                     let wtype = attributeArray[attName+"type"];       
                     let wrange = parseInt(attributeArray[attName+"range"]) || 0;
                     let wmodifiers = attributeArray[attName+"modifiers"] || " ";
+                    wmodifiers = wmodifiers.split(",");
+                    _.each(wmodifiers,mod => {
+                        mod = mod.trim();
+                    })
                     let wkeywords = attributeArray[attName+"keywords"] || " ";
                     let wsound = attributeArray[attName+"sound"] || "";
                     let wfx = attributeArray[attName+"fx"] || "";
@@ -465,11 +470,11 @@ const TC = (() => {
             let specNum = 1;
             let equipmentArray = [];
             for (let i=1;i<6;i++) {
-                let name = attributeArray["equip" + i + "name"];
-                let info = attributeArray["equip" + i + "info"];
+                let name = attributeArray["equip" + i + "name"] || "";
+                let info = attributeArray["equip" + i + "info"] || "";
                 let equip = {
-                    name: name,
-                    info: info,
+                    name: name.trim();
+                    info: info.trim();
                 }
                 if (name !== undefined && name !== " " && name !== "") {
                     equipmentArray.push(equip);
@@ -487,11 +492,11 @@ const TC = (() => {
 
             let abilityArray = [];
             for (let i=1;i<6;i++) {
-                let name = attributeArray["ability" + i + "name"];
-                let info = attributeArray["ability" + i + "info"];
+                let name = attributeArray["ability" + i + "name"] || "";
+                let info = attributeArray["ability" + i + "info"] || "";
                 let ability = {
-                    name: name,
-                    info: info,
+                    name: name.trim();
+                    info: info.trim();
                 }
                 if (name !== undefined && name !== " " && name !== "") {
                     abilityArray.push(ability);
@@ -590,7 +595,7 @@ const TC = (() => {
                 dot = SM.green;
             }
             let current = parseInt(this.token.get(bar));
-            current = Math.max(current + number,0);
+            current = Math.min(Math.max(current + number,0),6);
             this.token.set(bar,current);
             if (current === 0) {
                 this.token.set(dot,false);
@@ -598,6 +603,36 @@ const TC = (() => {
                 this.token.set(dot,true);
             }
         }
+
+
+        Injury(type) {
+            if (type === "Minor Hit" || type === "Down") {
+                ChangeMarker("Blood",1);
+            }
+            if (type === "Down") {
+                this.token.set({
+                    aura2_color: "#FF0000",
+                    aura2_radius: 0.25,
+                })
+            }
+            if (type === "Out of Action") {
+                this.token.set({
+                    status_dead: true,
+                    layer: "map",
+                })
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1688,14 +1723,11 @@ const TC = (() => {
             usedRolls = rolls.slice(0,number); //lowest 
         } else {
             usedRolls = rolls.slice(-number); //highest
-        }
-        log(rolls)
-        log(usedRolls)
+        }      
         let total = 0;
         _.each(usedRolls,roll => {
             total += roll;
         })
-        log(total)
         total += modifier;
         let success = false;
         if (total > 6 && total < 12) {
@@ -1757,7 +1789,7 @@ const TC = (() => {
         SetupCard(model.name,text,model.faction);
         attackInfo = {
             attacker: model,
-            target: "",
+            defender: "",
             weapon: "",
             extraDice: extraDice,
         }
@@ -1862,7 +1894,7 @@ log(weapon)
     
         attackInfo = {
             attacker: shooter,
-            target: target,
+            defender: target,
             weapon: weapon,
             extraDice: 0,
         }
@@ -1880,7 +1912,7 @@ log(weapon)
         //entry from Ranged or from Marker
         //check if in melee
         let shooter = attackInfo.attacker;
-        let target = attackInfo.target;
+        let target = attackInfo.defender;
         let weapon = attackInfo.weapon;
         SetupCard(shooter.name,weapon.name,shooter.faction);
         let tip;
@@ -1931,7 +1963,6 @@ log(weapon)
     
         //weapon modifiers
         let mods = weapon.modifiers;
-        mods = mods.split(",");
         _.each(mods,mod => {
             let sign = 1;
             if (mod.includes("-")) {
@@ -1994,9 +2025,16 @@ log(weapon)
         //Injuries
         if (results.success !== false) {
             outputCard.body.push("[hr]");
-    
-    
-    
+
+
+
+
+
+            let injuryResults = Injury(results.success);
+            _.each(injuryResults,injury => {
+                outputCard.body.push(injury);
+            })
+
         }
     
     
@@ -2004,6 +2042,154 @@ log(weapon)
     
     }
     
+
+    const Injury = (result) => {
+            //attackInfo
+    
+            let attacker = attackInfo.attacker;
+            let defender = attackInfo.defender;
+            let weapon = attackInfo.weapon;
+            let tip = "";
+
+            let numberDice = 2; //# of dice picked from all those rolled
+            let extraDice = 0; //+ or - Dice
+            let modifier = 0; //added to final roll
+            let finalResults = [];
+
+            //any bonus from attacker
+
+
+
+            //Defender Modifiers
+            if (defender.token.get("aura2_color") === "#FF0000") {
+                extraDice++;
+                tip += "<br>Defender is Down: +1 Dice";
+            }
+
+
+            //bonus from weapon
+            let mods = weapon.modifiers;
+            _.each(mods,mod => {
+                let sign = 1;
+                if (mod.includes("-")) {
+                    sign = -1
+                }
+                if (mod.includes("Injury" && mod.includes("Dice"))) {
+                    let text = (mod.includes("-")) ? "":"+"
+                    let bonus = sign * parseInt(mod);
+                    extraDice += bonus;
+                    tip += "<br>Weapon: " + text + bonus + " Dice";
+                }
+                if (mod.includes("Injury" && mod.includes("Roll"))) {
+                    let text = (mod.includes("-")) ? "":"+"
+                    let bonus = sign * parseInt(mod)
+                    modifier += bonus;
+                    tip += "<br>Weapon: " + text + bonus + " To Roll";
+                }
+
+
+            })
+
+            //armour and such
+            _.each(defender.equipmentArray,equipment => {
+                let name = equipment.name;
+                let shieldFlag = false;
+
+                if (name === "Trench Shield") {
+                    tip += "<br>Trench Shield: -1 To Roll";
+                    modifier--;
+                    shieldFlag = true;
+                }
+                if (name === "Standard Armour") {
+                    tip += "<br>Standard Armour: -1 To Roll";
+                    modifier--;
+                }
+                if (name === "Reinforced Armour") {
+                    tip += "<br>Reinforced Armour: -2 To Roll";
+                    modifier -= 2;
+                }
+                if (name === "Machine Armour") {
+                    if (shieldFlag === false) {
+                        modifier -= 3
+                        tip += "<br>Machine Armour: -3 To Roll";
+                    } else {
+                        tip += "<br>Machine Armour: -2 To Roll";
+                        modifier -= 2
+                    };
+                }
+
+
+
+
+
+
+            })
+
+            let dice = numberDice + extraDice;
+            let sign = Math.sigh(extraDice);
+            let rolls = [];
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+            }
+            rolls.sort();
+            let usedRolls = [];
+            if (sign < 0) {
+                usedRolls = rolls.slice(0,numberDice); //lowest 
+            } else {
+                usedRolls = rolls.slice(-number); //highest
+            }
+            let total = 0;
+            _.each(usedRolls,roll => {
+                total += roll;
+            })
+            total += modifier;
+
+            tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+            if (total < 2) {
+                finalResult.push(tip + " No Effect")
+            } else if (total > 1 && total < 7) {
+                finalResult.push(tip + " Minor Hit / 1 Blood Marker");
+                target.Injury("Minor Hit");
+            } else if (total > 6 && total < 9) {
+                finalResult.push(tip + " Target Downed/1 Blood Marker");
+                target.Injury("Down");
+            } else if (total > 8) {
+                let toughFlag = false;
+                for (let i=0;i<defender.abilityArray.length;i++) {
+                    let ability = defender.abilityArray[i].name;
+                    if (ability === "Tough" && defender.token.get(SM.wounded) === false) {
+                        toughFlag = true;
+                    }
+                }
+                if (toughFlag === true) {
+                    finalResult.push(tip + " Target Survives a Major Injury");
+                    finalResult.push("Target Downed/1 Blood Marker");
+                    target.token.set(SM.wounded,true);
+                    target.Injury("Down");
+                } else {
+                    finalResult.push(tip + " Target taken Out of Action");
+                    target.Injury("Out of Action");
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
     
     
     const CheckMarkers = (id,nextStep) => {
