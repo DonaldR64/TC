@@ -936,7 +936,9 @@ return;
         //buttons
         if (outputCard.buttons.length > 0) {
             for (let i=0;i<outputCard.buttons.length;i++) {
-                output += "<br>";
+                if (i>0) {
+                    output += '<hr style="width:95%; align:centre; margin:0px 0px 5px 5px; border-top:2px solid $1;">';
+                }
                 let out = "";
                 let info = outputCard.buttons[i];
                 out += `<div style="display: table-row; background: #FFFFFF;; `;
