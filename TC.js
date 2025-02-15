@@ -2157,14 +2157,25 @@ log(weapon)
         total += modifier;
 
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
+        let line = tip + " Rolls: ";
+        for (let i=0;i<rolls.length;i++) {
+            line += DisplayDice(rolls[i],"Neutral",24) + " ";
+            if ((sign >=0 && i === (rolls.length - numberDice - 1)) && rolls.length > numberDice) {
+                line += "▶ ";
+            }
+            if ((sign < 0 && i === (numberDice-1)) && rolls.length > number) {
+                line += "◀ "
+            }
+        }
+        outputCard.body.push(line);
 
         if (total < 2) {
-            finalResult.push(tip + " No Effect")
+            finalResult.push("No Effect")
         } else if (total > 1 && total < 7) {
-            finalResult.push(tip + " Minor Hit / 1 Blood Marker");
+            finalResult.push("Minor Hit / 1 Blood Marker");
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
-            finalResult.push(tip + " Target Downed/1 Blood Marker");
+            finalResult.push("Target Downed/1 Blood Marker");
             defender.Injury("Down");
         } else if (total > 8) {
             let toughFlag = false;
@@ -2175,12 +2186,12 @@ log(weapon)
                 }
             }
             if (toughFlag === true) {
-                finalResult.push(tip + " Target Survives a Major Injury");
+                finalResult.push("Target Survives a Major Injury");
                 finalResult.push("Target Downed/1 Blood Marker");
                 target.token.set(SM.wounded,true);
                 defender.Injury("Down");
             } else {
-                finalResult.push(tip + " Target taken Out of Action");
+                finalResult.push("Target taken Out of Action");
                 defender.Injury("Out of Action");
             }
         }
