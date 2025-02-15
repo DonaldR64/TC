@@ -1678,6 +1678,8 @@ return;
             model.token.set({
                 aura1_color: "#00FF00",
                 aura1_radius: 0.1,
+                aura2_color: "transparent",
+                aura2_radius: 0.25,
                 bar3_value: 0,
                 bar3_max: "",
                 bar2_value: 0,
@@ -1893,25 +1895,25 @@ return;
 
     const Ranged = (msg) => {
         let Tag = msg.content.split(";");
-        let shooterID = Tag[1];
-        let targetID = Tag[2];
+        let attackerID = Tag[1];
+        let defenderID = Tag[2];
         let weaponNum = Tag[3];
-        let shooter = ModelArray[shooterID];
-        let target = ModelArray[targetID];
-        let weapon = shooter.weaponArray.ranged[weaponNum]
+        let attacker = ModelArray[attackerID];
+        let defender = ModelArray[defenderID];
+        let weapon = attacker.weaponArray.ranged[weaponNum]
 log(weapon)
-        let losResult = LOS(shooter,target);
+        let losResult = LOS(attacker,defender);
         let errorMsg = [];
         if (losResult.distance > weapon.range) {
-            errorMsg.push("Target is Out of Range");
+            errorMsg.push("Defender is Out of Range");
         }
     //check keyword
         if (losResult.los === false && weapon.keywords.includes("Indirect") === false) {
-            errorMsg.push("Target is not in Line of Sight");
-            errorMsg.push(losResult.reaon);
+            errorMsg.push("Defender is not in Line of Sight");
+            errorMsg.push(losResult.reason);
         }
     
-        SetupCard(shooter.name,weapon.name,shooter.faction);
+        SetupCard(attacker.name,weapon.name,attacker.faction);
         //errors re range, los
         if (errorMsg.length > 0) {
             _.each(errorMsg,msg => {
@@ -1922,14 +1924,14 @@ log(weapon)
         }
     
         attackInfo = {
-            attacker: shooter,
-            defender: target,
+            attacker: attacker,
+            defender: defender,
             weapon: weapon,
             extraDice: 0,
             result: "",
         }
     
-        let check = CheckMarkers(shooterID,"Ranged2");
+        let check = CheckMarkers(attackerID,"Ranged2");
         if (check === true) {
             //has markers
             PrintCard();
@@ -1941,13 +1943,13 @@ log(weapon)
     const Ranged2 = (extraDice) => {
         //entry from Ranged or from Marker
         //check if in melee
-        let shooter = attackInfo.attacker;
-        let target = attackInfo.defender;
+        let attacker = attackInfo.attacker;
+        let defender = attackInfo.defender;
         let weapon = attackInfo.weapon;
-        SetupCard(shooter.name,weapon.name,shooter.faction);
+        SetupCard(attacker.name,weapon.name,attacker.faction);
         let tip;
     
-        let neighbourCubes = target.cube.neighbours()
+        let neighbourCubes = defender.cube.neighbours()
         let friendlies = [];
         _.each(neighbourCubes,cube => {
             let nHex = hexMap[cube.label()];
@@ -1955,8 +1957,8 @@ log(weapon)
                 _.each(nHex.modelIDs,id => {
                     let model = ModelArray[id];
                     if (model) {
-                        if (model.faction === shooter.faction) {
-                            let checkLOS = LOS(shooter,model);
+                        if (model.faction === attacker.faction) {
+                            let checkLOS = LOS(attacker,model);
                             if (checkLOS.los === true) {
                                 friendlies.push(model);
                             }
@@ -1967,29 +1969,33 @@ log(weapon)
         });
         if (friendlies.length > 0) {
             let roll = randomInteger(6);
+            let fTip = "Friendly Roll: " + roll + " vs 4+";
+            fTip = '[🎲](#" class="showtip" title="' + fTip + ')';
+
             if (roll < 4) {
                 let i = randomInteger(friendlies.length) - 1;
-                target = friendlies[i];
-                outputCard.body.push("[#FF0000]Shooting into Melee hits an Ally![/#]");
-                outputCard.body.push("[#FF0000]" + target.name + " is hit[/#]");
+                defender = friendlies[i];
+                attackInfo.defender = defender;
+                outputCard.body.push(fTip + " [#FF0000]Shooting into Melee targets an Ally![/#]");
+                outputCard.body.push("[#FF0000]" + defender.name + " is targetted[/#]");
             } else {
-                outputCard.body.push("Shooting into melee hits the targeted Enemy");
+                outputCard.body.push(fTip + " Shooting into melee targets the Enemy");
             }
             outputCard.body.push("[hr]");
         }
-        let losResult = LOS(shooter,target);
+        let losResult = LOS(attacker,defender);
     
         //To Hit
-        //shooter modifiers
-        if (shooter.rangedBonus > 0) {
-            tip = "<br>Base: +" + shooter.rangedBonus + " Dice";
+        //attacker modifiers
+        if (attacker.rangedBonus > 0) {
+            tip = "<br>Base: +" + attacker.rangedBonus + " Dice";
         } else {
-            tip = "Base: " + shooter.rangedBonus + " Dice";
+            tip = "Base: " + attacker.rangedBonus + " Dice";
         }
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
         }
-        extraDice += shooter.rangedBonus;
+        extraDice += attacker.rangedBonus;
     
         //weapon modifiers
         let mods = weapon.modifiers;
@@ -2055,7 +2061,7 @@ log(weapon)
         if (results.success === false) {
             PrintCard();
         } else {
-            let check = CheckMarkers(target.id,"Injury");
+            let check = CheckMarkers(defender.id,"Injury");
             PrintCard();
             if (check === false) {
                 Injury(0);
@@ -2214,7 +2220,7 @@ log(weapon)
             outputCard.body.push("Minor Hit / 1 Blood Marker");
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
-            outputCard.body.push("Target Downed/1 Blood Marker");
+            outputCard.body.push("Defender Downed/1 Blood Marker");
             defender.Injury("Down");
         } else if (total > 8) {
             let toughFlag = false;
@@ -2225,12 +2231,12 @@ log(weapon)
                 }
             }
             if (toughFlag === true) {
-                outputCard.body.push("Target Survives a Major Injury");
-                outputCard.body.push("Target Downed/1 Blood Marker");
-                target.token.set(SM.wounded,true);
+                outputCard.body.push(defender.name + " Survives a Major Injury");
+                outputCard.body.push(defender.name + " Downed/1 Blood Marker");
+                defender.token.set(SM.wounded,true);
                 defender.Injury("Down");
             } else {
-                outputCard.body.push("Target taken Out of Action");
+                outputCard.body.push(defender.name + " taken Out of Action");
                 defender.Injury("Out of Action");
             }
         }
@@ -2242,6 +2248,8 @@ log(weapon)
 
 
 
+    
+
 
     
     
@@ -2249,7 +2257,15 @@ log(weapon)
         let model = ModelArray[id];
         let blood = parseInt(model.token.get("bar3_value"));
         let blessing = parseInt(model.token.get("bar1_value"));
-        if (blood > 0) {
+        let friendlyFire = false;
+        if (nextStep === "Injury") {
+            let attacker = attackInfo.attacker;
+            if (attacker.faction === model.faction) {
+                friendlyFire = true;
+            }
+        }
+
+        if (blood > 0 && friendlyFire === false) {
             let bb = 6;
             ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
 
@@ -2310,7 +2326,7 @@ log(weapon)
             }
             ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id + ";" + nextStep);
         } 
-        if (blood > 0 || blessing > 0) {
+        if ((blood > 0 && friendlyFire === false) || blessing > 0) {
             return true;
         } else {
             return false;
@@ -2345,7 +2361,7 @@ log(weapon)
             outputCard.body.push("Model is Down");
         }
         if (h.cover === true) {
-            outputCard.body.push("Target is in Cover");
+            outputCard.body.push("Defender is in Cover");
         }
 
         PrintCard();
@@ -2354,40 +2370,40 @@ log(weapon)
 
     const CheckLOS = (msg) => {
         let Tag = msg.content.split(";");
-        let shooterID = Tag[1];
-        let targetID = Tag[2];
+        let attackerID = Tag[1];
+        let defenderID = Tag[2];
         
-        let shooter = ModelArray[shooterID];
-        let target = ModelArray[targetID];
+        let attacker = ModelArray[attackerID];
+        let defender = ModelArray[defenderID];
 
-        SetupCard("LOS","",shooter.faction);
+        SetupCard("LOS","",attacker.faction);
         
-        let result = LOS(shooter,target);
+        let result = LOS(attacker,defender);
 
 
-        outputCard.body.push("Target is " + result.distance + " Hexes away");
+        outputCard.body.push("Defender is " + result.distance + " Hexes away");
         if (result.los === true) {
-            outputCard.body.push("Target is in LOS");
+            outputCard.body.push("Defender is in LOS");
             if (result.cover === true) {
-                outputCard.body.push("Target is IN COVER");
+                outputCard.body.push("Defender is IN COVER");
             } else if (result.loscover === true) {
-                outputCard.body.push("Target has cover due to intervening terrain");
+                outputCard.body.push("Defender has cover due to intervening terrain");
             }
             if (result.heightAdvantage === true) {
-                outputCard.body.push("Shooter has a Height Advantage");
+                outputCard.body.push("Attacker has a Height Advantage");
             }
         } else {
             outputCard.body.push("LOS is " + result.reason);
         }
        
         
-        _.each(shooter.weaponArray.ranged,weapon => {
+        _.each(attacker.weaponArray.ranged,weapon => {
             let range = weapon.range;
             if (range <= result.distance) {
                 if (result.distance > Math.round(range/2)) {
-                    outputCard.body.push("Target is in Long Range of " + weapon.name);
+                    outputCard.body.push("Defender is in Long Range of " + weapon.name);
                 } else {
-                    outputCard.body.push("Target is in range of " + weapon.name);
+                    outputCard.body.push("Defender is in range of " + weapon.name);
                 }
              }
         })
