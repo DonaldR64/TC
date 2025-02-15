@@ -1,5 +1,5 @@
 const TC = (() => {
-    const version = '2025.2.10';
+    const version = '2025.2.14';
     if (!state.TC) {state.TC = {}};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
@@ -473,8 +473,8 @@ const TC = (() => {
                 let name = attributeArray["equip" + i + "name"] || "";
                 let info = attributeArray["equip" + i + "info"] || "";
                 let equip = {
-                    name: name.trim();
-                    info: info.trim();
+                    name: name.trim(),
+                    info: info.trim(),
                 }
                 if (name !== undefined && name !== " " && name !== "") {
                     equipmentArray.push(equip);
@@ -495,8 +495,8 @@ const TC = (() => {
                 let name = attributeArray["ability" + i + "name"] || "";
                 let info = attributeArray["ability" + i + "info"] || "";
                 let ability = {
-                    name: name.trim();
-                    info: info.trim();
+                    name: name.trim(),
+                    info: info.trim(),
                 }
                 if (name !== undefined && name !== " " && name !== "") {
                     abilityArray.push(ability);
