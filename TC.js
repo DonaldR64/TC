@@ -588,7 +588,7 @@ const TC = (() => {
             //number to be +X or -X
             if (!number) {number = 1};
             let bar,dot;
-            if (type === "Blood") {
+            if (type.includes("Blood")) {
                 bar = "bar3_value";
                 dot = SM.red;
             } else if (type === "Blessing") {
@@ -1832,28 +1832,46 @@ return;
         let type = Tag[2];
         let id = Tag[3];
         let nextStep = Tag[4];
+        let extraDice = parseInt(Tag[5]) || 0; //when both blood and blessing, this carries the blood forward
+        let bb = (type === "Bloodbath") ? true:false;
         let model = ModelArray[id];
-        let extraDice = 0;
-        if (type === "Blood") {
+        let blood = parseInt(model.token.get("bar3_value"));
+        let blessing = parseInt(model.token.get("bar1_value"));
+        if (type.includes("Blood")) {
             extraDice -= number;
             model.ChangeMarker(type,-number);
+            if (bb === true) {extraDice = blood - number} //any remaining blood markers
         } else if (type === "Blessing") {
             extraDice += number;
             model.ChangeMarker(type,-number);
         } 
-
-
-        if (model.token.get(SM.green) === true && type === "Blood") {
+        if (blessing > 0 && type === "Blood") {
            SetupCard(model.name,"",model.faction);
-           let bm = parseInt(model.token.get("bar1_value"));
-           let s = (bm === 1) ? "":"s";
-           outputCard.body.push("Model also has " + bm + " Blessing Marker" + s);
-           ButtonInfo("No Blessing Markers",nextStep + ";" + extraDice);
-           if (bm === 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
-           } else if (bm > 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + nextStep);
+           let s = (blessing === 1) ? "":"s";
+           outputCard.body.push("Model also has " + blessing + " Blessing Marker" + s);
+           ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep + ";" + extraDice);
+           let howmany;
+           switch(blessing) {
+               case 1:
+                   howmany = "1";
+                   break;
+               case 2:
+                   howmany = "?{How Many|1|2}";
+                   break;
+               case 3:
+                   howmany = "?{How Many|1|2|3}";
+                   break;
+               case 4:
+                   howmany = "?{How Many|1|2|3|4}";
+                   break;
+               case 5:
+                   howmany = "?{How Many|1|2|3|4|5}";
+                   break;
+               case 6:
+                   howmany = "?{How Many|1|2|3|4|5|6}";
+                   break;
            }
+           ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id + ";" + nextStep + ";" + extraDice);
            PrintCard();
         } else {
             if (nextStep === "Ranged2") {
@@ -1863,7 +1881,8 @@ return;
                 ActionTest2(extraDice);
             }
             if (nextStep === "Injury") {
-                Injury(extraDice);
+                //reverse how dice are applied in injury
+                Injury(-extraDice,bb);
             }
 
         }
@@ -1935,8 +1954,8 @@ log(weapon)
                     let model = ModelArray[id];
                     if (model) {
                         if (model.faction === shooter.faction) {
-                            checkLOS = LOS(shooter,model);
-                            if (losResult.los === true) {
+                            let checkLOS = LOS(shooter,model);
+                            if (checkLOS.los === true) {
                                 friendlies.push(model);
                             }
                         }
@@ -2030,37 +2049,40 @@ log(weapon)
     
         }
     
-    
         //Injuries
-        if (results.success !== false) {
-            outputCard.body.push("[hr]");
-            let check = CheckMarkers(shooterID,"Injury");
+        if (results.success === false) {
+            PrintCard();
+        } else {
+            let check = CheckMarkers(target.id,"Injury");
+            PrintCard();
             if (check === false) {
                 Injury(0);
             }
         }
-        PrintCard();
-    
     }
 
 
 
     
 
-    const Injury = (extraDice) => {    
+    const Injury = (extraDice,bb) => {    
         let attacker = attackInfo.attacker;
         let defender = attackInfo.defender;
         let weapon = attackInfo.weapon;
         let result = attackInfo.result;
         let tip = "Base 2 Dice";
-        if (extraDice !== 0) {
-            if (extraDice > 0) {tip += "+"};
-            tip += extraDice + " Dice from Markers";
-        }
-
+        if (!bb) {bb = false};
         let numberDice = 2; //# of dice picked from all those rolled
+        if (bb === true) {
+            tip = "Bloodbath!: 3 Dice chosen";
+            numberDice += 1;
+        }
+        if (extraDice !== 0) {
+            tip += "<br>Markers: ";
+            if (extraDice > 0) {tip += "+"};
+            tip += extraDice + " Dice";
+        }
         let modifier = 0; //added to final roll
-        let finalResult = [];
 
         //any bonus from attacker
 
@@ -2072,7 +2094,7 @@ log(weapon)
         //Defender Modifiers
         if (defender.token.get("aura2_color") === "#FF0000") {
             extraDice++;
-            tip += "<br>Defender is Down: +1 Dice";
+            tip += "<br>Down: +1 Dice";
         }
 
         //bonus from weapon
@@ -2139,7 +2161,7 @@ log(weapon)
         }
   
 
-        let dice = numberDice + extraDice;
+        let dice = numberDice + Math.abs(extraDice);
         let sign = Math.sign(extraDice);
         let rolls = [];
         for (let i=0;i<dice;i++) {
@@ -2166,19 +2188,31 @@ log(weapon)
             if ((sign >=0 && i === (rolls.length - numberDice - 1)) && rolls.length > numberDice) {
                 line += "▶ ";
             }
-            if ((sign < 0 && i === (numberDice-1)) && rolls.length > number) {
+            if ((sign < 0 && i === (numberDice-1)) && rolls.length > numberDice) {
                 line += "◀ "
             }
         }
+        
+        let subtitle = "";
+        if (sign >= 0) {subtitle += "+"};
+        subtitle += extraDice + " Dice";
+        if (modifier > 0) {
+            subtitle += " +" + modifier;
+        } else if (modifier < 0) {
+            subtitle += " " + modifier;
+        }
+        if (bb === true) {
+            subtitle = "Bloodbath! " + subtitle;
+        }
+        SetupCard(defender.name,subtitle,defender.faction);
         outputCard.body.push(line);
-
         if (total < 2) {
-            finalResult.push("No Effect")
+            outputCard.body.push("No Effect")
         } else if (total > 1 && total < 7) {
-            finalResult.push("Minor Hit / 1 Blood Marker");
+            outputCard.body.push("Minor Hit / 1 Blood Marker");
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
-            finalResult.push("Target Downed/1 Blood Marker");
+            outputCard.body.push("Target Downed/1 Blood Marker");
             defender.Injury("Down");
         } else if (total > 8) {
             let toughFlag = false;
@@ -2189,26 +2223,18 @@ log(weapon)
                 }
             }
             if (toughFlag === true) {
-                finalResult.push("Target Survives a Major Injury");
-                finalResult.push("Target Downed/1 Blood Marker");
+                outputCard.body.push("Target Survives a Major Injury");
+                outputCard.body.push("Target Downed/1 Blood Marker");
                 target.token.set(SM.wounded,true);
                 defender.Injury("Down");
             } else {
-                finalResult.push("Target taken Out of Action");
+                outputCard.body.push("Target taken Out of Action");
                 defender.Injury("Out of Action");
             }
         }
 
 
-
-
-
-
-
-        return finalResult;
-
-
-
+        PrintCard();
     }
 
 
@@ -2222,32 +2248,65 @@ log(weapon)
         let blood = parseInt(model.token.get("bar3_value"));
         let blessing = parseInt(model.token.get("bar1_value"));
         if (blood > 0) {
-            let s = (blood === 1) ? "":"s";
-            outputCard.body.push("Model has " + blood + " Blood Marker" + s);
+            let bb = 6;
             ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
-            if (blood === 1) {
-                ButtonInfo("Use a Blood Marker","!Marker;1;Blood;" + id + ";" + nextStep);
-            } else if (blood > 1) {
-                //bloodbath option if in injury next step
 
-
-
-
-
-                ButtonInfo("Use a Blood Marker","!Marker;?{How Many|0};Blood;" + id + ";" + nextStep);
+            if (model.token.get("aura2_color") === "#FF0000") {bb = 3};
+            if (nextStep === "Injury" && blood >= bb) {
+                ButtonInfo("Bloodbath!","!Marker;" + bb + ";Bloodbath;" + id + ";" + nextStep);
+            } else {
+                let s = (blood === 1) ? "":"s";
+                outputCard.body.push("Model has " + blood + " Blood Marker" + s);
+                let howmany;
+                switch(blood) {
+                    case 1:
+                        howmany = "1";
+                        break;
+                    case 2:
+                        howmany = "?{How Many|1|2}";
+                        break;
+                    case 3:
+                        howmany = "?{How Many|1|2|3}";
+                        break;
+                    case 4:
+                        howmany = "?{How Many|1|2|3|4}";
+                        break;
+                    case 5:
+                        howmany = "?{How Many|1|2|3|4|5}";
+                        break;
+                    case 6:
+                        howmany = "?{How Many|1|2|3|4|5|6}";
+                        break;
+                }
+                ButtonInfo("Use Blood Markers","!Marker;" + howmany + ";Blood;" + id + ";" + nextStep);
             }
-//bloodbath
-
             //if also has blessings will be picked up in Blood Marker
         } else if (blessing > 0) {
             let s = (blessing === 1) ? "":"s";
             outputCard.body.push("Model has " + blessing + " Blessing Marker" + s);
             ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep);
-            if (blessing === 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;1;Blessing;" + id + ";" + nextStep);
-            } else if (blessing > 1) {
-                ButtonInfo("Use a Blessing Marker","!Marker;?{How Many|0};Blessing;" + id + ";" + nextStep);
+            let howmany;
+            switch(blessing) {
+                case 1:
+                    howmany = "1";
+                    break;
+                case 2:
+                    howmany = "?{How Many|1|2}";
+                    break;
+                case 3:
+                    howmany = "?{How Many|1|2|3}";
+                    break;
+                case 4:
+                    howmany = "?{How Many|1|2|3|4}";
+                    break;
+                case 5:
+                    howmany = "?{How Many|1|2|3|4|5}";
+                    break;
+                case 6:
+                    howmany = "?{How Many|1|2|3|4|5|6}";
+                    break;
             }
+            ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id + ";" + nextStep);
         } 
         if (blood > 0 || blessing > 0) {
             return true;
@@ -2354,8 +2413,8 @@ log(weapon)
         let modelLevel = Math.min(model1Height,model2Height);
         model1Height -= modelLevel;
         model2Height -= modelLevel;
-log("m1H: " + model1Height)
-log("m2H: " + model2Height)
+//log("m1H: " + model1Height)
+//log("m2H: " + model2Height)
 
         let interCubes = model1Hex.cube.linedraw(model2Hex.cube); 
         //interCubes.pop();
@@ -2374,14 +2433,14 @@ log("m2H: " + model2Height)
             //D is distance in hexes to hex being checked for height/cover etc
             let label = interCubes[i].label()
             let interHex = hexMap[label];
-log(label)
+//log(label)
             let interSame = findCommonElements(model1Hex.terrainIDs,interHex.terrainIDs);
 
             let interHeight = interHex.height - modelLevel;
             let interElevation = interHex.elevation - modelLevel;
 
-log("iH: " + interHeight)
-log("iE: " + interElevation)
+//log("iH: " + interHeight)
+//log("iE: " + interElevation)
 
 
             if (model1Height === model2Height) {
@@ -2398,7 +2457,7 @@ log("iE: " + interElevation)
                 D = interCubes.length + 1 - i;
                 AC = model1Height/distance;
                 B = D * AC;
-log("S2 B: " + B)
+//log("S2 B: " + B)
                 if (interElevation >= B && interElevation > model1Height) {
                     los = false;
                     reason = "Blocked by Hill at " + label;
@@ -2412,7 +2471,7 @@ log("S2 B: " + B)
                 AC = model2Height/distance;
                 D = i;
                 B = D * AC;
-log("S3 B: " + B)
+//log("S3 B: " + B)
                 if (interElevation >= B && interElevation > model2Height) {
                     los = false;
                     reason = "Blocked by Hill at " + label;
