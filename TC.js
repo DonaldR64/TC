@@ -607,7 +607,7 @@ const TC = (() => {
 
         Injury(type) {
             if (type === "Minor Hit" || type === "Down") {
-                ChangeMarker("Blood",1);
+                this.ChangeMarker("Blood",1);
             }
             if (type === "Down") {
                 this.token.set({
@@ -616,10 +616,14 @@ const TC = (() => {
                 })
             }
             if (type === "Out of Action") {
+return;
                 this.token.set({
                     status_dead: true,
                     layer: "map",
                 })
+                //remove from ModelArray
+                //adjust counters
+
             }
         }
 
@@ -2046,141 +2050,83 @@ log(weapon)
     const Injury = (result) => {
             //attackInfo
     
-            let attacker = attackInfo.attacker;
-            let defender = attackInfo.defender;
-            let weapon = attackInfo.weapon;
-            let tip = "";
+        let attacker = attackInfo.attacker;
+        let defender = attackInfo.defender;
+        let weapon = attackInfo.weapon;
+        let tip = "Base 2 Dice";
 
-            let numberDice = 2; //# of dice picked from all those rolled
-            let extraDice = 0; //+ or - Dice
-            let modifier = 0; //added to final roll
-            let finalResults = [];
+        let numberDice = 2; //# of dice picked from all those rolled
+        let extraDice = 0; //+ or - Dice
+        let modifier = 0; //added to final roll
+        let finalResult = [];
 
-            //any bonus from attacker
+        //any bonus from attacker
 
-            if (result === "Critical") {
+        if (result === "Critical") {
+            extraDice++;
+            tip += "<br>Critical: +1 Dice";
+        }
+
+        //Defender Modifiers
+        if (defender.token.get("aura2_color") === "#FF0000") {
+            extraDice++;
+            tip += "<br>Defender is Down: +1 Dice";
+        }
+
+        //bonus from weapon
+        _.each(weapon.modifiers,modifier => {
+            let sign = 1;
+            if (modifier.includes("-")) {
+                sign = -1
+            }
+            if (modifier.includes("Injury" && modifier.includes("Dice"))) {
+                let text = (modifier.includes("-")) ? "":"+"
+                let bonus = sign * parseInt(modifier);
+                extraDice += bonus;
+                tip += "<br>Weapon: " + text + bonus + " Dice";
+            }
+            if (modifier.includes("Injury" && modifier.includes("Roll"))) {
+                let text = (modifier.includes("-")) ? "":"+"
+                let bonus = sign * parseInt(modifier)
+                modifier += bonus;
+                tip += "<br>Weapon: " + text + bonus + " To Roll";
+            }
+            if (result === "Critical" && modifier.includes("Critical")) {
                 extraDice++;
-                tip += "<br>Critical: +1 Dice";
-            }
-
-            //Defender Modifiers
-            if (defender.token.get("aura2_color") === "#FF0000") {
-                extraDice++;
-                tip += "<br>Defender is Down: +1 Dice";
+                tip += "<br>Weapon Critical +1 Dice";
             }
 
 
-            //bonus from weapon
-            let mods = weapon.modifiers;
-            _.each(mods,mod => {
-                let sign = 1;
-                if (mod.includes("-")) {
-                    sign = -1
-                }
-                if (mod.includes("Injury" && mod.includes("Dice"))) {
-                    let text = (mod.includes("-")) ? "":"+"
-                    let bonus = sign * parseInt(mod);
-                    extraDice += bonus;
-                    tip += "<br>Weapon: " + text + bonus + " Dice";
-                }
-                if (mod.includes("Injury" && mod.includes("Roll"))) {
-                    let text = (mod.includes("-")) ? "":"+"
-                    let bonus = sign * parseInt(mod)
-                    modifier += bonus;
-                    tip += "<br>Weapon: " + text + bonus + " To Roll";
-                }
-                if (result === "Critical" && weapon.mod.includes("Critical")) {
-                    extraDice++;
-                    tip += "<br>Weapon Critical +1 Dice";
-                }
 
 
+        })
 
+        //armour and such
+        _.each(defender.equipmentArray,equipment => {
+            let name = equipment.name;
+            let shieldFlag = false;
 
-            })
-
-            //armour and such
-            _.each(defender.equipmentArray,equipment => {
-                let name = equipment.name;
-                let shieldFlag = false;
-
-                if (name === "Trench Shield") {
-                    tip += "<br>Trench Shield: -1 To Roll";
-                    modifier--;
-                    shieldFlag = true;
-                }
-                if (name === "Standard Armour") {
-                    tip += "<br>Standard Armour: -1 To Roll";
-                    modifier--;
-                }
-                if (name === "Reinforced Armour") {
-                    tip += "<br>Reinforced Armour: -2 To Roll";
-                    modifier -= 2;
-                }
-                if (name === "Machine Armour") {
-                    if (shieldFlag === false) {
-                        modifier -= 3
-                        tip += "<br>Machine Armour: -3 To Roll";
-                    } else {
-                        tip += "<br>Machine Armour: -2 To Roll";
-                        modifier -= 2
-                    };
-                }
-
-
-
-
-
-
-            })
-
-            let dice = numberDice + extraDice;
-            let sign = Math.sigh(extraDice);
-            let rolls = [];
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(6);
-                rolls.push(roll);
+            if (name === "Trench Shield") {
+                tip += "<br>Trench Shield: -1 To Roll";
+                modifier--;
+                shieldFlag = true;
             }
-            rolls.sort();
-            let usedRolls = [];
-            if (sign < 0) {
-                usedRolls = rolls.slice(0,numberDice); //lowest 
-            } else {
-                usedRolls = rolls.slice(-number); //highest
+            if (name === "Standard Armour") {
+                tip += "<br>Standard Armour: -1 To Roll";
+                modifier--;
             }
-            let total = 0;
-            _.each(usedRolls,roll => {
-                total += roll;
-            })
-            total += modifier;
-
-            tip = '[🎲](#" class="showtip" title="' + tip + ')';
-
-            if (total < 2) {
-                finalResult.push(tip + " No Effect")
-            } else if (total > 1 && total < 7) {
-                finalResult.push(tip + " Minor Hit / 1 Blood Marker");
-                target.Injury("Minor Hit");
-            } else if (total > 6 && total < 9) {
-                finalResult.push(tip + " Target Downed/1 Blood Marker");
-                target.Injury("Down");
-            } else if (total > 8) {
-                let toughFlag = false;
-                for (let i=0;i<defender.abilityArray.length;i++) {
-                    let ability = defender.abilityArray[i].name;
-                    if (ability === "Tough" && defender.token.get(SM.wounded) === false) {
-                        toughFlag = true;
-                    }
-                }
-                if (toughFlag === true) {
-                    finalResult.push(tip + " Target Survives a Major Injury");
-                    finalResult.push("Target Downed/1 Blood Marker");
-                    target.token.set(SM.wounded,true);
-                    target.Injury("Down");
+            if (name === "Reinforced Armour") {
+                tip += "<br>Reinforced Armour: -2 To Roll";
+                modifier -= 2;
+            }
+            if (name === "Machine Armour") {
+                if (shieldFlag === false) {
+                    modifier -= 3
+                    tip += "<br>Machine Armour: -3 To Roll";
                 } else {
-                    finalResult.push(tip + " Target taken Out of Action");
-                    target.Injury("Out of Action");
-                }
+                    tip += "<br>Machine Armour: -2 To Roll";
+                    modifier -= 2
+                };
             }
 
 
@@ -2188,8 +2134,64 @@ log(weapon)
 
 
 
+        })
+
+        let dice = numberDice + extraDice;
+        let sign = Math.sign(extraDice);
+        let rolls = [];
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(6);
+            rolls.push(roll);
+        }
+        rolls.sort();
+        let usedRolls = [];
+        if (sign < 0) {
+            usedRolls = rolls.slice(0,numberDice); //lowest 
+        } else {
+            usedRolls = rolls.slice(-numberDice); //highest
+        }
+        let total = 0;
+        _.each(usedRolls,roll => {
+            total += roll;
+        })
+        total += modifier;
+
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+        if (total < 2) {
+            finalResult.push(tip + " No Effect")
+        } else if (total > 1 && total < 7) {
+            finalResult.push(tip + " Minor Hit / 1 Blood Marker");
+            defender.Injury("Minor Hit");
+        } else if (total > 6 && total < 9) {
+            finalResult.push(tip + " Target Downed/1 Blood Marker");
+            defender.Injury("Down");
+        } else if (total > 8) {
+            let toughFlag = false;
+            for (let i=0;i<defender.abilityArray.length;i++) {
+                let ability = defender.abilityArray[i].name;
+                if (ability === "Tough" && defender.token.get(SM.wounded) === false) {
+                    toughFlag = true;
+                }
+            }
+            if (toughFlag === true) {
+                finalResult.push(tip + " Target Survives a Major Injury");
+                finalResult.push("Target Downed/1 Blood Marker");
+                target.token.set(SM.wounded,true);
+                defender.Injury("Down");
+            } else {
+                finalResult.push(tip + " Target taken Out of Action");
+                defender.Injury("Out of Action");
+            }
+        }
 
 
+
+
+
+
+
+        return finalResult;
 
 
 
