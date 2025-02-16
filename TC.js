@@ -1316,6 +1316,8 @@ return;
                 tint_color: "transparent",
                 aura1_color: "transparent",
                 aura1_radius: 0,
+                aura2_color: "transparent",
+                aura2_radius: 0,
                 showplayers_bar1: true,
                 showname: true,
                 showplayers_aura1: true,
