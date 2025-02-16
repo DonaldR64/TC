@@ -1886,10 +1886,29 @@ return;
 
     const ActionTest2 = (extraDice) => {
         let model = attackInfo.attacker;
-        extraDice += attackInfo.extraDice; //as the initial entry would be for those from markers
-        let text = (extraDice < 0) ? "-":"+";
-        text += Math.abs(extraDice) + " Dice";
+        initialBonus = attackInfo.extraDice; //as the initial entry would be for those from markers
+        let sign = (extraDice > 0) ? "+":"";
+
+
         SetupCard(model.name,text,model.faction);
+        
+        tip = "Base: ";
+        tip += "Markers: " + sign + extraDice + " Dice";
+///
+        tip += "Feed In: " + initialBonus + " Dice";
+        extraDice += initialBonus;
+
+
+        //modifiers
+        if (model.keywords.includes("Blasphemous")) {
+            tip += "Blasphemous: +1 Dice";
+            extraDice++;
+        }
+
+
+
+
+
         let results = ActionSuccess(extraDice);
         outputCard.body.push(results.line2);
         if (results.success === false) {
