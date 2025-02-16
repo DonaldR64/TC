@@ -608,7 +608,8 @@ const TC = (() => {
 
         Injury(type) {
             if (type === "Minor Hit" || type === "Down") {
-                this.ChangeMarker("Blood",1);
+                let blood = (this.token.get("aura2_color") === "#FF0000") ? 2:1;
+                this.ChangeMarker("Blood",blood);
             }
             if (type === "Down") {
                 this.token.set({
@@ -1796,10 +1797,13 @@ return;
         let Tag = msg.content.split(";");
         let extraDice = parseInt(Tag[1]);
         let model = ModelArray[id];
+        if (model.token.get("aura2_color") === "#FF0000") {
+            extraDice -= 1;
+        }
         let text = (extraDice < 0) ? "-":"+";
         text += Math.abs(extraDice) + " Dice";
-
         SetupCard(model.name,text,model.faction);
+
         attackInfo = {
             attacker: model,
             defender: "",
@@ -1884,15 +1888,14 @@ return;
         } else {
             if (nextStep === "Ranged2") {
                 Ranged2(extraDice);
-            }
-            if (nextStep === "ActionTest2") {
+            } else if (nextStep === "Melee2") {
+                Melee2(extraDice);
+            } else if (nextStep === "ActionTest2") {
                 ActionTest2(extraDice);
-            }
-            if (nextStep === "Injury") {
+            } else if (nextStep === "Injury") {
                 //reverse how dice are applied in injury
                 Injury(-extraDice,bb);
             }
-
         }
     }
     
@@ -1999,6 +2002,10 @@ log(weapon)
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
         }
+        if (attacker.token.get("aura2_color") === "#FF0000") {
+            tip += "<br>Downed: -1 Dice";
+            extraDice--;
+        }
         extraDice += attacker.rangedBonus;
     
         //weapon modifiers
@@ -2080,6 +2087,7 @@ log(weapon)
     const Injury = (extraDice,bb) => {    
         let attacker = attackInfo.attacker;
         let defender = attackInfo.defender;
+        let downed = (defender.token.get("aura2_color") === "#FF0000") ? true:false;
         let weapon = attackInfo.weapon;
         let result = attackInfo.result;
         let tip = "Base 2 Dice";
@@ -2104,7 +2112,7 @@ log(weapon)
         }
 
         //Defender Modifiers
-        if (defender.token.get("aura2_color") === "#FF0000") {
+        if (downed === true) {
             extraDice++;
             tip += "<br>Down: +1 Dice";
         }
@@ -2218,13 +2226,17 @@ log(weapon)
         }
         SetupCard(defender.name,subtitle,defender.faction);
         outputCard.body.push(line);
+        let blood = (downed === true) ? 2:1;
+        let s = (blood === 1) ? "":"s";
+        let remains = (downed === true) ? " remains ":" ";
+
         if (total < 2) {
             outputCard.body.push("No Effect")
         } else if (total > 1 && total < 7) {
-            outputCard.body.push("Minor Hit / 1 Blood Marker");
+            outputCard.body.push("Minor Hit / " + blood + " Blood Marker" + s);
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
-            outputCard.body.push("Defender Downed/1 Blood Marker");
+            outputCard.body.push("Defender" + remains + "Downed / " + blood + " Blood Marker" + s);
             defender.Injury("Down");
         } else if (total > 8) {
             let toughFlag = false;
@@ -2236,7 +2248,7 @@ log(weapon)
             }
             if (toughFlag === true) {
                 outputCard.body.push(defender.name + " Survives a Major Injury");
-                outputCard.body.push(defender.name + " Downed/1 Blood Marker");
+                outputCard.body.push(defender.name + remains + " Downed/ " + blood + " Blood Marker" + s);
                 defender.token.set(SM.wounded,true);
                 defender.Injury("Down");
             } else {

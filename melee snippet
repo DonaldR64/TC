@@ -21,7 +21,7 @@ log(weapon)
     }
     //bit about having fired assault weapon here
 
-    SetupCard(shooter.name,weapon.name,shooter.faction);
+    SetupCard(attacker.name,weapon.name,attacker.faction);
     //errors re range, los
     if (errorMsg.length > 0) {
         _.each(errorMsg,msg => {
@@ -38,7 +38,7 @@ log(weapon)
         extraDice: extraDice,
         result: "",
     }
-    let check = CheckMarkers(shooterID,"Melee2");
+    let check = CheckMarkers(attackerID,"Melee2");
     if (check === true) {
         //has markers
         PrintCard();
@@ -53,7 +53,7 @@ const Melee2 = (extraDice) => {
     let defender = attackInfo.defender;
     let weapon = attackInfo.weapon;
     let secondaryDice = attackInfo.extraDice;
-    SetupCard(shooter.name,weapon.name,shooter.faction);
+    SetupCard(attacker.name,weapon.name,attacker.faction);
     let tip;
 
     //To Hit
@@ -66,11 +66,15 @@ const Melee2 = (extraDice) => {
     if (extraDice !== 0) {
         tip += "<br>Markers: " + extraDice + " Dice"; 
     }
+    if (attacker.token.get("aura2_color") === "#FF0000") {
+        tip += "<br>Downed: -1 Dice";
+        extraDice--;
+    }
     if (secondaryDice !== 0) {
         tip += "<br>Secondary Weapon -1 Dice";
         extraDice -= 1;
     }
-    extraDice += shooter.rangedBonus;
+    extraDice += attacker.meleeBonus;
 
     let fearImmune = false;
     for (let i=0;i<attacker.abilityArray.length;i++) {
@@ -113,8 +117,7 @@ const Melee2 = (extraDice) => {
 
     //defender obstacle
     let defendedObstacle = false;
-    let sameTerrain = findCommonElements(hexMap[attacker.hexLabel].terrainIDs,hexMap[defender.hexLabel].terrainIDs);
-    if (sameTerrain === false || defender.token.get("aura2_color") !== "#FF0000") {
+    if (defender.token.get("aura2_color") !== "#FF0000") {
         let hexes = [hexMap[defender.hexLabel]];
         if (attacker.size === "Large" || defender.size === "Large") {
             let midCube = hexMap[attacker.hexLabel].cube.linedraw(hexMap[defender.hexLabel].cube);
