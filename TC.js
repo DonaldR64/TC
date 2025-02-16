@@ -406,7 +406,8 @@ const TC = (() => {
             let moveType = attributeArray.movetype;
             let rangedBonus = parseInt(attributeArray.ranged);
             let meleeBonus = parseInt(attributeArray.melee);
-            let baseArmour = parseInt(attributeArray.armour);
+            let baseArmour = parseInt(attributeArray.basearmour) || 0;
+            let armour = baseArmour;
 
             let words = attributeArray.keywords || " ";
             words = words.split(",");
@@ -479,6 +480,18 @@ const TC = (() => {
                 }
                 if (name !== undefined && name !== " " && name !== "") {
                     equipmentArray.push(equip);
+                    if (name === "Trench Shield") {
+                        armour -= 1;
+                    }
+                    if (name === "Standard Armour") {
+                        armour -= 1;
+                    }
+                    if (name === "Reinforced Armour") {
+                        armour -= 2;
+                    }
+                    if (name === "Machine Armour") {
+                        armour -= 3;
+                    }
                     if (Keywords[name]) {
                         keywords.push(name);
                     } else {
@@ -490,6 +503,9 @@ const TC = (() => {
                     }
                 }
             }
+
+            armour = Math.max(-3,armour) || 0;
+            AttributeSet(char.id,"armour",armour);
 
             let abilityArray = [];
             for (let i=1;i<6;i++) {
@@ -533,6 +549,13 @@ const TC = (() => {
             }
 
 
+
+
+
+
+
+
+
             this.name = token.get("name");
             this.id = tokenID;
             this.charID = char.id;
@@ -549,6 +572,9 @@ const TC = (() => {
             this.rangedBonus = rangedBonus;
             this.meleeBonus = meleeBonus;
             this.baseArmour = baseArmour;
+            this.armour = armour;
+
+
             //this.armour = armour;
 
             this.size = size;
@@ -2356,35 +2382,10 @@ log(weapon)
 
         //armour and such
         if (ignoreArmour === false) {
-            _.each(defender.equipmentArray,equipment => {
-                let name = equipment.name;
-                let shieldFlag = false;
-
-                if (name === "Trench Shield") {
-                    tip += "<br>Trench Shield: -1 To Roll";
-                    modifier--;
-                    shieldFlag = true;
-                }
-                if (name === "Standard Armour") {
-                    tip += "<br>Standard Armour: -1 To Roll";
-                    modifier--;
-                }
-                if (name === "Reinforced Armour") {
-                    tip += "<br>Reinforced Armour: -2 To Roll";
-                    modifier -= 2;
-                }
-                if (name === "Machine Armour") {
-                    if (shieldFlag === false) {
-                        modifier -= 3
-                        tip += "<br>Machine Armour: -3 To Roll";
-                    } else {
-                        tip += "<br>Machine Armour: -2 To Roll";
-                        modifier -= 2
-                    };
-                }
-            })
+            modifier += defender.armour;
+            let sign = (defender.armour >= 0) ? "+":"";
+            tip += "<br>Armour: " + sign + defender.armour + " To Roll";
         }
-  
 
         let dice = numberDice + Math.abs(extraDice);
         let sign = Math.sign(extraDice);
