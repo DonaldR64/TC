@@ -41,11 +41,17 @@ const TC = (() => {
 
 //fix below
     const SM = {
-        moved: "status_Advantage-or-Up::2006462", //if model moved
-        fired: "status_Shell::5553215",
-        red: "status_red",
-        green: "status_green",
-        wounded: "status_blue", //temp
+        blood: "status_Blood_Transparent::2006466",
+        green: "status_Torch-Light::2006651",
+        wounded: "status_Dying-2::2006644",
+        up1: "status_Green-01::2006603",
+        up2: "status_Green-01::2006607",
+        up3: "status_Green-01::2006611",
+        up4: "status_Green-01::2006614",
+        up5: "status_Green-01::2006615",
+        down1: "status_Red-01::2006626",
+        down1: "status_Red-02::2006628",
+
     }; 
 
 
@@ -621,10 +627,10 @@ const TC = (() => {
             let bar,dot;
             if (type.includes("Blood")) {
                 bar = "bar3_value";
-                dot = SM.red;
+                dot = SM.blood;
             } else if (type === "Blessing") {
                 bar = "bar1_value";
-                dot = SM.green;
+                dot = SM.blessing;
             }
             let current = parseInt(this.token.get(bar));
             current = Math.min(Math.max(current + number,0),6);
@@ -639,13 +645,12 @@ const TC = (() => {
 
         Injury(type) {
             if (type === "Minor Hit" || type === "Down") {
-                let blood = (this.token.get("aura2_color") === "#FF0000") ? 2:1;
+                let blood = (this.token.get("tint_color") === "#FF0000") ? 2:1;
                 this.ChangeMarker("Blood",blood);
             }
             if (type === "Down") {
                 this.token.set({
-                    aura2_color: "#FF0000",
-                    aura2_radius: 0.25,
+                    tint_color: "#FF0000",
                 })
             }
             if (type === "Out of Action") {
@@ -662,8 +667,7 @@ return;
 
         Stand() {
             this.token.set({
-                aura2_color: "transparent",
-                aura2_radius: 0,
+                tint_color: "transparent",
             })
         }
 
@@ -684,17 +688,26 @@ return;
 
     const ModelHeight = (model) => {
         let hex = hexMap[model.hexLabel];
-        let h = hex.elevation;
-        if (h < 0) {h=0};
+        let ele = hex.elevation;
+        if (ele < 0) {ele=0};
+        let height = 0;
         //bit about models higher in building etc using token markers
+        for (let i=1;i<6;i++) {
+            let up = "up" + i;
+            if (model.token.get(SM[up])) {
+                height = i;
+            }
+        }
+        height += ele;
 
         if (model.size === "Large") {
-            h++;
+///?????
         }
-        return h
+        return height;
     }
 
 
+    
 
 
 
@@ -1405,7 +1418,7 @@ return;
         let downModels = [0,0];
         _.each(ModelArray,model => {
             models[model.player]++;
-            if (model.token.get("aura2_color") === "#FF0000") {
+            if (model.token.get("tint_color") === "#FF0000") {
                 downModels[model.player]++;
             }
         })
@@ -1524,7 +1537,7 @@ return;
         let models = [0,0];
         _.each(ModelArray,model => {
             models[model.player]++;
-            if (model.token.get("aura2_color") === "#FF0000") {
+            if (model.token.get("tint_color") === "#FF0000") {
                 downModels[model.player]++;
             }
         })
@@ -1592,7 +1605,7 @@ return;
         SetupCard(model.name,type,model.faction);
 
         if (type === "Move") {
-            let downed = (model.token.get("aura2_color") === "#FF0000") ? true:false
+            let downed = (model.token.get("tint_color") === "#FF0000") ? true:false
             let move = model.move;
             let d6 = randomInteger(6);                
             let chargeMove = Math.min(move + d6,12);
@@ -1651,7 +1664,7 @@ return;
 
 
         } else if (type === "Dash") {
-            let downed = (model.token.get("aura2_color") === "#FF0000") ? true:false           
+            let downed = (model.token.get("tint_color") === "#FF0000") ? true:false           
             model.actionsTaken.push("Dash");
             let dice = (downed === true) ? -1:0
             let results = ActionSuccess(dice);
@@ -1747,8 +1760,7 @@ return;
             model.token.set({
                 aura1_color: "#00FF00",
                 aura1_radius: 0.1,
-                aura2_color: "transparent",
-                aura2_radius: 0.25,
+                tint_color: "transparent",
                 bar3_value: 0,
                 bar3_max: "",
                 bar2_value: 0,
@@ -1861,7 +1873,7 @@ return;
         let Tag = msg.content.split(";");
         let extraDice = parseInt(Tag[1]);
         let model = ModelArray[id];
-        if (model.token.get("aura2_color") === "#FF0000") {
+        if (model.token.get("tint_color") === "#FF0000") {
             extraDice -= 1;
         }
         let text = (extraDice < 0) ? "-":"+";
@@ -2085,7 +2097,7 @@ log(weapon)
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
         }
-        if (attacker.token.get("aura2_color") === "#FF0000") {
+        if (attacker.token.get("tint_color") === "#FF0000") {
             tip += "<br>Downed: -1 Dice";
             extraDice--;
         }
@@ -2235,7 +2247,7 @@ log(weapon)
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
         }
-        if (attacker.token.get("aura2_color") === "#FF0000") {
+        if (attacker.token.get("tint_color") === "#FF0000") {
             tip += "<br>Downed: -1 Dice";
             extraDice--;
         }
@@ -2286,7 +2298,7 @@ log(weapon)
     
         //defender obstacle
         let defendedObstacle = false;
-        if (defender.token.get("aura2_color") !== "#FF0000") {
+        if (defender.token.get("tint_color") !== "#FF0000") {
             let hexes = [hexMap[defender.hexLabel]];
             if (attacker.size === "Large" || defender.size === "Large") {
                 let midCube = hexMap[attacker.hexLabel].cube.linedraw(hexMap[defender.hexLabel].cube);
@@ -2352,7 +2364,7 @@ log(weapon)
     const Injury = (extraDice,bb) => {    
         let attacker = attackInfo.attacker;
         let defender = attackInfo.defender;
-        let downed = (defender.token.get("aura2_color") === "#FF0000") ? true:false;
+        let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
         let weapon = attackInfo.weapon;
         let result = attackInfo.result;
         let tip = "Base 2 Dice";
@@ -2560,7 +2572,7 @@ log(weapon)
             let bb = 6;
             ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
 
-            if (model.token.get("aura2_color") === "#FF0000") {bb = 3};
+            if (model.token.get("tint_color") === "#FF0000") {bb = 3};
             if (nextStep === "Injury" && blood >= bb) {
                 ButtonInfo("Bloodbath!","!Marker;" + bb + ";Bloodbath;" + id + ";" + nextStep);
             } else {
@@ -2940,6 +2952,9 @@ log(int)
                 if (delta > 0) {newRotation = oldRotation + 60};
 
                 newLocation = newHex.centre; //centres it in hex
+
+
+
 
                 tok.set({
                     left: newLocation.x,
