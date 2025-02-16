@@ -129,11 +129,10 @@ const TC = (() => {
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
         "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#ff0000": {name: "Trench",height: -3,los: "Blocked",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#ff0000": {name: "Trench",height: -3,los: "Blocked 1",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-//fix burnt woods
-        //"": {name: "Burnt Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#6aa84f": {name: "Dead Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
         "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
@@ -141,7 +140,7 @@ const TC = (() => {
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#9900ff": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked 2",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 2 ",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 3",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
@@ -156,7 +155,8 @@ const TC = (() => {
         "Drums": {name: "Storage Drums",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
         "Crater": {name: "Crater",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
         "Boxes": {name: "Boxes",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
-        "Sandbags": {name: "Sandbags",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Sandbag": {name: "Sandbags",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
+        "Barricade": {name: "Barricade",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: true},
     }
 
 
@@ -1116,8 +1116,12 @@ return;
                         //hex is in the terrain polygon
                         hex.terrainIDs.push(polygon.id)
                         hex.terrain.push(polygon.name);
-                        if (polygon.los === "Blocked") {hex.los = "Blocked"};
-                        if (polygon.los === "Partial" && hex.los !== "Blocked") {
+                        if (polygon.los.includes("Blocked")) {
+                            if (hex.los !== "Blocked 1") {
+                                hex.los = polygon.los;
+                            }
+                        };
+                        if (polygon.los === "Partial" && hex.los.includes("Blocked") === false) {
                             hex.los = "Partial"
                         }
                         if (polygon.cover === true) {hex.cover = true};
@@ -2046,11 +2050,11 @@ log(weapon)
 
         let results = ActionSuccess(extraDice,modifier,2)
         outputCard.body.push(tip + " " + results.line2);
+        attackInfo.result = results.success;
         if (results.success === false) {
             outputCard.body.push("Attack Misses");
         } else if (results.success === "Critical") {
             outputCard.body.push("Attack Hits and scores a Critical");
-    
         } else {
             outputCard.body.push("Attack Hits");
     
@@ -2445,6 +2449,7 @@ log(weapon)
         let AC,D;
 
         let partialFlag = false;
+        let blockedHexes = 0;
         for (let i=1;i<interCubes.length;i++) {
             let B;
             let flag = false;
@@ -2499,14 +2504,20 @@ log(weapon)
                     flag = true;
                 }
             }
-
+log(interHex.label)
+log(interHex.los)
+            let int = interHex.los.replace(/\D/g,'');
+log(int)
             if (flag === true) {
                 //LOS goes through the terrain
                 if (interHex.cover === true) {losCover = true};
-                if (interHex.los === "Blocked" && sameTerrain === false) {
-                    los = false;
-                    reason = "Blocked by Terrain at " + label;
-                    break;
+                if (interHex.los.includes("Blocked") && sameTerrain === false) {
+                    blockedHexes++;
+                    if (blockedHexes >= int) {
+                        los = false;
+                        reason = "Blocked by Terrain at " + label;
+                        break;
+                    }
                 } else if (interHex.los === "Partial" && partialFlag === false && interSame === false) {
                     //entering partially obscuring terrain
                     partialFlag = true;
