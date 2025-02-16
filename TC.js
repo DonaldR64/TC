@@ -417,6 +417,7 @@ const TC = (() => {
                     keywords.push(word);
                 }
             })
+            
             let weaponArray = {};
             let types = ["melee","ranged"];
             for (let j=0;j<types.length;j++) {
@@ -548,7 +549,10 @@ const TC = (() => {
                 }
             }
 
-
+            let heavy = false;
+            if (keywords.includes("Heavy") && keywords.includes("Strong") === false) {
+                heavy = true;
+            }
 
 
 
@@ -569,6 +573,7 @@ const TC = (() => {
 
             this.move = move;
             this.moveType = moveType;
+            this.heavyMove = heavy;
             this.rangedBonus = rangedBonus;
             this.meleeBonus = meleeBonus;
             this.baseArmour = baseArmour;
@@ -1591,6 +1596,11 @@ return;
             let move = model.move;
             let d6 = randomInteger(6);                
             let chargeMove = Math.min(move + d6,12);
+            if (model.heavyMove === true) {
+                chargeMove = move;
+            }
+
+
             if (downed === true) {
                 move = Math.round(move/2);
                 chargeMove = Math.round(chargeMove/2);
@@ -2454,6 +2464,15 @@ log(weapon)
             subtitle += " + Gas"
             blood += 1;
         }
+        if (weapon.keywords.includes("Shrapnel")) {
+            //negating stuff here
+        
+
+
+            subtitle += " + Shrapnel"
+            blood += 1;
+        }
+
 
 
 
