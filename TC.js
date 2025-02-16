@@ -49,8 +49,6 @@ const TC = (() => {
         up3: "status_Green-01::2006611",
         up4: "status_Green-01::2006614",
         up5: "status_Green-01::2006615",
-        down1: "status_Red-01::2006626",
-        down1: "status_Red-02::2006628",
 
     }; 
 
@@ -707,7 +705,7 @@ return;
     }
 
 
-    
+
 
 
 
