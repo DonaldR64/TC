@@ -2106,7 +2106,184 @@ log(weapon)
         }
     }
 
+    const Melee = (msg) => {
+        let Tag = msg.content.split(";");
+        let attackerID = Tag[1];
+        let defenderID = Tag[2];
+        let weaponNum = Tag[3];
+        let attacker = ModelArray[attackerID];
+        let defender = ModelArray[defenderID];
+        let weapon = attacker.weaponArray.melee[weaponNum];
+        let extraDice = (weapon.type === "Offhand") ? -1:0; 
+    log(weapon)
+    
+        let errorMsg = [];
+        let distance = attacker.cube.distance(defender.cube);
+        let minimum = 1;
+        if (attacker.size === "Large" || defender.size === "Large") {
+            minimum = 2;
+        }
+        if (distance > minimum) {
+            errorMsg.push("Target is Out of Range");
+        }
+        //bit about having fired assault weapon here
+    
+        SetupCard(attacker.name,weapon.name,attacker.faction);
+        //errors re range, los
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                outputCard.body.push(msg);
+            })
+            PrintCard();
+            return;
+        }
+    
+        attackInfo = {
+            attacker: attacker,
+            defender: defender,
+            weapon: weapon,
+            extraDice: extraDice,
+            result: "",
+        }
+        let check = CheckMarkers(attackerID,"Melee2");
+        if (check === true) {
+            //has markers
+            PrintCard();
+            return;
+        }
+        Melee2(0);
+    }
+    
+    const Melee2 = (extraDice) => {
+        //entry from Melee or from Marker
+        let attacker = attackInfo.attacker;
+        let defender = attackInfo.defender;
+        let weapon = attackInfo.weapon;
+        let secondaryDice = attackInfo.extraDice;
+        SetupCard(attacker.name,weapon.name,attacker.faction);
+        let tip;
+    
+        //To Hit
+        //attacker modifiers
+        if (attacker.meleeBonus > 0) {
+            tip = "<br>Base: +" + attacker.meleeBonus + " Dice";
+        } else {
+            tip = "Base: " + attacker.meleeBonus + " Dice";
+        }
+        if (extraDice !== 0) {
+            tip += "<br>Markers: " + extraDice + " Dice"; 
+        }
+        if (attacker.token.get("aura2_color") === "#FF0000") {
+            tip += "<br>Downed: -1 Dice";
+            extraDice--;
+        }
+        if (secondaryDice !== 0) {
+            tip += "<br>Secondary Weapon -1 Dice";
+            extraDice -= 1;
+        }
+        extraDice += attacker.meleeBonus;
+    
+        let fearImmune = false;
+        for (let i=0;i<attacker.abilityArray.length;i++) {
+            let ability = defender.abilityArray[i].name;
+            if (ability === "Fear") {
+                fearImmune = true;
+            }
+            //other fear immune here?
+        }
+    
+    
+    
+    
+    
+        //weapon modifiers
+        let mods = weapon.modifiers;
+        _.each(mods,mod => {
+            let sign = 1;
+            if (mod.includes("-")) {
+                sign = -1;
+            }
+            if (mod.includes("Hit")) {
+                let text = (mod.includes("-")) ? "":"+"
+                let bonus = sign * parseInt(mod)
+                extraDice += bonus;
+                tip += "<br>Weapon: " + text + bonus + " Dice";
+            }
+    
+        })
+    
+        //defender abilities
+        for (let i=0;i<defender.abilityArray.length;i++) {
+            let ability = defender.abilityArray[i].name;
+            if (ability === "Fear" && fearImmune === false) {
+                extraDice -= 1;
+                tip += "<br>Defender Causes Fear"
+            }
+        }
+    
+    
+        //defender obstacle
+        let defendedObstacle = false;
+        if (defender.token.get("aura2_color") !== "#FF0000") {
+            let hexes = [hexMap[defender.hexLabel]];
+            if (attacker.size === "Large" || defender.size === "Large") {
+                let midCube = hexMap[attacker.hexLabel].cube.linedraw(hexMap[defender.hexLabel].cube);
+                if (midCube) {
+                    hexes.push(hexMap[midCube.label()]);
+                }
+            }
+            for (let i=0;i<hexes.length;i++) {
+                if (hexes[i].obstacle === true) {
+                    defendedObstacle = true;
+                    break;
+                }
+            }
+        }
+        if (defendedObstacle === true) {
+            tip += "<br>Defended Obstacle: -1 Dice";
+            extraDice -= 1;
+        }
+    
+        let modifier = 0;
+        //? any in weapons or characters - would be like +1 to hit vs +1 DIce
+        
+        let t = (extraDice >= 0) ? "+":"";
+        tip = "Total: " + t + extraDice + " Dice" + "<br>----------------------" + tip;
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+    
+    
+        let results = ActionSuccess(extraDice,modifier,2)
+        outputCard.body.push(tip + " " + results.line2);
+        attackInfo.result = results.success;
+        if (results.success === false) {
+            outputCard.body.push("Attack Misses");
+        } else if (results.success === "Critical") {
+            outputCard.body.push("Attack Hits and scores a Critical");
+        } else {
+            outputCard.body.push("Attack Hits");
+        }
+    
+        //Injuries
+        if (results.success === false) {
+            PrintCard();
+        } else {
+            let check = CheckMarkers(defender.id,"Injury");
+            PrintCard();
+            if (check === false) {
+                Injury(0);
+            }
+        }
+    
+    
+    
+    
+    }
+    
+    
+    
 
+
+    
 
     
 
@@ -2752,6 +2929,9 @@ log(int)
                 break;
             case '!Ranged':
                 Ranged(msg);
+                break;
+            case '!Melee':
+                Melee(msg);
                 break;
             case '!Marker':
                 Marker(msg);

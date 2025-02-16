@@ -137,6 +137,35 @@ const Melee2 = (extraDice) => {
         extraDice -= 1;
     }
 
+    let modifier = 0;
+    //? any in weapons or characters - would be like +1 to hit vs +1 DIce
+    
+    let t = (extraDice >= 0) ? "+":"";
+    tip = "Total: " + t + extraDice + " Dice" + "<br>----------------------" + tip;
+    tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+
+    let results = ActionSuccess(extraDice,modifier,2)
+    outputCard.body.push(tip + " " + results.line2);
+    attackInfo.result = results.success;
+    if (results.success === false) {
+        outputCard.body.push("Attack Misses");
+    } else if (results.success === "Critical") {
+        outputCard.body.push("Attack Hits and scores a Critical");
+    } else {
+        outputCard.body.push("Attack Hits");
+    }
+
+    //Injuries
+    if (results.success === false) {
+        PrintCard();
+    } else {
+        let check = CheckMarkers(defender.id,"Injury");
+        PrintCard();
+        if (check === false) {
+            Injury(0);
+        }
+    }
 
 
 
