@@ -132,19 +132,19 @@ const TC = (() => {
     //obstacle - can be defended behind - so if combat occuring across then gets bonus - for buildings this is if one of 2 models is 'outside'
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
-        "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#ff0000": {name: "Trench",height: -3,los: "Blocked",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#000000": {name: "Hill", height: 1,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
+        "#ff0000": {name: "Trench",height: -1,los: "Blocked",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-        "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "#6aa84f": {name: "Dead Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#00ff00": {name: "Woods",height: 2,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#6aa84f": {name: "Dead Woods",height: 1,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
 
         "#b6d7a8": {name: "Scrub",height: 0,los: "Open",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#fce5cd": {name: "Craters",height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#0000ff": {name: "Swamp", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
-        "#9900ff": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "#9900ff": {name: "Ruins",height: 1,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
+        "#5b0f00": {name: "Building 1",height: 1,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 2 ",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 3",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
@@ -557,7 +557,7 @@ const TC = (() => {
             if (keywords.includes("Heavy") && keywords.includes("Strong") === false) {
                 heavy = true;
             }
-
+            keywords = keywords.toString();
 
 
 
@@ -578,6 +578,7 @@ const TC = (() => {
             this.move = move;
             this.moveType = moveType;
             this.heavyMove = heavy;
+            this.keywords = keywords;
             this.rangedBonus = rangedBonus;
             this.meleeBonus = meleeBonus;
             this.baseArmour = baseArmour;
@@ -686,23 +687,34 @@ return;
 
     const ModelHeight = (model) => {
         let hex = hexMap[model.hexLabel];
-        let ele = hex.elevation;
-        if (ele < 0) {ele=0};
-        let height = 0;
-        //bit about models higher in building etc using token markers
+        let ele = Math.max(hex.elevation,0);
+        let level = 0;
+        let symbol = "";
         for (let i=1;i<6;i++) {
-            let up = "up" + i;
-            if (model.token.get(SM[up])) {
-                height = i;
+            let sym = "up" + i;
+            if (model.token.get(SM[sym]) === true) {
+                level = i;
+                symbol = SM[sym];
+                break;
             }
         }
-        height += ele;
+        let height = level + ele;
 
-        if (model.size === "Large") {
-///?????
+        let info = {
+            heightSymbol: symbol,
+            height: height,
+            level: level,
+            elevation: ele,
         }
-        return height;
+
+log(info)
+
+        return info;
     }
+
+
+
+
 
 
 
@@ -1525,6 +1537,40 @@ return;
 
     }
 
+    const UpDown = (msg) => {
+        if (!msg) {return};
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        if (!id) {return};
+        let direction = Tag[2];
+        let model = ModelArray[id];
+        let maxHeight = hexMap[model.hexLabel].height - hexMap[model.hexLabel].elevation;
+log(maxHeight)        
+        let info = ModelHeight(model);
+        let level = info.level;
+        if (info.heightSymbol !== "") {
+            model.token.set(info.heightSymbol,false);
+        }
+        if (direction === "+") {
+            level = Math.max(0,Math.min(level + 1,maxHeight));
+        } else {
+            level = Math.max(0,Math.min(level - 1,maxHeight));
+        }
+log("Level: " + level)
+        if (level > 0) {
+            let marker = SM["up" + level]
+log(marker)
+            model.token.set(marker,true);
+        }
+    }
+
+
+
+
+
+
+
+
 
     const GameInfo = () => {
         //use this to convey info re turn, objectives etc
@@ -1870,21 +1916,18 @@ return;
         let id = msg.selected[0]._id;
         if (!id) {return};
         let Tag = msg.content.split(";");
-        let extraDice = parseInt(Tag[1]);
+        let reason = Tag[1];
         let model = ModelArray[id];
-        if (model.token.get("tint_color") === "#FF0000") {
-            extraDice -= 1;
-        }
-        let text = (extraDice < 0) ? "-":"+";
-        text += Math.abs(extraDice) + " Dice";
-        SetupCard(model.name,text,model.faction);
+       
+        SetupCard(model.name,reason,model.faction);
 
         attackInfo = {
             attacker: model,
             defender: "",
             weapon: "",
-            extraDice: extraDice,
+            extraDice: 0,
             result: "",
+            reason: reason,
         }
 
         let check = CheckMarkers(id,"ActionTest2");
@@ -1896,40 +1939,85 @@ return;
     }
 
     const ActionTest2 = (extraDice) => {
+        //!ActionTest;?{Reason|Standard|Climb|Jump over Gap|Enter Dangerous};
         let model = attackInfo.attacker;
-        initialBonus = attackInfo.extraDice; //as the initial entry would be for those from markers
+        SetupCard(model.name,attackInfo.reason,model.faction);
+    
+        let tip = "Base: ";
         let sign = (extraDice > 0) ? "+":"";
-
-
-        SetupCard(model.name,text,model.faction);
-        
-        tip = "Base: ";
         tip += "Markers: " + sign + extraDice + " Dice";
-///
-        tip += "Feed In: " + initialBonus + " Dice";
-        extraDice += initialBonus;
-
 
         //modifiers
+        if (model.token.get("tint_color") === "#FF0000") {
+            extraDice--;
+            tip += "Down: -1 Dice";
+        }
         if (model.keywords.includes("Blasphemous")) {
             tip += "Blasphemous: +1 Dice";
             extraDice++;
         }
 
-
-
-
-
+    
         let results = ActionSuccess(extraDice);
         outputCard.body.push(results.line2);
-        if (results.success === false) {
-            outputCard.body.push("[#FF0000]Test Fails![/#]");
-        } else if (results.success === "Critical") {
-            outputCard.body.push("Critical Success!");
-        } else {
-            outputCard.body.push("Test Succeeds!");
+        tip = results.line1 + "<br>" + tip;
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+
+        let fail = [],success = [], risky = false;
+        switch (attackInfo.reason) {
+            case "Standard": 
+                break;
+            case "Climb":
+                fail.push("Model stays where it is");
+                success.push("Model completes its Climb");
+                risky = true;
+                break;
+            case "Jump over Gap":
+                risky = true;
+                fail.push("Model falls and takes Damage");
+                success.push("Model jumps over the Gap");
+                break;
+            case "Enter Dangerous":
+                risky = true;
+                fail.push("Model takes Damage");
+                success.push("Model takes no Damage");
+                break;
+
+
+
+
         }
+        if (results.success === false) {
+            outputCard.body.push("[#FF0000]Test Fails[/#]");
+            if (fail.length > 0) {
+                _.each(fail,f => {
+                    outputCard.body.push(f);
+                })
+            }
+            if (risky === true) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push("Model's Turn Ends");
+                model.token.set("aura1_color","#000000");
+            }
+        } else {
+            outputCard.body.push("Test Succeeds");
+            if (success.length > 0) {
+                _.each(success,f => {
+                    outputCard.body.push(f);
+                })
+            }
+        }
+
         PrintCard();
+
+
+
+
+
+
+
+
     }
 
     const Marker = (msg) => {
@@ -2658,14 +2746,22 @@ log(weapon)
         if (!faction) {faction = "Neutral"};
         SetupCard(model.name,model.hexLabel,model.faction);
         outputCard.body.push("Terrain: " + h.terrain.toString());
-        outputCard.body.push("Elevation: " + h.elevation); //modify for character height - using token markers
-        if (model.token.get("aura1_color") === "#FF0000") {
+        let info = ModelHeight(model);
+        let height = h.elevation;
+        if (info.heightSymbol !== "") {
+            let s = (info.level === 1) ? "":"s"
+            outputCard.body.push(info.level + " Level" + s + " above the base/floor");
+            height += info.level;
+        }
+        outputCard.body.push("Final Height: " + height);
+
+
+        if (model.token.get("tint_color") === "#FF0000") {
             outputCard.body.push("Model is Down");
         }
         if (h.cover === true) {
             outputCard.body.push("Defender is in Cover");
         }
-
         PrintCard();
         
     }
@@ -2725,8 +2821,8 @@ log(weapon)
         let model1Hex = hexMap[model1.hexLabel];
         let model2Hex = hexMap[model2.hexLabel];
 
-        let model1Height = ModelHeight(model1);
-        let model2Height = ModelHeight(model2);
+        let model1Height = ModelHeight(model1).height;
+        let model2Height = ModelHeight(model2).height;
         let heightAdvantage = (model1Height > model2Height) ? true:false;
       
         //reduce to lowest level
@@ -2939,7 +3035,7 @@ log(int)
             if ((tok.get("left") !== prev.left) || (tok.get("top") !== prev.top) || (tok.get("rotation") !== prev.rotation)) {
                 let model = ModelArray[tok.id];
                 if (!model) {return};
-
+                let oldHex = hexMap[model.hexLabel];
                 let newLocation = new Point(tok.get("left"),tok.get("top"));
                 let newHex = hexMap[newLocation.toOffset().label()];
                 let oldHexLabel = model.hexLabel;
@@ -2952,6 +3048,17 @@ log(int)
 
                 newLocation = newHex.centre; //centres it in hex
 
+                //check if has moved out into lower height area
+                let info = ModelHeight(model);
+                if (info.heightSymbol !== "") {
+                    let level = info.level;
+                    let maxHeight = newHex.height - newHex.elevation;
+                    if (level > maxHeight) {
+                        level = maxHeight;
+                    }
+                    model.token.set(info.heightSymbol,false);
+                    model.token.set(SM["up" + level],true);
+                }
 
 
 
@@ -3021,6 +3128,9 @@ log(int)
                 break;
             case '!Marker':
                 Marker(msg);
+                break;
+            case '!UpDown':
+                UpDown(msg);
                 break;
           
             
