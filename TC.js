@@ -2078,23 +2078,28 @@ log(weapon)
     
         })
     
-        let cover = false;
-        if (losResult.cover === true && weapon.modifiers.includes("Ignore Cover") === false) {
-            cover = true;
+        let cover = (losResult.cover === true || losResult.loscover === true) ? true:false;
+        if (weapon.keywords.includes("Grenade") || weapon.modifiers.includes("Ignore Cover") === false) {
+            cover = false;
         }
-        if (losResult.loscover === true && weapon.modifiers.includes("Ignore Cover") === false) {
-            cover = true;
-        }
-    
+
         if (cover === true) {
             extraDice--;
             tip += "<br>Cover -1 Dice";
         }
     
-        if (losResult.distance > Math.round(weapon.range/2)) {
+        let longRange = (losResult.distance > Math.round(weapon.range/2)) ? true:false;
+        if (weapon.keywords.includes("Grenade")) {
+            longRange = false;
+        }
+
+        if (longRange === true) {
             extraDice--;
             tip += "<br>Long Range -1 Dice";
         }
+
+
+
     
         if (losResult.heightAdvantage === true) {
             extraDice++;
@@ -2430,15 +2435,38 @@ log(weapon)
         if (bb === true) {
             subtitle = "Bloodbath! " + subtitle;
         }
-        SetupCard(defender.name,subtitle,defender.faction);
-        outputCard.body.push(line);
         let blood = (downed === true) ? 2:1;
-        let s = (blood === 1) ? "":"s";
         let remains = (downed === true) ? " remains ":" ";
 
-        if (total < 2) {
+        if (weapon.keywords.includes("Fire")) {
+            //negating stuff here
+        
+
+
+            subtitle += " + Fire"
+            blood += 1;
+        }
+        if (weapon.keywords.includes("Gas")) {
+            //negating stuff here
+        
+
+
+            subtitle += " + Gas"
+            blood += 1;
+        }
+
+
+
+
+
+
+        SetupCard(defender.name,subtitle,defender.faction);
+        outputCard.body.push(line);
+        let s = (blood === 1) ? "":"s";
+
+        if (total < 2 && blood === 0) {
             outputCard.body.push("No Effect")
-        } else if (total > 1 && total < 7) {
+        } else if (total < 7) {
             outputCard.body.push("Minor Hit / " + blood + " Blood Marker" + s);
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
@@ -2462,6 +2490,9 @@ log(weapon)
                 defender.Injury("Out of Action");
             }
         }
+
+
+
 
 
         PrintCard();
