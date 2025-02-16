@@ -1790,7 +1790,7 @@ return;
 
 
 
-
+//later alter this for things like falling, etc - put those into the macro query and change extraDice below to the query
     const ActionTest = (msg) => {
         let id = msg.selected[0]._id;
         if (!id) {return};
