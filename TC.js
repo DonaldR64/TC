@@ -1920,7 +1920,6 @@ log(marker)
         let model = ModelArray[id];
        
         SetupCard(model.name,reason,model.faction);
-
         attackInfo = {
             attacker: model,
             defender: "",
@@ -1930,12 +1929,28 @@ log(marker)
             reason: reason,
         }
 
-        let check = CheckMarkers(id,"ActionTest2");
-        if (check === true) {
-            PrintCard();
-            return;
+
+        if (reason === "Fall") {
+            let info = ModelHeight(model);
+            model.token.set(info.heightSymbol,false);
+            attackInfo.extraDice = info.level;
+            let check = CheckMarkers(model.id,"Injury");
+            if (check === true) {
+                PrintCard();
+                return;
+            } else {
+                Injury()
+//////////
+
+            }
+        } else {
+            let check = CheckMarkers(id,"ActionTest2");
+            if (check === true) {
+                PrintCard();
+                return;
+            }
+            ActionTest2(0); //0 as no blood or blessings 
         }
-        ActionTest2(0); //0 as no blood or blessings 
     }
 
     const ActionTest2 = (extraDice) => {
@@ -1983,10 +1998,6 @@ log(marker)
                 fail.push("Model takes Damage");
                 success.push("Model takes no Damage");
                 break;
-
-
-
-
         }
         if (results.success === false) {
             outputCard.body.push("[#FF0000]Test Fails[/#]");
