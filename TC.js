@@ -41,8 +41,8 @@ const TC = (() => {
 
 //fix below
     const SM = {
-        blood: "status_Blood_Transparent::2006466",
-        green: "status_Torch-Light::2006651",
+        blood: "status_red",
+        blessing: "status_green",
         wounded: "status_Dying-2::2006644",
         up1: "status_Green-01::2006603",
         up2: "status_Green-01::2006607",
@@ -1766,6 +1766,7 @@ return;
                 bar1_value: 0,
                 bar1_max: "",
                 name: name,
+                statusmarkers: "",
             })
             
 
