@@ -629,7 +629,12 @@ return;
             }
         }
 
-
+        Stand() {
+            this.token.set({
+                aura2_color: "transparent",
+                aura2_radius: 0,
+            })
+        }
 
 
 
@@ -1554,6 +1559,17 @@ return;
         SetupCard(model.name,type,model.faction);
 
         if (type === "Move") {
+            let downed = (model.token.get("aura2_color") === "#FF0000") ? true:false
+            let move = model.move;
+            let d6 = randomInteger(6);                
+            let chargeMove = Math.min(move + d6,12);
+            if (downed === true) {
+                move = Math.round(move/2);
+                chargeMove = Math.round(chargeMove/2);
+                outputCard.body.push("The model stands up");
+                outputCard.body.push("All Movement is Halved");
+                model.Stand();
+            }
             //check if in combat
             let neighbourCubes = model.cube.neighbours();
             ncloop1:
@@ -1582,30 +1598,40 @@ return;
 
             if (subtype === "Move") {
                 //no test
-                outputCard.body.push("Model can move " + model.move + " Hexes")
+                outputCard.body.push("Model can move " + move + " Hexes")
                 if (model.moveType === "Flying") {
                     outputCard.body.push(" Flying models treat Difficult and/or Dangerous Terrain as Open Terrain and they do not trigger mines and similar devices. Flying models can climb up and down and they can jump over gaps of up to their Movement characteristic without taking ACTIONS.");
                 }
             } else if (subtype === "Charge") {
-                let d6 = randomInteger(6);                
-                let chargeMove = Math.min(model.move + d6,12);
                 outputCard.body.push("Roll: " + DisplayDice(d6,Factions[model.faction].dice),24);
                 outputCard.body.push("Model can charge " + chargeMove + " Hexes");
                 outputCard.body.push("Taking the shortest route. If the model cannot see the target, a RISKY ACTION TEST must be taken");
             } else if (subtype === "Retreat") {
-                outputCard.body.push("The model moves up to its Movement characteristic and it may leave Melee Combat during this movement. Each enemy model in Melee Combat with the retreating model may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
+                outputCard.body.push("The model moves up to " + move + " hexes, and it may leave Melee Combat during this movement. Each enemy model in Melee Combat with the retreating model may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
 //flag  
             }
 
 
         } else if (type === "Dash") {
+            let downed = (model.token.get("aura2_color") === "#FF0000") ? true:false           
             model.actionsTaken.push("Dash");
-            let results = ActionSuccess(0);
+            let dice = (downed === true) ? -1:0
+            let results = ActionSuccess(dice);
             outputCard.body.push(results.line2);
             if (results.success === false) {
                 outputCard.body.push("[#FF0000]Test Fails![/#]");
                 outputCard.body.push("The Model's Activation ends...");
+                if (downed === true) {
+                    outputCard.body.push("It also remains Downed");
+                }
             } else {
+                let move = model.move;
+                if (downed === true) {
+                    move = Math.round(move/2);
+                    outputCard.body.push("The model stands up");
+                    outputCard.body.push("All Movement is Halved");
+                    model.Stand();
+                }
                 outputCard.body.push("Success! The model may move " + model.move + " Hexes");
             } 
 

@@ -3,8 +3,8 @@ const Melee = (msg) => {
     let attackerID = Tag[1];
     let defenderID = Tag[2];
     let weaponNum = Tag[3];
-    let secondary = Tag[4];
-    let extraDice = (secondary === true) ? -1:0; //configure secondary as an addon in addabilities
+    let offhand = Tag[4];
+    let extraDice = (offhand === true) ? -1:0; //configure offhand weapon as an addon in addabilities
     let attacker = ModelArray[attackerID];
     let defender = ModelArray[defenderID];
     let weapon = attacker.weaponArray.melee[weaponNum];
@@ -136,6 +136,7 @@ const Melee2 = (extraDice) => {
         tip += "<br>Defended Obstacle: -1 Dice";
         extraDice -= 1;
     }
+
 
 
 
