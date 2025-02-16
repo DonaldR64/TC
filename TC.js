@@ -129,7 +129,7 @@ const TC = (() => {
     //trying additive hills, although may want some immediately 2 high hills also 
     const TerrainInfo = {
         "#000000": {name: "Hill", height: 5,los: "Open",cover: false,difficult: false,dangerous: false,obstacle: false},
-        "#ff0000": {name: "Trench",height: -3,los: "Blocked 1",cover: true,difficult: false,dangerous: false,obstacle: false},
+        "#ff0000": {name: "Trench",height: -3,los: "Blocked",cover: true,difficult: false,dangerous: false,obstacle: false},
         "#00ffff": {name: "Stream", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#00ff00": {name: "Woods",height: 10,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
         "#6aa84f": {name: "Dead Woods",height: 5,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
@@ -140,7 +140,7 @@ const TC = (() => {
 
         "#ffff00": {name: "Rubble", height: 0,los: "Open",cover: true,difficult: true,dangerous: false,obstacle: false}, 
         "#9900ff": {name: "Ruins",height: 3,los: "Partial",cover: true,difficult: true,dangerous: false,obstacle: false},
-        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked 2",cover: true,difficult: true,dangerous: false,obstacle: true},
+        "#5b0f00": {name: "Building 1",height: 5,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 2 ",height: 10,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
         //"": {name: "Building 3",height: 15,los: "Blocked",cover: true,difficult: true,dangerous: false,obstacle: true},
 
@@ -1104,22 +1104,22 @@ return;
                     let polygon = TerrainArray[terrainKey];
                     if (hex.terrain.includes(polygon.name)) {return};
                     let pts = XHEX(c);
-
                     let num = 0;
+                    let threshold = 1;
+                    if (polygon.name.includes("Building") === false) {
+                        threshold = 2;
+                    }
                     _.each(pts,pt => {
                         let check = pointInPolygon(pt,polygon.vertices);
                         if (check === true) {num++};
                     })
 
-
-                    if (num > 0) {
+                    if (num > threshold) {
                         //hex is in the terrain polygon
                         hex.terrainIDs.push(polygon.id)
                         hex.terrain.push(polygon.name);
                         if (polygon.los.includes("Blocked")) {
-                            if (hex.los !== "Blocked 1") {
-                                hex.los = polygon.los;
-                            }
+                            hex.los = "Blocked";
                         };
                         if (polygon.los === "Partial" && hex.los.includes("Blocked") === false) {
                             hex.los = "Partial"
