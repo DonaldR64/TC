@@ -2639,8 +2639,10 @@ log(weapon)
                 tip += "<br>Weapon Critical +1 Dice";
             }
             if (modifier.includes("Ignore Armour")) {
-                tip += "<br>Ignores Armour";
-                ignoreArmour = true;
+                if ((modifier.includes("Down") && downed === true) || modifier.includes("Down") === false) {
+                    tip += "<br>Ignores Armour";
+                    ignoreArmour = true;
+                } 
             }
 
         })
@@ -2655,7 +2657,10 @@ log(weapon)
             tip += "<br>Engineer Body Armour: -1 Dice";
             extraDice--;
         }
-
+        if (defender.equipment.includes("Gas Mask") && weapon.keywords.includes("Gas")) {
+            tip += "<br>Gas Mask: -1 Dice";
+            extraDice--;
+        }
 
 
 
@@ -2717,7 +2722,7 @@ log(weapon)
         }
         if (weapon.keywords.includes("Gas")) {
             //negating stuff here
-            let list = [""];
+            let list = ["Gas Mask"];
             if (Exclusion(defender,list) === false) {
                 subtitle += " + Gas"
                 blood += 1;
@@ -3169,37 +3174,49 @@ log(int)
         action = "!Action;@{selected|token_id};Dash}";
         AddAbility(abilityName,action, model.charID);
 
+        //token info
+        //los
+
+
+
         let num = 0;
         let melee = model.weaponArray.melee;
-        for (let i=0;i<melee.length;i++) {
-            let weapon = melee[i];
-//multiple attacks
-            num++;
-            abilityName = num + ": " + weapon.name;
-            action = "!Melee;@{selected|token_id};@{target|token_id};" + i;
-            AddAbility(abilityName,action, model.charID);
+        if (melee) {
+            for (let i=0;i<melee.length;i++) {
+                let weapon = melee[i];
+    //multiple attacks
+                num++;
+                abilityName = num + ": " + weapon.name;
+                action = "!Melee;@{selected|token_id};@{target|token_id};" + i;
+                AddAbility(abilityName,action, model.charID);
+            }
         }
+       
 
         let ranged = model.weaponArray.ranged;
-        for (let i=0;i<ranged.length;i++) {
-            let weapon = ranged[i];
-//multiple attacks
-            num++;
-            abilityName = num + ": " + weapon.name;
-            action = "!Ranged;@{selected|token_id};@{target|token_id};" + i;
-            AddAbility(abilityName,action, model.charID);
+        if (ranged) {
+            for (let i=0;i<ranged.length;i++) {
+                let weapon = ranged[i];
+    //multiple attacks
+                num++;
+                abilityName = num + ": " + weapon.name;
+                action = "!Ranged;@{selected|token_id};@{target|token_id};" + i;
+                AddAbility(abilityName,action, model.charID);
+            }
         }
-
+        
         //Model Abilities needing macros - in form of name and # of targets
         let macros = [["On My Command!",1],["God is With Us!",1],["Onwards, Christian Soldiers!",0],["Aim",0],["Fortify",0],["De-mine",0]]
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
             if (model.abilities.includes(macroName)) {
+                num++;
+                abilityName = num + ": " + macroName;
                 action = "!ModelAbilities;" + macroName + ";@{selected|token_id}";
                 for (let j=0;j<macros[i][1];j++) {
                     action += ";@{target|Target " + (j+1) + "|token_id}";
                 }
-                AddAbility(macroName,action, model.charID);
+                AddAbility(abilityName,action, model.charID);
             }
         }
 
@@ -3208,11 +3225,13 @@ log(int)
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
             if (model.equipment.includes(macroName)) {
+                num++;
+                abilityName = num + ": " + macroName;
                 action = "!ModelEquipment;" + macroName + ";@{selected|token_id}";
                 for (let j=0;j<macros[i][1];j++) {
                     action += ";@{target|Target " + (j+1) + "|token_id}";
                 }
-                AddAbility(macroName,action, model.charID);
+                AddAbility(abilityName,action, model.charID);
             }
         }
             
