@@ -553,6 +553,21 @@ const TC = (() => {
             });
             keywords = [...new Set(keywords)];
 
+            let abilities = abilityArray.map(e => {
+                return e.trim();
+            });
+            abilities = [...new Set(abilities)];
+
+            let equipment = equipmentArray.map(e => {
+                return e.trim();
+            });
+            equipment = [...new Set(equipment)];
+
+
+
+
+
+
             //update character sheet
             for (let i=0;i<keywords.length;i++) {
                 let keyword = keywords[i];
@@ -570,7 +585,7 @@ const TC = (() => {
 
             let heavy = false;
             if (keywords.includes("Heavy")) {
-                exclusions = ["Strong","Assault Drill"];
+                let exclusions = ["Strong","Assault Drill"];
                 _.each(exclusions,e => {
                     if (keywords.includes(e) || abilityArray.includes(e)) {
                         heavy = false;
@@ -611,8 +626,8 @@ const TC = (() => {
             this.size = size;
 
             this.weaponArray = weaponArray;
-            this.equipmentArray = equipmentArray;
-            this.abilityArray = abilityArray;
+            this.equipment = equipment.toString() || " ";
+            this.abilities = abilities.toString() || " ";
 
             this.token = token;
             
@@ -1675,7 +1690,7 @@ log(marker)
             let downed = (model.token.get("tint_color") === "#FF0000") ? true:false
             let move = model.move;
             let d6 = randomInteger(6);   
-            if (model.abilityArray.includes("Shock Charge")) {
+            if (model.abilities.includes("Shock Charge")) {
                 let d6two = randomInteger(6);   
                 d6 = Math.max(d6,d6two);
             }           
@@ -2456,13 +2471,12 @@ log(weapon)
         })
     
         //defender abilities
-        for (let i=0;i<defender.abilityArray.length;i++) {
-            let ability = defender.abilityArray[i].name;
-            if (ability === "Fear" && fearImmune === false) {
-                extraDice -= 1;
-                tip += "<br>Defender Causes Fear"
-            }
+        if (defender.abilities.includes("Fear") && fearImmune === false) {
+            extraDice -= 1;
+            tip += "<br>Defender Causes Fear"
         }
+
+
     
     
         //defender obstacle
@@ -2572,7 +2586,7 @@ log(weapon)
                 tip += "<br>Diving Charge: +1 Dice";
                 extraDice++;
             }
-            if (attacker.abilityArray.includes("Finish the Fallen") && downed === true) {
+            if (attacker.abilities.includes("Finish the Fallen") && downed === true) {
                 if (defender.keywords.includes("Black Grail") === false && defender.keywords.includes("Demonic") === false) {
                     tip += "<br>Finish the Fallen: +1 Dice";
                     extraDice++;
@@ -2737,13 +2751,8 @@ log(weapon)
             outputCard.body.push("Defender" + remains + "Downed / " + blood + " Blood Marker" + s);
             defender.Injury("Down");
         } else if (total > 8) {
-            let toughFlag = false;
-            for (let i=0;i<defender.abilityArray.length;i++) {
-                let ability = defender.abilityArray[i].name;
-                if (ability === "Tough" && defender.token.get(SM.wounded) === false) {
-                    toughFlag = true;
-                }
-            }
+            let toughFlag = (defender.abilities.includes("Tough") && defender.token.get(SM.wounded) === false) ? true:false;
+
             if (toughFlag === true) {
                 outputCard.body.push(defender.name + " Survives a Major Injury");
                 outputCard.body.push(defender.name + remains + " Downed/ " + blood + " Blood Marker" + s);
@@ -2765,7 +2774,7 @@ log(weapon)
 
     const Exclusion = (model,exclusions) => {
         _.each(exclusions,e => {
-            if (model.keywords.includes(e) || model.abilityArray.includes(e)) {
+            if (model.keywords.includes(e) || model.abilities.includes(e)) {
                 return true;
             }
         })
@@ -2788,7 +2797,7 @@ log(weapon)
                 friendlyFire = true;
             }
         }
-        if (nextStep === "Ranged2" && model.abilityArray.includes("Absolute Faith")) {
+        if (nextStep === "Ranged2" && model.abilities.includes("Absolute Faith")) {
             friendlyFire = true;  //sniper priest ability - ignores blood markers
         }
 
@@ -3160,12 +3169,13 @@ log(int)
         action = "!Action;@{selected|token_id};Dash}";
         AddAbility(abilityName,action, model.charID);
 
+        let num = 0;
         let melee = model.weaponArray.melee;
         for (let i=0;i<melee.length;i++) {
             let weapon = melee[i];
 //multiple attacks
-
-            abilityName = weapon.name;
+            num++;
+            abilityName = num + ": " + weapon.name;
             action = "!Melee;@{selected|token_id};@{target|token_id};" + i;
             AddAbility(abilityName,action, model.charID);
         }
@@ -3174,8 +3184,8 @@ log(int)
         for (let i=0;i<ranged.length;i++) {
             let weapon = ranged[i];
 //multiple attacks
-
-            abilityName = weapon.name;
+            num++;
+            abilityName = num + ": " + weapon.name;
             action = "!Ranged;@{selected|token_id};@{target|token_id};" + i;
             AddAbility(abilityName,action, model.charID);
         }
@@ -3184,7 +3194,7 @@ log(int)
         let macros = [["On My Command!",1],["God is With Us!",1],["Onwards, Christian Soldiers!",0],["Aim",0],["Fortify",0],["De-mine",0]]
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
-            if (model.abilityArray.includes(macroName)) {
+            if (model.abilities.includes(macroName)) {
                 action = "!ModelAbilities;" + macroName + ";@{selected|token_id}";
                 for (let j=0;j<macros[i][1];j++) {
                     action += ";@{target|Target " + (j+1) + "|token_id}";
@@ -3197,7 +3207,7 @@ log(int)
         macros = [["Medi-kit",1]];
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
-            if (model.equipmentArray.includes(macroName)) {
+            if (model.equipment.includes(macroName)) {
                 action = "!ModelEquipment;" + macroName + ";@{selected|token_id}";
                 for (let j=0;j<macros[i][1];j++) {
                     action += ";@{target|Target " + (j+1) + "|token_id}";
