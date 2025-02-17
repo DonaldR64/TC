@@ -2425,7 +2425,7 @@ log(weapon)
         if (attacker.meleeBonus > 0) {
             tip = "<br>Base: +" + attacker.meleeBonus + " Dice";
         } else {
-            tip = "Base: " + attacker.meleeBonus + " Dice";
+            tip = "<br>Base: " + attacker.meleeBonus + " Dice";
         }
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
