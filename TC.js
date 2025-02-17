@@ -2587,7 +2587,7 @@ log(weapon)
                 extraDice++;
             }
             if (attacker.abilities.includes("Finish the Fallen") && downed === true) {
-                if (defender.keywords.includes("Black Grail") === false && defender.keywords.includes("Demonic") === false) {
+                if (defender.faction !== "Black Grail" && defender.keywords.includes("Demonic") === false) {
                     tip += "<br>Finish the Fallen: +1 Dice";
                     extraDice++;
                 }
