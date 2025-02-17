@@ -44,6 +44,7 @@ const TC = (() => {
         blood: "status_red",
         blessing: "status_green",
         wounded: "status_Dying-2::2006644",
+        diving: "status_lightning-helix",
         up1: "status_Green-01::2006603",
         up2: "status_Green-01::2006607",
         up3: "status_Green-01::2006611",
@@ -1529,6 +1530,7 @@ log(info)
             //reset things
             model.actionsTaken = [];
             model.token.set("aura1_color","#00FF00");
+            model.token.set(SM.diving,false);
         })
 
 
@@ -1704,6 +1706,25 @@ log(marker)
             } else if (subtype === "Retreat") {
                 outputCard.body.push("The model moves up to " + move + " hexes, and it may leave Melee Combat during this movement. Each enemy model in Melee Combat with the retreating model may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
 //flag  
+            } else if (subtype === "Diving Charge") {
+                //risky action test
+                let info = ModelHeight(model);
+log(info)
+                attackInfo = {
+                    attacker: model,
+                    defender: model,
+                    weapon: "",
+                    extraDice: info.level,
+                    result: "",
+                    reason: "Diving Charge",
+                }
+                let check = CheckMarkers(modelID,"ActionTest2");
+log(check)
+                if (check === false) {
+                    ActionTest2(0);
+                    return;
+                }
+
             }
 
 
@@ -1921,8 +1942,8 @@ log(marker)
        
         SetupCard(model.name,reason,model.faction);
         attackInfo = {
-            attacker: model,
-            defender: "",
+            attacker: "",
+            defender: model,
             weapon: "",
             extraDice: 0,
             result: "",
@@ -1939,9 +1960,7 @@ log(marker)
                 PrintCard();
                 return;
             } else {
-                Injury()
-//////////
-
+                Injury(0);
             }
         } else {
             let check = CheckMarkers(id,"ActionTest2");
@@ -1956,6 +1975,7 @@ log(marker)
     const ActionTest2 = (extraDice) => {
         //!ActionTest;?{Reason|Standard|Climb|Jump over Gap|Enter Dangerous};
         let model = attackInfo.attacker;
+
         SetupCard(model.name,attackInfo.reason,model.faction);
     
         let tip = "Base: ";
@@ -1979,7 +1999,7 @@ log(marker)
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
 
 
-        let fail = [],success = [], risky = false;
+        let fail = [],success = [], risky = false,failRoutines = [],successRoutines = [];
         switch (attackInfo.reason) {
             case "Standard": 
                 break;
@@ -1998,6 +2018,12 @@ log(marker)
                 fail.push("Model takes Damage");
                 success.push("Model takes no Damage");
                 break;
+            case "Diving Charge":
+                risky = true;
+                fail.push("The Model is Down and takes injury from the Fall");
+                success.push("Place the charging model next to the target. It gains a +1 Dice bonus to hit and injury the target, and ignores any defended Obstacle");
+                failRoutines = ["Fall","Down"];
+                successRoutines = ["Diving"];
         }
         if (results.success === false) {
             outputCard.body.push("[#FF0000]Test Fails[/#]");
@@ -2011,6 +2037,19 @@ log(marker)
                 outputCard.body.push("Model's Turn Ends");
                 model.token.set("aura1_color","#000000");
             }
+            PrintCard();
+            setTimeout(function(){
+                _.each(failRoutines,routine => {
+                    if (routine === "Down") {
+                        model.token.set("tint_color","#FF0000");
+                    }
+                    if (routine === "Fall") {
+                        Injury(0);
+                        return;
+                    }
+                })
+
+            }, 500);
         } else {
             outputCard.body.push("Test Succeeds");
             if (success.length > 0) {
@@ -2018,9 +2057,15 @@ log(marker)
                     outputCard.body.push(f);
                 })
             }
+            _.each(successRoutines,routine => {
+                if (routine === "Diving") {
+                    model.token.set(SM.diving,true);
+                }
+            })
+
+            PrintCard();
         }
 
-        PrintCard();
 
 
 
@@ -2345,6 +2390,10 @@ log(weapon)
         if (extraDice !== 0) {
             tip += "<br>Markers: " + extraDice + " Dice"; 
         }
+        if (attacker.token.get(SM.diving) === true) {
+            tip += "<br>Diving Charge: +1 Dice";
+            extraDice++;
+        }
         if (attacker.token.get("tint_color") === "#FF0000") {
             tip += "<br>Downed: -1 Dice";
             extraDice--;
@@ -2396,7 +2445,7 @@ log(weapon)
     
         //defender obstacle
         let defendedObstacle = false;
-        if (defender.token.get("tint_color") !== "#FF0000") {
+        if (defender.token.get("tint_color") !== "#FF0000" && attacker.token.get(SM.diving) === false) {
             let hexes = [hexMap[defender.hexLabel]];
             if (attacker.size === "Large" || defender.size === "Large") {
                 let midCube = hexMap[attacker.hexLabel].cube.linedraw(hexMap[defender.hexLabel].cube);
@@ -2464,6 +2513,11 @@ log(weapon)
         let defender = attackInfo.defender;
         let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
         let weapon = attackInfo.weapon;
+        if (weapon === "") {
+            weapon = {keywords: " ",modifiers: []}
+        }
+
+
         let result = attackInfo.result;
         let tip = "Base 2 Dice";
         if (!bb) {bb = false};
@@ -2479,12 +2533,25 @@ log(weapon)
         }
         let modifier = 0; //added to final roll
 
+
+        if (attackInfo.reason === "Fall") {
+            tip += "<br>Fall Distance: +" + attackInfo.extraDice + " Dice";
+            extraDice += attackInfo.extraDice;
+        }
+
         //any bonus from attacker
 
         if (result === "Critical") {
             extraDice++;
             tip += "<br>Critical: +1 Dice";
         }
+        if (attacker) {
+            if (attacker.token.get(SM.diving) === true) {
+                tip += "<br>Diving Charge: +1 Dice";
+                extraDice++;
+            }
+        }
+      
 
         //Defender Modifiers
         if (downed === true) {
@@ -2492,8 +2559,8 @@ log(weapon)
             tip += "<br>Down: +1 Dice";
         }
 
-        //bonus from weapon
         let ignoreArmour = false;
+        //bonus from weapon
         _.each(weapon.modifiers,modifier => {
             let sign = 1;
             if (modifier.includes("-")) {
@@ -2519,8 +2586,6 @@ log(weapon)
                 tip += "<br>Ignores Armour";
                 ignoreArmour = true;
             }
-
-
 
         })
 
