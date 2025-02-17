@@ -9,7 +9,8 @@ const TC = (() => {
     let activeModelID = "";
     let hexMap = {}; 
     let attackInfo;
-    
+    let testInfo;
+
     //Regular Hexagons, 'width' in Roll20 is 70
     let HexSize = 70/Math.sqrt(3);
     const HexInfo = {
@@ -52,6 +53,8 @@ const TC = (() => {
         up5: "status_Green-01::2006615",
         morale: "status_blue", ///temp for fear immune
         aim: "status_blue", //temp
+        cover: "status_blue",
+
     }; 
 
 
@@ -610,6 +613,8 @@ const TC = (() => {
             this.location = location;
             this.cube = cube;
             this.hexLabel = hexLabel;
+
+            this.oldLevel = 0;
 
             this.move = move;
             this.moveType = moveType;
@@ -1698,7 +1703,10 @@ log(marker)
             if (model.heavyMove === true) {
                 chargeMove = move;
             }
-
+            if (model.token.get(SM.cover) === true) {
+                outputCard.body.push("The model is no longer considered to be in cover");
+                model.token.set(SM.cover,false);
+            }
 
             if (downed === true) {
                 move = Math.round(move/2);
@@ -1748,23 +1756,8 @@ log(marker)
 //flag  
             } else if (subtype === "Diving Charge") {
                 //risky action test
-                let info = ModelHeight(model);
-log(info)
-                attackInfo = {
-                    attacker: model,
-                    defender: model,
-                    weapon: "",
-                    extraDice: info.level,
-                    result: "",
-                    reason: "Diving Charge",
-                }
-                let check = CheckMarkers(modelID,"ActionTest2");
-log(check)
-                if (check === false) {
-                    ActionTest2(0);
-                    return;
-                }
-
+                ActionTest(subtype,model.id,"",true,0,0);
+                return; //no need to printcard
             }
 
 
@@ -1781,6 +1774,10 @@ log(check)
                     outputCard.body.push("It also remains Downed");
                 }
             } else {
+                if (model.token.get(SM.cover) === true) {
+                    model.token.set(SM.cover,false);
+                    outputCard.body.push("The model is no longer considered to be in cover");
+                }
                 let move = model.move;
                 if (downed === true) {
                     move = Math.round(move/2);
@@ -1931,17 +1928,6 @@ log(check)
         } else if (total > 11) {
             success = "Critical";
         }
-        let line1 = "";
-        if (sign < 0) {
-            line1 = "-" + extraDice + " Dice";
-        } else {
-            line1 = "+" + extraDice + " Dice";
-        }
-        if (modifier > 0) {
-            line1 += " +" + modifier;
-        } else if (modifier < 0) {
-            line1 += " -" + Math.abs(modifier);
-        }
    
         let line2 = "Rolls: ";
         for (let i=0;i<rolls.length;i++) {
@@ -1960,17 +1946,187 @@ log(check)
 
         let results = {
             success: success,
-            line1: line1,
             line2: line2,
         }
         return results;
     }
 
 
-  
+
+    const ActionTest = (reason,id,targetIDs,risky,bonusDice,rollMod,numDice) => {
+        //fed from other sources eg from a melee attack or an ability
+        if (!targetIDs) {targetIDs = []};
+        if (targetIDs.constructor !== Array) {
+            targetIDs = [targetIDs]; //a single id was passed
+        }
+        if (!risky) {risky = false};
+        if (!bonusDice) {bonusDice = 0}; //   +/- Dice
+        if (!rollMod) {rollMod = 0}; // +/- to final roll
+        if (!numDice) {numDice = 2}; // # of dice used to determine test result
+    
+        testInfo = {
+            id: id,
+            risky: risky,
+            targetIDs: targetIDs,
+            bonusDice: bonusDice,
+            rollMod: rollMod,
+            numDice: numDice,
+            reason: reason,
+        }
+    
+        let check = CheckMarkers(id,"ActionTest2"); //this will check for markers
+        //if none, then comes back false and can go onto part2
+        //if there was some, puts up buttons
+        //buttons feed back to marker which then feed into actiontest2
+        if (check === false) {
+            ActionTest2(0);
+        } else {
+            PrintCard();
+        }
+    }
+    
+    const ActionTest2 = (markerDice,newCard) => {
+        if (!newCard) {newCard = false};
+        //newCard means need to setup a new card to print in chat
+        let model = ModelArray[testInfo.id];
+        if (newCard === true) {
+            SetupCard(model.name,testInfo.reason,model.faction);
+        }
+        let bdText = (testInfo.bonusDice === 0) ? "No Modifier":(testInfo.bonusDice<0?"":"+") + testInfo.bonusDice + " Dice";
+        let rmText = (testInfo.rollMod === 0) ? "":(testInfo.rollMod<0?" ":" +") + testInfo.rollMod;
+        let tip = "Base: " + bdText + rmText;
+        if (markerDice !== 0) {
+            tip += "<br>Markers: " + (markerDice<0? "":"+") + markerDice + " Dice";
+        }
+    
+        let extraDice = testInfo.bonusDice + markerDice;
+        //modifiers
+        if (model.token.get("tint_color") === "#FF0000") {
+            extraDice--;
+            tip += "<br>Down: -1 Dice";
+        }
+        if (model.keywords.includes("Blasphemous")) {
+            tip += "<br>Blasphemous: +1 Dice";
+            extraDice++;
+        }
+    
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+        let results = ActionSuccess(extraDice);
+        outputCard.body.push(tip + " " + results.line2);
+log(results)
+log(results.success)
+        ActionTest3(results.success);
+    }
+
+    const ActionTest3 = (success) => {
+        //either using original card or a new one created after Marker
+        //this routine works on results of the action test
+        let model = ModelArray[testInfo.id];
+        let targets = [];
+        for (let i=0;i<testInfo.targetIDs.length;i++) {
+            targets.push(ModelArray[testInfo.targetIDs[i]]);
+        }
+
+        if (success === false) {
+            outputCard.body.push("Action Fails");
+        }
+        if (success === false && testInfo.risky === true) {
+            outputCard.body.push(model.name + "'s activation is over");
+            model.token.set("aura1_color","#000000");
+        }
+    
+    
+    
+    
+    
+        if (testInfo.reason === "God is With Us!" && success === true) {
+            outputCard.body.push("The Cleric Blesses the Target");
+            PlaySound("Angels");
+            targets[0].ChangeMarker("Blessing",1);
+        }
+        if (testInfo.reason === "Aim" && success === true) {
+            outputCard.body.push("The Sniper Priest takes Careful Aim");
+            outputCard.body.push("Any Ranged Attack Rolls get +2 Dice");
+            model.token.set(SM.aim,true);
+        }
+        if (testInfo.reason === "Fortify" && success === true) {
+            outputCard.body.push("The Engineer is considered to be in Cover until the model moves.");
+            model.token.set(SM.cover,true);
+        }
+        if (testInfo.reason === "De-mine") {
+            if (success !== false) {
+                outputCard.body.push("The Engineer disables the mine/trap");
+                ///
+
+            } else {
+                outputCard.body.push("The Engineer fails to disable the mine/trap");
+                //Run this ?
+
+            }
+        }
+        if (testInfo.reason === "Medi-Kit" && success === true) {
+            outputCard.body.push("The Medi-Kit is used successfully");
+            if (targets[0].token.get("tint_color") === "#FF0000") {
+                outputCard.body.push(targets[0].name + " regains their footing and is no longer Down");
+                targets[0].Stand();
+            } else {
+                targets[0].ChangeMarker("Blood",-1);
+                outputCard.body.push("One Blood Marker is removed");
+            }
+        }
+        if (testInfo.reason === "Diving Charge") {
+            if (success === false) {
+                let level = Math.max(ModelHeight(model).level,model.oldLevel); // in case moved then tested
+                outputCard.body.push(model.name + " lands hard and is Down. Place the charging model next to the target.");
+                PrintCard();
+                attackInfo = {
+                    attacker: model,
+                    defender: model,
+                    weapon: "",
+                    extraDice: level,
+                    reason: "Fall",
+                }
+                Injury(0);
+                model.token.set("tint_color","#FF0000");
+                return;
+            } else {
+                outputCard.body.push("Place the charging model next to the target. It gains a +1 Dice bonus to hit and injure the target, and ignores any defended Obstacle");
+                model.token.set(SM.diving,true);
+            }
+        }
+
+        
+    
+    
+    
+    
+    
+    
+    
+        PrintCard();
+    }
+
+    const Test = (msg) => {
+        //command line test: !Test;?{Reason|Standard|Climb|Jump over Gap|Enter Dangerous|Fall};
+        let id = msg.selected[0]._id;
+        if (!id) {return};
+        let Tag = msg.content.split(";");
+        let reason = Tag[1];
+        let model = ModelArray[id];
+        SetupCard(model.name,reason,model.faction);
+        if (reason === "Standard") {
+            ActionTest(reason,id);
+        }
+        if (reason === "Climb" || reason === "Jump over Gap" || reason === "Enter Dangerous" || reason === "Fall") {
+            //risky
+            ActionTest(reason,id,"",true);
+        }
+    }
+    
+    
 
 
-
+/*
 
 //later alter this for things like falling, etc - put those into the macro query and change extraDice below to the query
     const ActionTest = (msg) => {
@@ -2116,6 +2272,9 @@ log(check)
 
     }
 
+*/
+
+
     const Marker = (msg) => {
         let Tag = msg.content.split(";");
         let number = parseInt(Tag[1]);
@@ -2169,7 +2328,7 @@ log(check)
             } else if (nextStep === "Melee2") {
                 Melee2(extraDice);
             } else if (nextStep === "ActionTest2") {
-                ActionTest2(extraDice);
+                ActionTest2(extraDice,true);
             } else if (nextStep === "Injury") {
                 //reverse how dice are applied in injury
                 Injury(-extraDice,bb);
@@ -3221,7 +3380,7 @@ log(int)
         }
 
         //Equipment macros
-        macros = [["Medi-kit",1]];
+        macros = [["Medi-Kit",1]];
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
             if (model.equipment.includes(macroName)) {
@@ -3252,10 +3411,18 @@ log(int)
     }
 
     const ModelAbilities = (msg) => {
+        //if it doenst go to a test, need to have a PrintCard
+
         let Tag = msg.content.split(";");
         let abilityName = Tag[1];
         let attackerID = Tag[2]; //model using ability
         let attacker = ModelArray[attackerID];
+        if (attacker.token.get("aura1_color") === "#000000") {
+            sendChat("","Model has finished its activation");
+            return;
+        }
+
+
         let defenderIDs = [];
         for (let i=3;i<Tag.length;i++) {
             defenderIDs.push(Tag[i]);
@@ -3264,25 +3431,25 @@ log(int)
         SetupCard(attacker.name,abilityName,attacker.faction);
         if (abilityName === "On My Command!") {
             let defender = ModelArray[defenderIDs[0]];
-            let losResult = LOS(attaacker,defender);
+            let losResult = LOS(attacker,defender);
             if (losResult.los === false) {
                 outputCard.body.push("Target has to be in LOS");
             } else {
                 outputCard.body.push(defender.name + " must Activate Next");
                 outputCard.body.push(attacker.name + "'s turn is over");
+                attacker.token.set("aura1_color","#000000");
             }
+            PrintCard();
         }
         if (abilityName === "God is With Us!") {
             let defender = ModelArray[defenderIDs[0]];
             let distance = attacker.cube.distance(defender.cube);
             if (distance > 6) {
                 outputCard.body.push("Target is too far away");
+                PrintCard();
             } else {
                 //risky action
-
-
-
-
+                ActionTest(abilityName,attacker.id,defender.id,true);
             }
         }
         if (abilityName === "Onwards, Christian Soldiers!") {
@@ -3295,11 +3462,11 @@ log(int)
                     }
                 }
             })
+            PrintCard();
         }
         if (abilityName === "Aim") {
             //risky action
-            //if successful, place a status marker for turn granting +2 dice to hit
-            
+            ActionTest(abilityName,attacker.id,"",true);            
         }
         if (abilityName === "Fortify") {
             let neighbourCubes = attacker.cube.neighbours();
@@ -3321,17 +3488,14 @@ log(int)
             }
             if (check === true) {
                 outputCard.body.push("Engineer is in Combat and cannot Fortify");
+                PrintCard();
             } else {
-                //During their Activation, an Engineer can take a RISKY ACTION with +1 DICE. If successful, the engineer is considered to be in Cover until the model moves. This ACTION cannot be used if the model is in Melee combat.
-
+                ActionTest(abilityName,attacker.id,"",true,1);
             }
-
-         
-
-
         }
         if (abilityName === "De-mine") {
             //As a RISKY ACTION the Engineer can disable any mine or trapped terrain they move in contact with. If they fail, the mine blows up as described in applicable rules.
+            ActionTest(abilityName,attacker.id,"",true,1);
 
 
         }
@@ -3341,7 +3505,6 @@ log(int)
 
 
 
-        PrintCard();
     }
 
 
@@ -3350,29 +3513,32 @@ log(int)
         let equipName = Tag[1];
         let attackerID = Tag[2]; //model using ability
         let attacker = ModelArray[attackerID];
+        if (attacker.token.get("aura1_color") === "#000000") {
+            sendChat("","Model has finished its activation");
+            return;
+        }
+
+
+
         let defenderIDs = [];
         for (let i=3;i<Tag.length;i++) {
             defenderIDs.push(Tag[i]);
         }
 
         SetupCard(attacker.name,equipName,attacker.faction);
-        if (equipName === "Medi-kit") {
-            let defender = defenderIDs[0];  
+        if (equipName === "Medi-Kit") {
+            let defender = ModelArray[defenderIDs[0]];  
             let distance = attacker.cube.distance(defender.cube);
             if (distance > 1) {
                 outputCard.body.push("Need to be with 1 hex");
+                PrintCard();
             } else {
-                //Rules: Models with a Medi-kit can take a RISKY ACTION to remove one BLOOD MARKER from any one friendly model (including themselves) within 1” range or allow one friendly model (including themselves) that is Down to regain their footing.
-                //prioritize down first then if not down remove 1 blood
-                //if has Expert Medic Ability then gets +1 DIce on action test
-
-
+                let bonus = 0;
+                if (attacker.abilities.includes("Expert Medic")) {
+                    bonus = 1;
+                }
+                ActionTest(equipName,attacker.id,defender.id,true,bonus)
             }
-
-
-
-
-
         }
 
 
@@ -3414,6 +3580,7 @@ log(int)
                     if (level > maxHeight) {
                         level = maxHeight;
                     }
+                    model.oldLevel = info.level;
                     model.token.set(info.heightSymbol,false);
                     model.token.set(SM["up" + level],true);
                 }
@@ -3469,8 +3636,8 @@ log(int)
             case '!NextTurn':
                 NextTurn();
                 break;
-            case '!ActionTest':
-                ActionTest(msg);
+            case '!Test':
+                Test(msg);
                 break;
             case '!GameInfo':
                 GameInfo();
@@ -3490,8 +3657,12 @@ log(int)
             case '!UpDown':
                 UpDown(msg);
                 break;
-          
-            
+            case '!ModelAbilities':
+                ModelAbilities(msg);
+                break;
+            case '!ModelEquipment':
+                ModelEquipment(msg);
+                break;
         }
     };
 
