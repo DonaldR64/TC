@@ -50,7 +50,8 @@ const TC = (() => {
         up3: "status_Green-01::2006611",
         up4: "status_Green-01::2006614",
         up5: "status_Green-01::2006615",
-
+        morale: "status_blue", ///temp for fear immune
+        aim: "status_blue", //temp
     }; 
 
 
@@ -443,6 +444,12 @@ const TC = (() => {
                     let wkeywords = attributeArray[attName+"keywords"] || " ";
                     let wsound = attributeArray[attName+"sound"] || "";
                     let wfx = attributeArray[attName+"fx"] || "";
+
+                    if (wname.includes("Satchel") && charName.includes("Combat Engineer")) {
+                        wkeywords.replace("Heavy","");
+                    }
+
+
                     let weapon = {
                         name: wname,
                         type: wtype,
@@ -480,12 +487,9 @@ const TC = (() => {
             for (let i=1;i<6;i++) {
                 let name = attributeArray["equip" + i + "name"] || "";
                 let info = attributeArray["equip" + i + "info"] || "";
-                let equip = {
-                    name: name.trim(),
-                    info: info.trim(),
-                }
+                
                 if (name !== undefined && name !== " " && name !== "") {
-                    equipmentArray.push(equip);
+                    equipmentArray.push(name);
                     if (name === "Trench Shield") {
                         armour -= 1;
                     }
@@ -495,9 +499,21 @@ const TC = (() => {
                     if (name === "Reinforced Armour") {
                         armour -= 2;
                     }
+                    if (name === "Light Machine Armour") {
+                        armour -= 2;
+                    }
                     if (name === "Machine Armour") {
                         armour -= 3;
                     }
+                    if (name === "Engineer Body Armour") {
+                        armour -= 2;
+                    }
+
+
+
+
+
+
                     if (Keywords[name]) {
                         keywords.push(name);
                     } else {
@@ -517,12 +533,8 @@ const TC = (() => {
             for (let i=1;i<6;i++) {
                 let name = attributeArray["ability" + i + "name"] || "";
                 let info = attributeArray["ability" + i + "info"] || "";
-                let ability = {
-                    name: name.trim(),
-                    info: info.trim(),
-                }
                 if (name !== undefined && name !== " " && name !== "") {
-                    abilityArray.push(ability);
+                    abilityArray.push(name);
                     if (Keywords[name]) {
                         keywords.push(name);
                     } else {
@@ -554,11 +566,19 @@ const TC = (() => {
                 }
             }
 
-            let heavy = false;
-            if (keywords.includes("Heavy") && keywords.includes("Strong") === false) {
-                heavy = true;
-            }
             keywords = keywords.toString();
+
+            let heavy = false;
+            if (keywords.includes("Heavy")) {
+                exclusions = ["Strong","Assault Drill"];
+                _.each(exclusions,e => {
+                    if (keywords.includes(e) || abilityArray.includes(e)) {
+                        heavy = false;
+                    } else {
+                        heavy = true;
+                    }
+                })
+            }
 
 
 
@@ -1531,6 +1551,7 @@ log(info)
             model.actionsTaken = [];
             model.token.set("aura1_color","#00FF00");
             model.token.set(SM.diving,false);
+            model.token.set(SM.morale,false);
         })
 
 
@@ -1653,7 +1674,11 @@ log(marker)
         if (type === "Move") {
             let downed = (model.token.get("tint_color") === "#FF0000") ? true:false
             let move = model.move;
-            let d6 = randomInteger(6);                
+            let d6 = randomInteger(6);   
+            if (model.abilityArray.includes("Shock Charge")) {
+                let d6two = randomInteger(6);   
+                d6 = Math.max(d6,d6two);
+            }           
             let chargeMove = Math.min(move + d6,12);
             if (model.heavyMove === true) {
                 chargeMove = move;
@@ -2405,12 +2430,9 @@ log(weapon)
         extraDice += attacker.meleeBonus;
     
         let fearImmune = false;
-        for (let i=0;i<attacker.abilityArray.length;i++) {
-            let ability = defender.abilityArray[i].name;
-            if (ability === "Fear") {
-                fearImmune = true;
-            }
-            //other fear immune here?
+        let list = ["Fear","Convent Conditioning"];
+        if (Exclusion(attacker,list) === true) {
+            fearImmune = true;
         }
     
     
@@ -2550,8 +2572,28 @@ log(weapon)
                 tip += "<br>Diving Charge: +1 Dice";
                 extraDice++;
             }
+            if (attacker.abilityArray.includes("Finish the Fallen") && downed === true) {
+                if (defender.keywords.includes("Black Grail") === false && defender.keywords.includes("Demonic") === false) {
+                    tip += "<br>Finish the Fallen: +1 Dice";
+                    extraDice++;
+                }
+            }
+
+
+
+
+
+
+
+
+
+
         }
-      
+        
+
+
+
+
 
         //Defender Modifiers
         if (downed === true) {
@@ -2595,6 +2637,15 @@ log(weapon)
             let sign = (defender.armour >= 0) ? "+":"";
             tip += "<br>Armour: " + sign + defender.armour + " To Roll";
         }
+        if (defender.equipment.includes("Engineer Body Armour") && weapon.keywords.includes("Shrapnel")) {
+            tip += "<br>Engineer Body Armour: -1 Dice";
+            extraDice--;
+        }
+
+
+
+
+
 
         let dice = numberDice + Math.abs(extraDice);
         let sign = Math.sign(extraDice);
@@ -2644,27 +2695,27 @@ log(weapon)
 
         if (weapon.keywords.includes("Fire")) {
             //negating stuff here
-        
-
-
-            subtitle += " + Fire"
-            blood += 1;
+            let list = [""];
+            if (Exclusion(defender,list) === false) {
+                subtitle += " + Fire"
+                blood += 1;
+            }
         }
         if (weapon.keywords.includes("Gas")) {
             //negating stuff here
-        
-
-
-            subtitle += " + Gas"
-            blood += 1;
+            let list = [""];
+            if (Exclusion(defender,list) === false) {
+                subtitle += " + Gas"
+                blood += 1;
+            }
         }
         if (weapon.keywords.includes("Shrapnel")) {
             //negating stuff here
-        
-
-
-            subtitle += " + Shrapnel"
-            blood += 1;
+            let list = ["Engineer Body Armour"];
+            if (Exclusion(defender,list) === false) {
+                subtitle += " + Shrapnel"
+                blood += 1;
+            }
         }
 
 
@@ -2712,7 +2763,14 @@ log(weapon)
     }
 
 
-
+    const Exclusion = (model,exclusions) => {
+        _.each(exclusions,e => {
+            if (model.keywords.includes(e) || model.abilityArray.includes(e)) {
+                return true;
+            }
+        })
+        return false;
+    }
 
     
 
@@ -2730,6 +2788,12 @@ log(weapon)
                 friendlyFire = true;
             }
         }
+        if (nextStep === "Ranged2" && model.abilityArray.includes("Absolute Faith")) {
+            friendlyFire = true;  //sniper priest ability - ignores blood markers
+        }
+
+
+
 
         if (blood > 0 && friendlyFire === false) {
             let bb = 6;
@@ -3074,28 +3138,217 @@ log(int)
 
 
     const AddAbilities = (msg) => {
-        let tokenIDs = [];
-        for (let i=0;i<msg.selected.length;i++) {
-            tokenIDs.push(msg.selected[i]._id);
-        }
-        if (!msg.selected || tokenIDs.length === 0) {
+        if (!msg.selected) {
             sendChat("","No Token Selected");
             return;
         };
-        _.each(tokenIDs,id => {
-            let model = ModelArray[id];
-            if (!model) {return};
-            let abilityName,action;
-            let abilArray = findObjs({_type: "ability", _characterid: model.charID});
-            //clear old abilities
-            for(let a=0;a<abilArray.length;a++) {
-                abilArray[a].remove();
-            } 
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        if (!model) {return};
+        let abilityName,action;
+        let abilArray = findObjs({_type: "ability", _characterid: model.charID});
+        //clear old abilities
+        for(let a=0;a<abilArray.length;a++) {
+            abilArray[a].remove();
+        } 
+
+        abilityName = "Move";
+        action = "!Action;@{selected|token_id};Move;?{Type|Move|Charge|Diving Charge|Retreat}";
+        AddAbility(abilityName,action, model.charID);
+
+        abilityName = "Dash";
+        action = "!Action;@{selected|token_id};Dash}";
+        AddAbility(abilityName,action, model.charID);
+
+        let melee = model.weaponArray.melee;
+        for (let i=0;i<melee.length;i++) {
+            let weapon = melee[i];
+//multiple attacks
+
+            abilityName = weapon.name;
+            action = "!Melee;@{selected|token_id};@{target|token_id};" + i;
+            AddAbility(abilityName,action, model.charID);
+        }
+
+        let ranged = model.weaponArray.ranged;
+        for (let i=0;i<ranged.length;i++) {
+            let weapon = ranged[i];
+//multiple attacks
+
+            abilityName = weapon.name;
+            action = "!Ranged;@{selected|token_id};@{target|token_id};" + i;
+            AddAbility(abilityName,action, model.charID);
+        }
+
+        //Model Abilities needing macros - in form of name and # of targets
+        let macros = [["On My Command!",1],["God is With Us!",1],["Onwards, Christian Soldiers!",0],["Aim",0],["Fortify",0],["De-mine",0]]
+        for (let i=0;i<macros.length;i++) {
+            let macroName = macros[i][0];
+            if (model.abilityArray.includes(macroName)) {
+                action = "!ModelAbilities;" + macroName + ";@{selected|token_id}";
+                for (let j=0;j<macros[i][1];j++) {
+                    action += ";@{target|Target " + (j+1) + "|token_id}";
+                }
+                AddAbility(macroName,action, model.charID);
+            }
+        }
+
+        //Equipment macros
+        macros = [["Medi-kit",1]];
+        for (let i=0;i<macros.length;i++) {
+            let macroName = macros[i][0];
+            if (model.equipmentArray.includes(macroName)) {
+                action = "!ModelEquipment;" + macroName + ";@{selected|token_id}";
+                for (let j=0;j<macros[i][1];j++) {
+                    action += ";@{target|Target " + (j+1) + "|token_id}";
+                }
+                AddAbility(macroName,action, model.charID);
+            }
+        }
+            
+    
+
+
+
+
+
+
 
        
-        })
+    
 
-        sendChat("","Abilities Added to " + tokenIDs.length + " Units")
+        sendChat("","Abilities Added")
+
+
+    }
+
+    const ModelAbilities = (msg) => {
+        let Tag = msg.content.split(";");
+        let abilityName = Tag[1];
+        let attackerID = Tag[2]; //model using ability
+        let attacker = ModelArray[attackerID];
+        let defenderIDs = [];
+        for (let i=3;i<Tag.length;i++) {
+            defenderIDs.push(Tag[i]);
+        }
+
+        SetupCard(attacker.name,abilityName,attacker.faction);
+        if (abilityName === "On My Command!") {
+            let defender = ModelArray[defenderIDs[0]];
+            let losResult = LOS(attaacker,defender);
+            if (losResult.los === false) {
+                outputCard.body.push("Target has to be in LOS");
+            } else {
+                outputCard.body.push(defender.name + " must Activate Next");
+                outputCard.body.push(attacker.name + "'s turn is over");
+            }
+        }
+        if (abilityName === "God is With Us!") {
+            let defender = ModelArray[defenderIDs[0]];
+            let distance = attacker.cube.distance(defender.cube);
+            if (distance > 6) {
+                outputCard.body.push("Target is too far away");
+            } else {
+                //risky action
+
+
+
+
+            }
+        }
+        if (abilityName === "Onwards, Christian Soldiers!") {
+            outputCard.body.push("All friendly models that are within 8 of the Trench Cleric at the start of their Activation are not affected by FEAR for the turn.");
+            _.each(ModelArray,model2 => {
+                if (model2.faction === attacker.faction) {
+                    let distance = attacker.cube.distance(model2.cube);
+                    if (distance <= 8) {
+                        model2.token.set(SM.morale,true);
+                    }
+                }
+            })
+        }
+        if (abilityName === "Aim") {
+            //risky action
+            //if successful, place a status marker for turn granting +2 dice to hit
+            
+        }
+        if (abilityName === "Fortify") {
+            let neighbourCubes = attacker.cube.neighbours();
+            let check = false;
+            loop1:
+            for (let i=0;i<neighbourCubes.length;i++) {
+                let cube = neighbourCubes[i];
+                let hex = hexMap[cube.label()];
+                if (hex) {
+                    let modelIDs = hex.modelIDs;
+                    for (let j=0;j<modelIDs.length;j++) {
+                        let m3 = ModelArray[modelIDs[j]];
+                        if (m3.faction !== attacker.faction) {
+                            check = true;
+                            break loop1;
+                        }
+                    }
+                }
+            }
+            if (check === true) {
+                outputCard.body.push("Engineer is in Combat and cannot Fortify");
+            } else {
+                //During their Activation, an Engineer can take a RISKY ACTION with +1 DICE. If successful, the engineer is considered to be in Cover until the model moves. This ACTION cannot be used if the model is in Melee combat.
+
+            }
+
+         
+
+
+        }
+        if (abilityName === "De-mine") {
+            //As a RISKY ACTION the Engineer can disable any mine or trapped terrain they move in contact with. If they fail, the mine blows up as described in applicable rules.
+
+
+        }
+
+
+
+
+
+
+        PrintCard();
+    }
+
+
+    const ModelEquipment = (msg) => {
+        let Tag = msg.content.split(";");
+        let equipName = Tag[1];
+        let attackerID = Tag[2]; //model using ability
+        let attacker = ModelArray[attackerID];
+        let defenderIDs = [];
+        for (let i=3;i<Tag.length;i++) {
+            defenderIDs.push(Tag[i]);
+        }
+
+        SetupCard(attacker.name,equipName,attacker.faction);
+        if (equipName === "Medi-kit") {
+            let defender = defenderIDs[0];  
+            let distance = attacker.cube.distance(defender.cube);
+            if (distance > 1) {
+                outputCard.body.push("Need to be with 1 hex");
+            } else {
+                //Rules: Models with a Medi-kit can take a RISKY ACTION to remove one BLOOD MARKER from any one friendly model (including themselves) within 1” range or allow one friendly model (including themselves) that is Down to regain their footing.
+                //prioritize down first then if not down remove 1 blood
+                //if has Expert Medic Ability then gets +1 DIce on action test
+
+
+            }
+
+
+
+
+
+        }
+
+
+
+
 
 
     }
