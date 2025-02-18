@@ -104,7 +104,7 @@ const TC = (() => {
     let Keywords = {
         'Artificial': "This model is not of natural origin but is instead constructed from non-organic elements.",
         'Assault': "Ranged attacks made with weapons that have this Keyword do not prevent a model from charging during the same activation. A charge may only be made if a single ranged attack is made with a weapon with this Keyword, regardless of any other rules that the weapon might have.",
-        'Blast': "A weapon with BLAST (X) has an area of effect with a radius of hexes indicated by X. If this weapon targets a model, this radius is measured from the centre of that model’s base in all directions. If this weapon targets a point on the ground, this radius is measured from that point in all directions, including vertically. If the Attack ACTION with this weapon is successful, it hits every model within this radius that the target (either model or point) has line of sight to (i.e. not completely blocked by terrain).",
+        'Blast (X)': "A weapon with BLAST (X) has an area of effect with a radius of hexes indicated by X. If this weapon targets a model, this radius is measured from the centre of that model’s base in all directions. If this weapon targets a point on the ground, this radius is measured from that point in all directions, including vertically. If the Attack ACTION with this weapon is successful, it hits every model within this radius that the target (either model or point) has line of sight to (i.e. not completely blocked by terrain).",
         "Consumable": "An item with this keyword can only be used once. After the battle, any items with this keyword that were used are lost.",
         "Critical": "When attacking with a weapon with this keyword, add +2 DICE (instead of 1) to any injury rolls the weapon causes if you roll a Critical (i.e. 12+) on the Action Success Chart",
         "Cumbersome": "Model always requires two hands to use this weapon, even if the model has the Keyword STRONG. A weapon with the Keyword CUMBERSOME ignores this restriction when benefitting from the Shield Combo rule.",
@@ -121,7 +121,7 @@ const TC = (() => {
         "Skirmisher": "When a model with this Keyword is targeted by an enemy’s Charge, it may immediately move D3 hexes in any direction, except into Melee Combat. A Skirmisher may also make this move when a charging enemy model would enter Melee Combat with it during a Charge that is not targeting it. After either of these moves is resolved, the Charge continues as normal toward the original target. These moves can only be taken if the Skirmisher is not in Melee Combat and only one such move may be taken per Charge",
         "Strong": " A model with this Keyword ignores the rules for weapons/armour/equipment with Keyword HEAVY, including not being limited to carrying only one HEAVY item (though other limitations apply as normal). In addition, it may use a single two-handed Melee weapon as a one-handed weapon.",
         "Tough": " If a TOUGH model would be taken Out Of Action, it is knocked Down instead. After a TOUGH model has been knocked Down in this way once, it can be taken Out of Action as normal.",
-        
+        "Targeted": " Weapon can use a Target Reticule to attack a Hex",
 
 
 
@@ -457,6 +457,17 @@ const TC = (() => {
                         }
                     })
 
+                    wkeywords = wkeywords.split(",");
+                    let wk2 = [];
+                    _.each(wkeywords,key => {
+                        if (key !== undefined && key !== " " && key !== "") {
+                            key = key.trim();
+                            keywords.push(key);
+                            wk2.push(key);
+                        }
+                    })
+                    wkeywords = wk2.toString();
+
 
 
                     let weapon = {
@@ -475,16 +486,10 @@ const TC = (() => {
                     } else {
                         weaponArray[type]= [weapon];
                     }
-                    wkeywords = wkeywords.split(",");
-                    _.each(wkeywords,key => {
-                        if (key !== undefined && key !== " " && key !== "") {
-                            key = key.trim();
-                            keywords.push(key);
-                        }
-                    })
+                    
                 }
             }
-
+log(weaponArray)
 
             for (let i=1;i<21;i++) {
                 let attName = "spec" + i + "Name";
@@ -561,8 +566,12 @@ const TC = (() => {
 
             //eliminate duplicates from keywords and trim spaces
             keywords = keywords.map(e => {
+                e = e.replace(/[0-9]/g, "(X)")
                 return e.trim();
             });
+
+
+
             keywords = [...new Set(keywords)];
 
             let abilities = abilityArray.map(e => {
