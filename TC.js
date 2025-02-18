@@ -462,6 +462,7 @@ const TC = (() => {
 
                     let weapon = {
                         name: wname,
+                        number: i,
                         type: wtype,
                         range: wrange,
                         attacks: attacks,
@@ -1702,12 +1703,29 @@ log(marker)
         if (model.actionsTaken.includes(type)) {
             errorMsg.push("Model has already been taken this action this turn");
         } 
+        let assaultFire = false;
         _.each(model.actionsTaken,actionTaken => {
             if (actionTaken.includes("Ranged") && model.heavyMove === true) {
                 errorMsg.push("Model has a Heavy Weapon, and cannot Move AND Shoot");
                 return;
             }
+            if (actionTaken.includes("Ranged") && subtype === "Charge") {
+                let wnum = actionTaken.replace("Ranged ");
+                if (model.weaponArray.ranged[wnmum].keywords.includes("Assault") && assaultFire === false) {
+                    assaultFire = true;
+                } else {
+                    errorMsg.push("Model cannot Charge due to Ranged Fire");
+                    if (assaultFire === true) {
+                        errorMsg.push("Assault Weapons can only fire once before Charge");
+                    }
+                }
+            }
         })
+
+
+
+
+
 
 
         SetupCard(model.name,type,model.faction);
@@ -1758,7 +1776,6 @@ log(marker)
                                 outputCard.body.push("Model is in combat");
                                 outputCard.body.push("If it leaves combat with [U]any[/u] enemy all enemies in contact may immediately take a Melee Attack ACTION with a single melee weapon that it has. Resolve the effects of this attack before moving the retreating model.");
                                 break ncloop1;
-//flag
                             }
                         }
                     }
@@ -2317,7 +2334,7 @@ log(weapon)
         }
         let firedTimes = 0;
         _.each(model.actionsTaken,actionTaken => {
-            if (actionTaken.includes(weapon.name)) {
+            if (actionTaken.includes(weapon.number)) {
                 firedTimes++;
             }
         })
@@ -2478,7 +2495,7 @@ log(weapon)
         }
     
         //mark weapon fired and action
-        model.actionsTaken.push("Ranged " + weapon.name);
+        model.actionsTaken.push("Ranged " + weapon.number);
         PlaySound(weapon.sound);
         //FX 
 
