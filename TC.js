@@ -1943,7 +1943,6 @@ log(marker)
 
         }
 
-
         let results = {
             success: success,
             line2: line2,
@@ -2021,6 +2020,7 @@ log(results.success)
     const ActionTest3 = (success) => {
         //either using original card or a new one created after Marker
         //this routine works on results of the action test
+        //success might come in as false/true and "Critical" - so !== false 
         let model = ModelArray[testInfo.id];
         let targets = [];
         for (let i=0;i<testInfo.targetIDs.length;i++) {
@@ -2035,21 +2035,26 @@ log(results.success)
             model.token.set("aura1_color","#000000");
         }
     
+        if (testInfo.reason === "Standard" && success !== false) {
+            if (success === "Critical") {
+                outputCard.body.push("Critical Success!")
+            } else {
+                outputCard.body.push("Success!")
+            }          
+        }
     
     
-    
-    
-        if (testInfo.reason === "God is With Us!" && success === true) {
+        if (testInfo.reason === "God is With Us!" && success !== false) {
             outputCard.body.push("The Cleric Blesses the Target");
             PlaySound("Angels");
             targets[0].ChangeMarker("Blessing",1);
         }
-        if (testInfo.reason === "Aim" && success === true) {
+        if (testInfo.reason === "Aim" && success !== false) {
             outputCard.body.push("The Sniper Priest takes Careful Aim");
             outputCard.body.push("Any Ranged Attack Rolls get +2 Dice");
             model.token.set(SM.aim,true);
         }
-        if (testInfo.reason === "Fortify" && success === true) {
+        if (testInfo.reason === "Fortify" && success !== false) {
             outputCard.body.push("The Engineer is considered to be in Cover until the model moves.");
             model.token.set(SM.cover,true);
         }
@@ -2064,7 +2069,7 @@ log(results.success)
 
             }
         }
-        if (testInfo.reason === "Medi-Kit" && success === true) {
+        if (testInfo.reason === "Medi-Kit" && success !== false) {
             outputCard.body.push("The Medi-Kit is used successfully");
             if (targets[0].token.get("tint_color") === "#FF0000") {
                 outputCard.body.push(targets[0].name + " regains their footing and is no longer Down");
@@ -2076,7 +2081,8 @@ log(results.success)
         }
         if (testInfo.reason === "Diving Charge") {
             if (success === false) {
-                let level = Math.max(ModelHeight(model).level,model.oldLevel); // in case moved then tested
+                let info = ModelHeight(model);
+                let level = Math.max(info.level,model.oldLevel); // in case moved then tested
                 outputCard.body.push(model.name + " lands hard and is Down. Place the charging model next to the target.");
                 PrintCard();
                 attackInfo = {
@@ -2088,15 +2094,62 @@ log(results.success)
                 }
                 Injury(0);
                 model.token.set("tint_color","#FF0000");
+                model.token.set(info.heightSymbol,false);
                 return;
             } else {
                 outputCard.body.push("Place the charging model next to the target. It gains a +1 Dice bonus to hit and injure the target, and ignores any defended Obstacle");
                 model.token.set(SM.diving,true);
             }
         }
-
-        
-    
+        if (testInfo.reason === "Climb") {
+            if (success === false) {
+                outputCard.body.push("The Model stays where it is")
+            } else {
+                outputCard.body.push("The Model climbs up the vertical surface and can complete its movement");
+            }
+        }
+        if (testInfo.reason === "Jump over Gap") {
+            if (success === false) {
+                let info = ModelHeight(model);
+                let level = Math.max(info.level,model.oldLevel); // in case moved then tested
+                outputCard.body.push("The Jump is misjudged and the Model Falls");
+                outputCard.body.push("Place the model at the first hex it would have fallen");
+                PrintCard();
+                attackInfo = {
+                    attacker: model,
+                    defender: model,
+                    weapon: "",
+                    extraDice: level,
+                    reason: "Fall",
+                }
+                Injury(0);
+                model.token.set("tint_color","#FF0000");
+                model.token.set(info.heightSymbol,false);
+                return;
+            } else {
+                outputCard.body.push("The Model Jumps the gap");
+                outputCard.body.push("The Model can complete its movement");
+            }
+        }
+        if (testInfo.reason === "Dangerous Terrain") {
+            if (success === false) {
+                outputCard.body.push("The model takes Damage from the Terrain");
+                PrintCard();
+                attackInfo = {
+                    attacker: model,
+                    defender: model,
+                    weapon: "",
+                    extraDice: 0,
+                    reason: "Dangerous Terrain",
+                }
+                Injury(0);
+                return;
+            } else {
+                outputCard.body.push("The Model avoids taking Damage");
+                outputCard.body.push("If it remains in the Dangerous Terrain, it will need to take an Action test next round");
+            }
+        }
+      
     
     
     
@@ -2114,165 +2167,39 @@ log(results.success)
         let reason = Tag[1];
         let model = ModelArray[id];
         SetupCard(model.name,reason,model.faction);
-        if (reason === "Standard") {
+    
+        let drisk = false;
+        if (reason === "Dangerous Terrain") {
+            //check if has moved, in which case is risky
+            if (model.actionsTaken.includes("Move") || model.actionsTaken.includes("Dash")) {
+                drisk = true;
+            } 
+        }
+        if (reason === "Standard" || (drisk === false && reason === "Dangerous Terrain")) {
             ActionTest(reason,id);
         }
-        if (reason === "Climb" || reason === "Jump over Gap" || reason === "Enter Dangerous" || reason === "Fall") {
+        if (reason === "Climb" || reason === "Jump over Gap" || (reason === "Dangerous Terrain" && drisk === true)) {
             //risky
             ActionTest(reason,id,"",true);
         }
-    }
-    
-    
-
-
-/*
-
-//later alter this for things like falling, etc - put those into the macro query and change extraDice below to the query
-    const ActionTest = (msg) => {
-        let id = msg.selected[0]._id;
-        if (!id) {return};
-        let Tag = msg.content.split(";");
-        let reason = Tag[1];
-        let model = ModelArray[id];
-       
-        SetupCard(model.name,reason,model.faction);
-        attackInfo = {
-            attacker: "",
-            defender: model,
-            weapon: "",
-            extraDice: 0,
-            result: "",
-            reason: reason,
-        }
-
-
         if (reason === "Fall") {
             let info = ModelHeight(model);
+            let level = Math.max(info.level,model.oldLevel); // in case moved then tested
+            attackInfo = {
+                attacker: model,
+                defender: model,
+                weapon: "",
+                extraDice: level,
+                reason: "Fall",
+            }
+            Injury(0);
+            model.token.set("tint_color","#FF0000");
             model.token.set(info.heightSymbol,false);
-            attackInfo.extraDice = info.level;
-            let check = CheckMarkers(model.id,"Injury");
-            if (check === true) {
-                PrintCard();
-                return;
-            } else {
-                Injury(0);
-            }
-        } else {
-            let check = CheckMarkers(id,"ActionTest2");
-            if (check === true) {
-                PrintCard();
-                return;
-            }
-            ActionTest2(0); //0 as no blood or blessings 
         }
     }
-
-    const ActionTest2 = (extraDice) => {
-        //!ActionTest;?{Reason|Standard|Climb|Jump over Gap|Enter Dangerous};
-        let model = attackInfo.attacker;
-
-        SetupCard(model.name,attackInfo.reason,model.faction);
     
-        let tip = "Base: ";
-        let sign = (extraDice > 0) ? "+":"";
-        tip += "Markers: " + sign + extraDice + " Dice";
-
-        //modifiers
-        if (model.token.get("tint_color") === "#FF0000") {
-            extraDice--;
-            tip += "Down: -1 Dice";
-        }
-        if (model.keywords.includes("Blasphemous")) {
-            tip += "Blasphemous: +1 Dice";
-            extraDice++;
-        }
-
     
-        let results = ActionSuccess(extraDice);
-        outputCard.body.push(results.line2);
-        tip = results.line1 + "<br>" + tip;
-        tip = '[🎲](#" class="showtip" title="' + tip + ')';
 
-
-        let fail = [],success = [], risky = false,failRoutines = [],successRoutines = [];
-        switch (attackInfo.reason) {
-            case "Standard": 
-                break;
-            case "Climb":
-                fail.push("Model stays where it is");
-                success.push("Model completes its Climb");
-                risky = true;
-                break;
-            case "Jump over Gap":
-                risky = true;
-                fail.push("Model falls and takes Damage");
-                success.push("Model jumps over the Gap");
-                break;
-            case "Enter Dangerous":
-                risky = true;
-                fail.push("Model takes Damage");
-                success.push("Model takes no Damage");
-                break;
-            case "Diving Charge":
-                risky = true;
-                fail.push("The Model is Down and takes injury from the Fall");
-                success.push("Place the charging model next to the target. It gains a +1 Dice bonus to hit and injury the target, and ignores any defended Obstacle");
-                failRoutines = ["Fall","Down"];
-                successRoutines = ["Diving"];
-        }
-        if (results.success === false) {
-            outputCard.body.push("[#FF0000]Test Fails[/#]");
-            if (fail.length > 0) {
-                _.each(fail,f => {
-                    outputCard.body.push(f);
-                })
-            }
-            if (risky === true) {
-                outputCard.body.push("[hr]");
-                outputCard.body.push("Model's Turn Ends");
-                model.token.set("aura1_color","#000000");
-            }
-            PrintCard();
-            setTimeout(function(){
-                _.each(failRoutines,routine => {
-                    if (routine === "Down") {
-                        model.token.set("tint_color","#FF0000");
-                    }
-                    if (routine === "Fall") {
-                        Injury(0);
-                        return;
-                    }
-                })
-
-            }, 500);
-        } else {
-            outputCard.body.push("Test Succeeds");
-            if (success.length > 0) {
-                _.each(success,f => {
-                    outputCard.body.push(f);
-                })
-            }
-            _.each(successRoutines,routine => {
-                if (routine === "Diving") {
-                    model.token.set(SM.diving,true);
-                }
-            })
-
-            PrintCard();
-        }
-
-
-
-
-
-
-
-
-
-    }
-
-*/
 
 
     const Marker = (msg) => {
@@ -2709,7 +2636,7 @@ log(weapon)
         let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
         let weapon = attackInfo.weapon;
         if (weapon === "") {
-            weapon = {keywords: " ",modifiers: []}
+            weapon = {name: "",keywords: " ",modifiers: []}
         }
 
 
@@ -2751,15 +2678,6 @@ log(weapon)
                     extraDice++;
                 }
             }
-
-
-
-
-
-
-
-
-
 
         }
         
@@ -2857,25 +2775,19 @@ log(weapon)
             }
         }
         
-        let subtitle = "";
-        if (sign >= 0) {subtitle += "+"};
-        subtitle += extraDice + " Dice";
-        if (modifier > 0) {
-            subtitle += " +" + modifier;
-        } else if (modifier < 0) {
-            subtitle += " " + modifier;
-        }
-        if (bb === true) {
-            subtitle = "Bloodbath! " + subtitle;
+        let subtitle = weapon.name;
+        if (weapon.name === "") {
+            subtitle = attackInfo.reason;
         }
         let blood = (downed === true) ? 2:1;
         let remains = (downed === true) ? " remains ":" ";
 
+        let extraLines = [];
         if (weapon.keywords.includes("Fire")) {
             //negating stuff here
             let list = [""];
             if (Exclusion(defender,list) === false) {
-                subtitle += " + Fire"
+                extraLines.push("Extra Blood Marker from Fire");
                 blood += 1;
             }
         }
@@ -2883,7 +2795,7 @@ log(weapon)
             //negating stuff here
             let list = ["Gas Mask"];
             if (Exclusion(defender,list) === false) {
-                subtitle += " + Gas"
+                extraLines.push("Extra Blood Marker from Gas");
                 blood += 1;
             }
         }
@@ -2891,7 +2803,7 @@ log(weapon)
             //negating stuff here
             let list = ["Engineer Body Armour"];
             if (Exclusion(defender,list) === false) {
-                subtitle += " + Shrapnel"
+                extraLines.push("Extra Blood Marker from Shrapnel");
                 blood += 1;
             }
         }
@@ -2904,15 +2816,23 @@ log(weapon)
 
         SetupCard(defender.name,subtitle,defender.faction);
         outputCard.body.push(line);
+     
         let s = (blood === 1) ? "":"s";
 
         if (total < 2 && blood === 0) {
             outputCard.body.push("No Effect")
         } else if (total < 7) {
+            //will catch no effect rolls with blood from gas or shrapnel or whatever
             outputCard.body.push("Minor Hit / " + blood + " Blood Marker" + s);
+            for (let i=0;i<extraLines.length;i++) {
+                outputCard.body.push(extraLines[i])
+            }
             defender.Injury("Minor Hit");
         } else if (total > 6 && total < 9) {
             outputCard.body.push("Defender" + remains + "Downed / " + blood + " Blood Marker" + s);
+            for (let i=0;i<extraLines.length;i++) {
+                outputCard.body.push(extraLines[i])
+            }
             defender.Injury("Down");
         } else if (total > 8) {
             let toughFlag = (defender.abilities.includes("Tough") && defender.token.get(SM.wounded) === false) ? true:false;
@@ -2920,6 +2840,9 @@ log(weapon)
             if (toughFlag === true) {
                 outputCard.body.push(defender.name + " Survives a Major Injury");
                 outputCard.body.push(defender.name + remains + " Downed/ " + blood + " Blood Marker" + s);
+                for (let i=0;i<extraLines.length;i++) {
+                    outputCard.body.push(extraLines[i])
+                }
                 defender.token.set(SM.wounded,true);
                 defender.Injury("Down");
             } else {
