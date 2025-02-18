@@ -10,6 +10,8 @@ const TC = (() => {
     let hexMap = {}; 
     let attackInfo;
     let testInfo;
+    let checkModels;
+    let nextStep;
 
     //Regular Hexagons, 'width' in Roll20 is 70
     let HexSize = 70/Math.sqrt(3);
@@ -655,6 +657,8 @@ log(weaponArray)
             this.token = token;
             
             this.actionsTaken = [];
+            this.extraDice = 0; //used for tests
+            this.diceRolled = 2; //used for tests, default is 2
 
 
 
@@ -896,10 +900,11 @@ log(info)
 
 
 
-    const ButtonInfo = (phrase,action) => {
+    const ButtonInfo = (phrase,action,colour) => {
         let info = {
             phrase: phrase,
             action: action,
+            colour: colour,
         }
         outputCard.buttons.push(info);
     };
@@ -1060,13 +1065,15 @@ log(info)
                 }
                 let out = "";
                 let info = outputCard.buttons[i];
+                let borderColour = info.colour ||  Factions[outputCard.faction].borderColour;
+
                 out += `<div style="display: table-row; background: #FFFFFF;; `;
                 out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
                 out += `"><span style="line-height: normal; color: #000000; `;
                 out += `"> <div style='text-align: centre; display:block;'>`;
                 out += `<a style ="background-color: ` + Factions[outputCard.faction].backgroundColour + `; padding: 5px;`
                 out += `color: ` + Factions[outputCard.faction].fontColour + `; text-align: centre; vertical-align: middle; border-radius: 5px;`;
-                out += `border-color: ` + Factions[outputCard.faction].borderColour + `; font-family: Tahoma; font-size: x-small; `;
+                out += `border-color: ` + borderColour + `; font-family: Tahoma; font-size: x-small; `;
                 out += `"href = "` + info.action + `">` + info.phrase + `</a></div></span></div></div>`;
                 output += out;
             }
@@ -2143,9 +2150,9 @@ log(results.success)
                 PrintCard();
                 attackInfo = {
                     attacker: model,
-                    defender: model,
+                    defenders: [model],
                     weapon: "",
-                    extraDice: level,
+                    extraDice: [level],
                     reason: "Fall",
                 }
                 Injury(0);
@@ -2173,9 +2180,9 @@ log(results.success)
                 PrintCard();
                 attackInfo = {
                     attacker: model,
-                    defender: model,
+                    defenders: [model],
                     weapon: "",
-                    extraDice: level,
+                    extraDice: [level],
                     reason: "Fall",
                 }
                 Injury(0);
@@ -2193,9 +2200,9 @@ log(results.success)
                 PrintCard();
                 attackInfo = {
                     attacker: model,
-                    defender: model,
+                    defenders: [model],
                     weapon: "",
-                    extraDice: 0,
+                    extraDice: [0],
                     reason: "Dangerous Terrain",
                 }
                 Injury(0);
@@ -2243,9 +2250,9 @@ log(results.success)
             let level = Math.max(info.level,model.oldLevel); // in case moved then tested
             attackInfo = {
                 attacker: model,
-                defender: model,
+                defenders: [model],
                 weapon: "",
-                extraDice: level,
+                extraDice: [level],
                 reason: "Fall",
             }
             Injury(0);
@@ -2257,67 +2264,6 @@ log(results.success)
     
 
 
-
-    const Marker = (msg) => {
-        let Tag = msg.content.split(";");
-        let number = parseInt(Tag[1]);
-        let type = Tag[2];
-        let id = Tag[3];
-        let nextStep = Tag[4];
-        let extraDice = parseInt(Tag[5]) || 0; //when both blood and blessing, this carries the blood forward
-        let bb = (type === "Bloodbath") ? true:false;
-        let model = ModelArray[id];
-        let blood = parseInt(model.token.get("bar3_value"));
-        let blessing = parseInt(model.token.get("bar1_value"));
-        if (type.includes("Blood")) {
-            extraDice -= number;
-            model.ChangeMarker(type,-number);
-            if (bb === true) {extraDice = blood - number} //any remaining blood markers
-        } else if (type === "Blessing") {
-            extraDice += number;
-            model.ChangeMarker(type,-number);
-        } 
-        if (blessing > 0 && type === "Blood") {
-           SetupCard(model.name,"",model.faction);
-           let s = (blessing === 1) ? "":"s";
-           outputCard.body.push("Model also has " + blessing + " Blessing Marker" + s);
-           ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep + ";" + extraDice);
-           let howmany;
-           switch(blessing) {
-               case 1:
-                   howmany = "1";
-                   break;
-               case 2:
-                   howmany = "?{How Many|1|2}";
-                   break;
-               case 3:
-                   howmany = "?{How Many|1|2|3}";
-                   break;
-               case 4:
-                   howmany = "?{How Many|1|2|3|4}";
-                   break;
-               case 5:
-                   howmany = "?{How Many|1|2|3|4|5}";
-                   break;
-               case 6:
-                   howmany = "?{How Many|1|2|3|4|5|6}";
-                   break;
-           }
-           ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id + ";" + nextStep + ";" + extraDice);
-           PrintCard();
-        } else {
-            if (nextStep === "Ranged2") {
-                Ranged2(extraDice);
-            } else if (nextStep === "Melee2") {
-                Melee2(extraDice);
-            } else if (nextStep === "ActionTest2") {
-                ActionTest2(extraDice,true);
-            } else if (nextStep === "Injury") {
-                //reverse how dice are applied in injury
-                Injury(-extraDice,bb);
-            }
-        }
-    }
     
 
     const Ranged = (msg) => {
@@ -2332,17 +2278,17 @@ log(weapon)
         let losResult = LOS(attacker,defender);
         let errorMsg = [];
         if (losResult.distance > weapon.range) {
-            errorMsg.push("Defender is Out of Range");
+            errorMsg.push("Target is Out of Range");
         }
         if (losResult.los === false && weapon.keywords.includes("Indirect") === false) {
-            errorMsg.push("Defender is not in Line of Sight");
+            errorMsg.push("Target is not in Line of Sight");
             errorMsg.push(losResult.reason);
         }
         if ((attacker.actionsTaken.includes("Move") || attacker.actionsTaken.includes("Dash")) && attacker.heavyMove === true) {
             errorMsg.push("Attacker is carrying a Heavy Weapon and cannot Move/Dash AND Shoot in the same turn");
         }
         let firedTimes = 0;
-        _.each(model.actionsTaken,actionTaken => {
+        _.each(attacker.actionsTaken,actionTaken => {
             if (actionTaken.includes(weapon.number)) {
                 firedTimes++;
             }
@@ -2364,27 +2310,24 @@ log(weapon)
     
         attackInfo = {
             attacker: attacker,
-            defender: defender,
+            attackerExtraDice: 0,
             weapon: weapon,
-            extraDice: 0,
+            defenders: [defender],
             result: "",
         }
-    
-        let check = CheckMarkers(attackerID,"Ranged2");
-        if (check === true) {
-            //has markers
-            PrintCard();
-            return;
-        }
-        Ranged2(0);
+        
+        checkModels = [attacker];
+        nextStep = "Ranged2";
+        CheckMarkers();
     }
     
-    const Ranged2 = (extraDice) => {
-        //entry from Ranged or from Marker
+    const Ranged2 = () => {
+        //entry from CheckMarkers once all markers checked
         //check if in melee
         let attacker = attackInfo.attacker;
-        let defender = attackInfo.defender;
+        let defender = attackInfo.defenders[0];
         let weapon = attackInfo.weapon;
+        let extraDice = attacker.extraDice;
         SetupCard(attacker.name,weapon.name,attacker.faction);
         let tip;
     
@@ -2414,7 +2357,7 @@ log(weapon)
             if (roll < 4) {
                 let i = randomInteger(friendlies.length) - 1;
                 defender = friendlies[i];
-                attackInfo.defender = defender;
+                attackInfo.defenders[0] = defender;
                 outputCard.body.push(fTip + " [#FF0000]Shooting into Melee targets an Ally![/#]");
                 outputCard.body.push("[#FF0000]" + defender.name + " is targetted[/#]");
             } else {
@@ -2426,13 +2369,10 @@ log(weapon)
     
         //To Hit
         //attacker modifiers
-        if (attacker.rangedBonus > 0) {
-            tip = "<br>Base: +" + attacker.rangedBonus + " Dice";
-        } else {
-            tip = "Base: " + attacker.rangedBonus + " Dice";
-        }
+        tip = "Base: " + (attacker.rangedBonus<0?"":"+") + attacker.rangedBonus + " Dice";
+    
         if (extraDice !== 0) {
-            tip += "<br>Markers: " + extraDice + " Dice"; 
+            tip += "<br>Markers: " + (extraDice<0?"":"+") + extraDice + " Dice"; 
         }
         if (attacker.token.get("tint_color") === "#FF0000") {
             tip += "<br>Downed: -1 Dice";
@@ -2487,8 +2427,7 @@ log(weapon)
         let modifier = 0;
     //? any in weapons or characters - would be like +1 to hit vs +1 DIce
     
-        let t = (extraDice >= 0) ? "+":"";
-        tip = "Total: " + t + extraDice + " Dice" + "<br>----------------------" + tip;
+        tip = "Total: " + (extraDice<0?"":"+") + extraDice + " Dice" + "<br>----------------------<br>" + tip;
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
 
 
@@ -2504,7 +2443,7 @@ log(weapon)
         }
     
         //mark weapon fired and action
-        model.actionsTaken.push("Ranged " + weapon.number);
+        attacker.actionsTaken.push("Ranged " + weapon.number);
         PlaySound(weapon.sound);
         //FX 
 
@@ -2512,14 +2451,33 @@ log(weapon)
 
 
         //Injuries
-        if (results.success === false) {
-            PrintCard();
-        } else {
-            let check = CheckMarkers(defender.id,"Injury");
-            PrintCard();
-            if (check === false) {
-                Injury(0);
-            }
+        PrintCard();
+        if (results.success !== false) {
+            defender.extraDice = 0;
+    //modify here ?
+            if (weapon.keywords.includes("Blast")) {
+                let index = weapon.keywords.indexOf("Blast");
+                let radius = parseInt(weapon.keywords.charAt(pos + 6));
+                _.each(ModelArray,model => {
+                    if (model.cube.distance(defender.cube) <= radius) {
+                        attackInfo.defenders.push(model.id);
+                        model.extraDice = 0;
+                        if (weapon.type === "Grenade") {
+            //check sign of extra dice here
+                            model.extraDice = -1; //used in injury
+                        }
+                    }
+                })
+            } 
+            _.each(attackInfo.defenders,defender => {
+                defender.diceRolled = 2;
+        //? any thing besides blood bath modify this ?
+
+            })
+
+            checkModels = attackInfo.defenders;
+            nextStep = "Injury"
+            CheckMarkers();
         }
     }
 
@@ -2557,9 +2515,9 @@ log(weapon)
     
         attackInfo = {
             attacker: attacker,
-            defender: defender,
+            defenders: [defender],
             weapon: weapon,
-            extraDice: extraDice,
+            extraDice: [extraDice],
             result: "",
         }
         let check = CheckMarkers(attackerID,"Melee2");
@@ -2574,9 +2532,9 @@ log(weapon)
     const Melee2 = (extraDice) => {
         //entry from Melee or from Marker
         let attacker = attackInfo.attacker;
-        let defender = attackInfo.defender;
+        let defender = attackInfo.defender[0];
         let weapon = attackInfo.weapon;
-        let secondaryDice = attackInfo.extraDice;
+        let secondaryDice = attackInfo.extraDice[0];
         SetupCard(attacker.name,weapon.name,attacker.faction);
         let tip;
     
@@ -2704,9 +2662,14 @@ log(weapon)
 
     
 
-    const Injury = (extraDice,bb) => {    
+    const Injury = (id,extraDice,bb) => {    
+log("In Injury");
+log(attackInfo)
+return
+
+
         let attacker = attackInfo.attacker;
-        let defender = attackInfo.defender;
+        let defender = ModelArray[id];
         let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
         let weapon = attackInfo.weapon;
         if (weapon === "") {
@@ -2731,8 +2694,9 @@ log(weapon)
 
 
         if (attackInfo.reason === "Fall") {
-            tip += "<br>Fall Distance: +" + attackInfo.extraDice + " Dice";
-            extraDice += attackInfo.extraDice;
+    //fix
+            tip += "<br>Fall Distance: +" + attackInfo.extraDice[XXXXX] + " Dice";
+            extraDice += attackInfo.extraDice[XXXXX];
         }
 
         //any bonus from attacker
@@ -2942,67 +2906,133 @@ log(weapon)
         return false;
     }
 
+    const CheckMarkers = () => {
+        //checks markers of models in checkModels and goes to next step once all checked
+        //context will be given by nextStep
+        let model = checkModels.shift();
+        if (model) {
+            let id = model.id;
+            let blood = parseInt(model.token.get("bar3_value"));
+            let blessing = parseInt(model.token.get("bar1_value"));
+            if (nextStep === "Injury") {
+                if (attackInfo.attacker.faction === model.faction) {
+                    blood = 0; //wont use blood on friendly
+                }
+            }
+            if (nextStep === "Ranged2" && model.abilities.includes("Absolute Faith")) {
+                blood = 0;  //sniper priest ability - ignores blood markers
+            }
+            if (blood > 0 || blessing > 0) {
+                SetupCard(model.name,"Markers",model.faction);
+                sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
+                if (blood > 0) {
+                    outputCard.body.push("[B]Blood Markers[/b]");
+                    let bb = 6;
+                    if (model.token.get("tint_color") === "#FF0000") {
+                        bb = 3
+                    }
+                    ButtonInfo("Skip Blood Markers","!Marker;0;Nil;" + id,"#FF0000");
+                    if (nextStep === "Injury" && blood >= bb) {
+                        ButtonInfo("Bloodbath!","!Marker;" + bb + ";Bloodbath;" + id,"#FF0000");
+                    } else {
+                        let s = (blood === 1) ? "":"s";
+                        outputCard.body.push("Model has " + blood + " Blood Marker" + s);
+                        let howmany;
+                        switch(blood) {
+                            case 1:
+                                howmany = "1";
+                                break;
+                            case 2:
+                                howmany = "?{How Many|1|2}";
+                                break;
+                            case 3:
+                                howmany = "?{How Many|1|2|3}";
+                                break;
+                            case 4:
+                                howmany = "?{How Many|1|2|3|4}";
+                                break;
+                            case 5:
+                                howmany = "?{How Many|1|2|3|4|5}";
+                                break;
+                            case 6:
+                                howmany = "?{How Many|1|2|3|4|5|6}";
+                                break;
+                        }
+                        ButtonInfo("Use Blood Markers","!Marker;" + howmany + ";Blood;" + id,"#FF0000");
+                    }
+                } else if (blessing > 0) {
+                    outputCard.body.push("[B]Blessing Markers[/b]");
+                    let s = (blessing === 1) ? "":"s";
+                    outputCard.body.push("Model has " + blessing + " Blessing Marker" + s);
+                    ButtonInfo("Skip Blessing Markers","!Marker;0;Nil;" + id,"#00FF00");
+                    let howmany;
+                    switch(blessing) {
+                        case 1:
+                            howmany = "1";
+                            break;
+                        case 2:
+                            howmany = "?{How Many|1|2}";
+                            break;
+                        case 3:
+                            howmany = "?{How Many|1|2|3}";
+                            break;
+                        case 4:
+                            howmany = "?{How Many|1|2|3|4}";
+                            break;
+                        case 5:
+                            howmany = "?{How Many|1|2|3|4|5}";
+                            break;
+                        case 6:
+                            howmany = "?{How Many|1|2|3|4|5|6}";
+                            break;
+                    }
+                    ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id,"#00FF00");
+                }
+                PrintCard();
+            } else {
+                CheckMarkers();
+            }
+        } else {
+            if (nextStep === "Injury") {
+                Injury();
+            } 
+            if (nextStep === "Ranged2") {
+                Ranged2();
+            } 
     
-
-
+        }
+    }
     
-    
-    const CheckMarkers = (id,nextStep) => {
+    const Marker = (msg) => {
+        let Tag = msg.content.split(";");
+        let number = parseInt(Tag[1]);
+        let type = Tag[2];
+        let id = Tag[3];
+        let bb = (type === "Bloodbath") ? true:false;
         let model = ModelArray[id];
+        let extraDice;
         let blood = parseInt(model.token.get("bar3_value"));
         let blessing = parseInt(model.token.get("bar1_value"));
-        let friendlyFire = false;
-        if (nextStep === "Injury") {
-            let attacker = attackInfo.attacker;
-            if (attacker.faction === model.faction) {
-                friendlyFire = true;
-            }
-        }
-        if (nextStep === "Ranged2" && model.abilities.includes("Absolute Faith")) {
-            friendlyFire = true;  //sniper priest ability - ignores blood markers
-        }
+        if (type.includes("Blood")) {
+            extraDice =  -number;
+            model.ChangeMarker(type,-number);
+            if (bb === true) {
+                extraDice = blood - number; //any remaining blood markers
+                model.diceRolled = 3;
+            } 
 
+        } else if (type === "Blessing") {
+            extraDice = number;
+            model.ChangeMarker(type,-number)
+        } 
 
+        model.extraDice += extraDice;
 
-
-        if (blood > 0 && friendlyFire === false) {
-            let bb = 6;
-            ButtonInfo("No Blood Markers","!Marker;0;Nil;" + id + ";" + nextStep);
-
-            if (model.token.get("tint_color") === "#FF0000") {bb = 3};
-            if (nextStep === "Injury" && blood >= bb) {
-                ButtonInfo("Bloodbath!","!Marker;" + bb + ";Bloodbath;" + id + ";" + nextStep);
-            } else {
-                let s = (blood === 1) ? "":"s";
-                outputCard.body.push("Model has " + blood + " Blood Marker" + s);
-                let howmany;
-                switch(blood) {
-                    case 1:
-                        howmany = "1";
-                        break;
-                    case 2:
-                        howmany = "?{How Many|1|2}";
-                        break;
-                    case 3:
-                        howmany = "?{How Many|1|2|3}";
-                        break;
-                    case 4:
-                        howmany = "?{How Many|1|2|3|4}";
-                        break;
-                    case 5:
-                        howmany = "?{How Many|1|2|3|4|5}";
-                        break;
-                    case 6:
-                        howmany = "?{How Many|1|2|3|4|5|6}";
-                        break;
-                }
-                ButtonInfo("Use Blood Markers","!Marker;" + howmany + ";Blood;" + id + ";" + nextStep);
-            }
-            //if also has blessings will be picked up in Blood Marker
-        } else if (blessing > 0) {
+        if (blessing > 0 && type.includes("Blood")) {
+            SetupCard(model.name,"Markers",model.faction);
             let s = (blessing === 1) ? "":"s";
-            outputCard.body.push("Model has " + blessing + " Blessing Marker" + s);
-            ButtonInfo("No Blessing Markers","!Marker;0;Nil;" + id + ";" + nextStep);
+            outputCard.body.push("Model also has " + blessing + " Blessing Marker" + s);
+            ButtonInfo("Skip Blessing Markers","!Marker;0;Nil;" + id,"#00FF00");
             let howmany;
             switch(blessing) {
                 case 1:
@@ -3024,21 +3054,12 @@ log(weapon)
                     howmany = "?{How Many|1|2|3|4|5|6}";
                     break;
             }
-            ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id + ";" + nextStep);
-        } 
-        if ((blood > 0 && friendlyFire === false) || blessing > 0) {
-            return true;
-        } else {
-            return false;
-        }
-    
-    
-    
-    
-    
+            ButtonInfo("Use Blessing Markers","!Marker;" + howmany + ";Blessing;" + id,"#00FF00");
+            PrintCard();
+         } else {
+            CheckMarkers();
+         }
     }
-    
-
 
     const TokenInfo = (msg) => {
         if (!msg.selected) {
