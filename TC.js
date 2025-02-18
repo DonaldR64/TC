@@ -76,14 +76,13 @@ const TC = (() => {
         },
        
         "Heretic Legion": {
-            "image": "https://s3.amazonaws.com/files.d20.io/images/428505453/sjIHroRj6jS1pvF1WKnLGQ/thumb.png?1739231545",
-            "backgroundColour": "#2F4F4F",
+            "image": "https://s3.amazonaws.com/files.d20.io/images/429477660/liolC5NqztkkkZO7VAiCgA/thumb.png?1739845619",
+            "backgroundColour": "#FFFFFF",
             "titlefont": "Arial",
-            "fontColour": "#FFFFFF",
-            "borderColour": "#000000",
+            "fontColour": "#FF0000",
+            "borderColour": "#FF0000",
             "borderStyle": "5px ridge",
-            "dice": "Antioch",
-
+            "dice": "Heretic",
         },
        
 
@@ -479,6 +478,7 @@ const TC = (() => {
                     wkeywords = wkeywords.split(",");
                     _.each(wkeywords,key => {
                         if (key !== undefined && key !== " " && key !== "") {
+                            key = key.trim();
                             keywords.push(key);
                         }
                     })
