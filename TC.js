@@ -451,12 +451,20 @@ const TC = (() => {
                     if (wname.includes("Satchel") && charName.includes("Combat Engineer")) {
                         wkeywords.replace("Heavy","");
                     }
+                    let attacks = 1;
+                    _.each(wmodifiers,mod => {
+                        if (mod.includes("Attacks")) {
+                            attacks = mod.replace(/\D/g,'');
+                        }
+                    })
+
 
 
                     let weapon = {
                         name: wname,
                         type: wtype,
                         range: wrange,
+                        attacks: attacks,
                         modifiers: wmodifiers,
                         keywords: wkeywords,
                         sound: wsound,
@@ -1479,6 +1487,16 @@ log(info)
             //start of game stuff
             //save models for end of turn references
             state.TC.models = models;
+        
+            _.each(ModelArray,model => {
+                if (model.equipment.includes("Shovel") && ModelHeight(model).level === 0) {
+                    model.set(SM.cover,true);
+                }
+            })
+
+
+
+
         } else {
             //check if any remaining unactivated models
             let unactivated = [];
@@ -1572,6 +1590,7 @@ log(info)
             model.token.set("aura1_color","#00FF00");
             model.token.set(SM.diving,false);
             model.token.set(SM.morale,false);
+            model.token.set(SM.aim,false);
         })
 
 
@@ -1666,7 +1685,7 @@ log(marker)
         PrintCard();
     }
 
-    const Action = (msg) => {
+    const Movement = (msg) => {
         let Tag = msg.content.split(";");
         if (!Tag) {return};
         let modelID = Tag[1];
@@ -1675,22 +1694,33 @@ log(marker)
 
         let model = ModelArray[modelID];
         if (!model) {return};
+        let errorMsg = [];
+
         if (model.token.get("aura1_color") === "#000000") {
-            PlaySound("Error");
-            sendChat("","Model has already been activated");
-            return;
-        } else if (model.actionsTaken.includes(type)) {
-            PlaySound("Error");
-            sendChat("","Model has already been taken this action this turn");
-            return;
-        } else if (activeModelID !== "" && modelID !== activeModelID) {
-            lastModel = ModelArray[activeModelID];
-            lastModel.token.set("aura1_color","#000000");
-            activeModelID = modelID;
-        }
+            errorMsg.push("Model has already been activated");
+        } 
+        if (model.actionsTaken.includes(type)) {
+            errorMsg.push("Model has already been taken this action this turn");
+        } 
+        _.each(model.actionsTaken,actionTaken => {
+            if (actionTaken.includes("Ranged") && model.heavyMove === true) {
+                errorMsg.push("Model has a Heavy Weapon, and cannot Move AND Shoot");
+                return;
+            }
+        })
+
 
         SetupCard(model.name,type,model.faction);
-
+        //errors re range, los
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                outputCard.body.push(msg);
+            })
+            PrintCard();
+            PlaySound("Error");
+            return;
+        }
+        
         if (type === "Move") {
             let downed = (model.token.get("tint_color") === "#FF0000") ? true:false
             let move = model.move;
@@ -2278,12 +2308,23 @@ log(weapon)
         if (losResult.distance > weapon.range) {
             errorMsg.push("Defender is Out of Range");
         }
-    //check keyword
         if (losResult.los === false && weapon.keywords.includes("Indirect") === false) {
             errorMsg.push("Defender is not in Line of Sight");
             errorMsg.push(losResult.reason);
         }
-    
+        if ((attacker.actionsTaken.includes("Move") || attacker.actionsTaken.includes("Dash")) && attacker.heavyMove === true) {
+            errorMsg.push("Attacker is carrying a Heavy Weapon and cannot Move/Dash AND Shoot in the same turn");
+        }
+        let firedTimes = 0;
+        _.each(model.actionsTaken,actionTaken => {
+            if (actionTaken.includes(weapon.name)) {
+                firedTimes++;
+            }
+        })
+        if (firedTimes >= weapon.attacks) {
+            errorMsg.push("Weapon has been fired its max. # of times");
+        }
+
         SetupCard(attacker.name,weapon.name,attacker.faction);
         //errors re range, los
         if (errorMsg.length > 0) {
@@ -2291,6 +2332,7 @@ log(weapon)
                 outputCard.body.push(msg);
             })
             PrintCard();
+            PlaySound("Error");
             return;
         }
     
@@ -2433,10 +2475,16 @@ log(weapon)
             outputCard.body.push("Attack Hits and scores a Critical");
         } else {
             outputCard.body.push("Attack Hits");
-    
-    
         }
     
+        //mark weapon fired and action
+        model.actionsTaken.push("Ranged " + weapon.name);
+        PlaySound(weapon.sound);
+        //FX 
+
+
+
+
         //Injuries
         if (results.success === false) {
             PrintCard();
@@ -3134,10 +3182,8 @@ log(weapon)
                     flag = true;
                 }
             }
-log(interHex.label)
-log(interHex.los)
-            let int = interHex.los.replace(/\D/g,'');
-log(int)
+//log(interHex.label)
+//log(interHex.los)
             if (flag === true) {
                 //LOS goes through the terrain
                 if (interHex.cover === true) {losCover = true};
@@ -3249,11 +3295,11 @@ log(int)
         } 
 
         abilityName = "Move";
-        action = "!Action;@{selected|token_id};Move;?{Type|Move|Charge|Diving Charge|Retreat}";
+        action = "!Movement;@{selected|token_id};Move;?{Type|Move|Charge|Diving Charge|Retreat}";
         AddAbility(abilityName,action, model.charID);
 
         abilityName = "Dash";
-        action = "!Action;@{selected|token_id};Dash}";
+        action = "!Movement;@{selected|token_id};Dash}";
         AddAbility(abilityName,action, model.charID);
 
         //token info
@@ -3565,8 +3611,8 @@ log(int)
             case '!GameInfo':
                 GameInfo();
                 break;
-            case '!Action':
-                Action(msg);
+            case '!Movement':
+                Movement(msg);
                 break;
             case '!Ranged':
                 Ranged(msg);
