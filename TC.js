@@ -2457,10 +2457,12 @@ log(weapon)
     //modify here ?
             if (weapon.keywords.includes("Blast")) {
                 let index = weapon.keywords.indexOf("Blast");
-                let radius = parseInt(weapon.keywords.charAt(pos + 6));
+                let radius = parseInt(weapon.keywords.charAt(index + 6));
                 _.each(ModelArray,model => {
-                    if (model.cube.distance(defender.cube) <= radius) {
-                        attackInfo.defenders.push(model.id);
+                    if (model.id === defender.id) {return}
+                    let dist = model.cube.distance(defender.cube);
+                    if (dist <= radius) {
+                        attackInfo.defenders.push(model);
                         model.extraDice = 0;
                         if (weapon.type === "Grenade") {
             //check sign of extra dice here
@@ -2474,7 +2476,7 @@ log(weapon)
         //? any thing besides blood bath modify this ?
 
             })
-
+log("Length: " + attackInfo.defenders.length)
             checkModels = attackInfo.defenders;
             nextStep = "Injury"
             CheckMarkers();
