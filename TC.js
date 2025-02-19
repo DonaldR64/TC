@@ -444,6 +444,7 @@ const TC = (() => {
                     wmodifiers = wmodifiers.split(",");
                     _.each(wmodifiers,mod => {
                         mod = mod.trim();
+                        return mod;
                     })
                     let wkeywords = attributeArray[attName+"keywords"] || " ";
                     let wsound = attributeArray[attName+"sound"] || "";
@@ -478,8 +479,8 @@ const TC = (() => {
                         type: wtype,
                         range: wrange,
                         attacks: attacks,
-                        modifiers: wmodifiers,
-                        keywords: wkeywords,
+                        modifiers: wmodifiers, //array
+                        keywords: wkeywords, //string
                         sound: wsound,
                         fx: wfx,
                     }
@@ -659,12 +660,12 @@ log(weaponArray)
             this.actionsTaken = [];
             this.extraDice = 0; //used for tests
             this.diceRolled = 2; //used for tests, default is 2
-
+            this.injuryNote = "";
 
 
             ModelArray[tokenID] = this;
 
-            //hexMap[hexLabel].tokenIDs.push(token.id);
+            hexMap[hexLabel].modelIDs.push(token.id);
             
 
 
@@ -705,9 +706,9 @@ log(weaponArray)
         }
 
 
-        Injury(type) {
+        Injury(type,blood) {
+            if (!blood) {blood = 1};
             if (type === "Minor Hit" || type === "Down") {
-                let blood = (this.token.get("tint_color") === "#FF0000") ? 2:1;
                 this.ChangeMarker("Blood",blood);
             }
             if (type === "Down") {
@@ -1319,7 +1320,7 @@ log(info)
             };
             let model = new Model(token.id);
             model.name = token.get("name");
-
+        
 
 
         });
@@ -2416,8 +2417,6 @@ log(weapon)
             tip += "<br>Long Range -1 Dice";
         }
 
-
-
     
         if (losResult.heightAdvantage === true) {
             extraDice++;
@@ -2454,6 +2453,8 @@ log(weapon)
         PrintCard();
         if (results.success !== false) {
             defender.extraDice = 0;
+            defender.diceRolled = 2;
+            defender.injuryNote = "";
     //modify here ?
             if (weapon.keywords.includes("Blast")) {
                 let index = weapon.keywords.indexOf("Blast");
@@ -2463,7 +2464,9 @@ log(weapon)
                     let dist = model.cube.distance(defender.cube);
                     if (dist <= radius) {
                         attackInfo.defenders.push(model);
+                        model.injuryNote = "";
                         model.extraDice = 0;
+                        model.diceRolled = 2;
                         if (weapon.type === "Grenade") {
             //check sign of extra dice here
                             model.extraDice = -1; //used in injury
@@ -2471,13 +2474,12 @@ log(weapon)
                     }
                 })
             } 
-            _.each(attackInfo.defenders,defender => {
-                defender.diceRolled = 2;
-        //? any thing besides blood bath modify this ?
-
-            })
+    
 log("Length: " + attackInfo.defenders.length)
-            checkModels = attackInfo.defenders;
+            checkModels = [];
+            _.each(attackInfo.defenders,defender => {
+                checkModels.push(defender);
+            })
             nextStep = "Injury"
             CheckMarkers();
         }
@@ -2662,241 +2664,6 @@ log("Length: " + attackInfo.defenders.length)
 
     
 
-    
-
-    const Injury = (id,extraDice,bb) => {    
-log("In Injury");
-log(attackInfo)
-return
-
-
-        let attacker = attackInfo.attacker;
-        let defender = ModelArray[id];
-        let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
-        let weapon = attackInfo.weapon;
-        if (weapon === "") {
-            weapon = {name: "",keywords: " ",modifiers: []}
-        }
-
-
-        let result = attackInfo.result;
-        let tip = "Base 2 Dice";
-        if (!bb) {bb = false};
-        let numberDice = 2; //# of dice picked from all those rolled
-        if (bb === true) {
-            tip = "Bloodbath!: 3 Dice chosen";
-            numberDice += 1;
-        }
-        if (extraDice !== 0) {
-            tip += "<br>Markers: ";
-            if (extraDice > 0) {tip += "+"};
-            tip += extraDice + " Dice";
-        }
-        let modifier = 0; //added to final roll
-
-
-        if (attackInfo.reason === "Fall") {
-    //fix
-            tip += "<br>Fall Distance: +" + attackInfo.extraDice[XXXXX] + " Dice";
-            extraDice += attackInfo.extraDice[XXXXX];
-        }
-
-        //any bonus from attacker
-
-        if (result === "Critical") {
-            extraDice++;
-            tip += "<br>Critical: +1 Dice";
-        }
-        if (attacker) {
-            if (attacker.token.get(SM.diving) === true) {
-                tip += "<br>Diving Charge: +1 Dice";
-                extraDice++;
-            }
-            if (attacker.abilities.includes("Finish the Fallen") && downed === true) {
-                if (defender.faction !== "Black Grail" && defender.keywords.includes("Demonic") === false) {
-                    tip += "<br>Finish the Fallen: +1 Dice";
-                    extraDice++;
-                }
-            }
-
-        }
-        
-
-
-
-
-
-        //Defender Modifiers
-        if (downed === true) {
-            extraDice++;
-            tip += "<br>Down: +1 Dice";
-        }
-
-        let ignoreArmour = false;
-        //bonus from weapon
-        _.each(weapon.modifiers,modifier => {
-            let sign = 1;
-            if (modifier.includes("-")) {
-                sign = -1
-            }
-            if (modifier.includes("Injury" && modifier.includes("Dice"))) {
-                let text = (modifier.includes("-")) ? "":"+"
-                let bonus = sign * parseInt(modifier);
-                extraDice += bonus;
-                tip += "<br>Weapon: " + text + bonus + " Dice";
-            }
-            if (modifier.includes("Injury" && modifier.includes("Roll"))) {
-                let text = (modifier.includes("-")) ? "":"+"
-                let bonus = sign * parseInt(modifier)
-                modifier += bonus;
-                tip += "<br>Weapon: " + text + bonus + " To Roll";
-            }
-            if (result === "Critical" && modifier.includes("Critical")) {
-                extraDice++;
-                tip += "<br>Weapon Critical +1 Dice";
-            }
-            if (modifier.includes("Ignore Armour")) {
-                if ((modifier.includes("Down") && downed === true) || modifier.includes("Down") === false) {
-                    tip += "<br>Ignores Armour";
-                    ignoreArmour = true;
-                } 
-            }
-
-        })
-
-        //armour and such
-        if (ignoreArmour === false) {
-            modifier += defender.armour;
-            let sign = (defender.armour >= 0) ? "+":"";
-            tip += "<br>Armour: " + sign + defender.armour + " To Roll";
-        }
-        if (defender.equipment.includes("Engineer Body Armour") && weapon.keywords.includes("Shrapnel")) {
-            tip += "<br>Engineer Body Armour: -1 Dice";
-            extraDice--;
-        }
-        if (defender.equipment.includes("Gas Mask") && weapon.keywords.includes("Gas")) {
-            tip += "<br>Gas Mask: -1 Dice";
-            extraDice--;
-        }
-
-
-
-
-
-        let dice = numberDice + Math.abs(extraDice);
-        let sign = Math.sign(extraDice);
-        let rolls = [];
-        for (let i=0;i<dice;i++) {
-            let roll = randomInteger(6);
-            rolls.push(roll);
-        }
-        rolls.sort();
-        let usedRolls = [];
-        if (sign < 0) {
-            usedRolls = rolls.slice(0,numberDice); //lowest 
-        } else {
-            usedRolls = rolls.slice(-numberDice); //highest
-        }
-        let total = 0;
-        _.each(usedRolls,roll => {
-            total += roll;
-        })
-        total += modifier;
-
-        tip = '[🎲](#" class="showtip" title="' + tip + ')';
-        let line = tip + " Rolls: ";
-        for (let i=0;i<rolls.length;i++) {
-            line += DisplayDice(rolls[i],"Neutral",24) + " ";
-            if ((sign >=0 && i === (rolls.length - numberDice - 1)) && rolls.length > numberDice) {
-                line += "▶ ";
-            }
-            if ((sign < 0 && i === (numberDice-1)) && rolls.length > numberDice) {
-                line += "◀ "
-            }
-        }
-        
-        let subtitle = weapon.name;
-        if (weapon.name === "") {
-            subtitle = attackInfo.reason;
-        }
-        let blood = (downed === true) ? 2:1;
-        let remains = (downed === true) ? " remains ":" ";
-
-        let extraLines = [];
-        if (weapon.keywords.includes("Fire")) {
-            //negating stuff here
-            let list = [""];
-            if (Exclusion(defender,list) === false) {
-                extraLines.push("Extra Blood Marker from Fire");
-                blood += 1;
-            }
-        }
-        if (weapon.keywords.includes("Gas")) {
-            //negating stuff here
-            let list = ["Gas Mask"];
-            if (Exclusion(defender,list) === false) {
-                extraLines.push("Extra Blood Marker from Gas");
-                blood += 1;
-            }
-        }
-        if (weapon.keywords.includes("Shrapnel")) {
-            //negating stuff here
-            let list = ["Engineer Body Armour"];
-            if (Exclusion(defender,list) === false) {
-                extraLines.push("Extra Blood Marker from Shrapnel");
-                blood += 1;
-            }
-        }
-
-
-
-
-
-
-
-        SetupCard(defender.name,subtitle,defender.faction);
-        outputCard.body.push(line);
-     
-        let s = (blood === 1) ? "":"s";
-
-        if (total < 2 && blood === 0) {
-            outputCard.body.push("No Effect")
-        } else if (total < 7) {
-            //will catch no effect rolls with blood from gas or shrapnel or whatever
-            outputCard.body.push("Minor Hit / " + blood + " Blood Marker" + s);
-            for (let i=0;i<extraLines.length;i++) {
-                outputCard.body.push(extraLines[i])
-            }
-            defender.Injury("Minor Hit");
-        } else if (total > 6 && total < 9) {
-            outputCard.body.push("Defender" + remains + "Downed / " + blood + " Blood Marker" + s);
-            for (let i=0;i<extraLines.length;i++) {
-                outputCard.body.push(extraLines[i])
-            }
-            defender.Injury("Down");
-        } else if (total > 8) {
-            let toughFlag = (defender.abilities.includes("Tough") && defender.token.get(SM.wounded) === false) ? true:false;
-
-            if (toughFlag === true) {
-                outputCard.body.push(defender.name + " Survives a Major Injury");
-                outputCard.body.push(defender.name + remains + " Downed/ " + blood + " Blood Marker" + s);
-                for (let i=0;i<extraLines.length;i++) {
-                    outputCard.body.push(extraLines[i])
-                }
-                defender.token.set(SM.wounded,true);
-                defender.Injury("Down");
-            } else {
-                outputCard.body.push(defender.name + " taken Out of Action");
-                defender.Injury("Out of Action");
-            }
-        }
-
-
-
-
-
-        PrintCard();
-    }
 
 
     const Exclusion = (model,exclusions) => {
@@ -3012,23 +2779,21 @@ return
         let id = Tag[3];
         let bb = (type === "Bloodbath") ? true:false;
         let model = ModelArray[id];
-        let extraDice;
+        let extraDice = model.extraDice;
         let blood = parseInt(model.token.get("bar3_value"));
         let blessing = parseInt(model.token.get("bar1_value"));
         if (type.includes("Blood")) {
-            extraDice =  -number;
-            model.ChangeMarker(type,-number);
             if (bb === true) {
-                extraDice = blood - number; //any remaining blood markers
+                number = (blood - number); //remaining after 'cost' of bloodbath
                 model.diceRolled = 3;
-            } 
-
+                model.injuryNote = "<br>Bloodbath!"
+            }
+            model.ChangeMarker(type,-number);
         } else if (type === "Blessing") {
-            extraDice = number;
             model.ChangeMarker(type,-number)
         } 
-
-        model.extraDice += extraDice;
+        extraDice += number;
+        model.extraDice = extraDice;
 
         if (blessing > 0 && type.includes("Blood")) {
             SetupCard(model.name,"Markers",model.faction);
@@ -3285,7 +3050,222 @@ return
     }
 
 
+    const Injury = () => {
+    
+        let attacker = attackInfo.attacker;
+        let result = attackInfo.result;
+    
+        let weapon = attackInfo.weapon;
+        if (weapon === "") {
+            weapon = {name: "",keywords: " ",modifiers: []}
+        }
+    
+        let defender = attackInfo.defenders.shift();
+        if (defender) {
+log(defender.name)
+            let downed = (defender.token.get("tint_color") === "#FF0000") ? true:false;
+            let numberDice = defender.diceRolled;
+log(numberDice)
+            let tip = "Rolling: " + numberDice + " Dice;"
+            tip += defender.injuryNote;
+            
+            let extraDice = defender.extraDice;
+log(extraDice)
+            if (extraDice !== 0) {
+                tip += "<br>Markers: " + (extraDice < 0 ? "":"+") + extraDice + " Dice";
+            }
+            let diceAddition = 0; //added to final roll
+    
+            //fall 
+    
+            //attacker modifiers
+            if (result === "Critical") {
+                extraDice++;
+                tip += "<br>Critical: +1 Dice";
+            }
+            if (attacker) {
+                if (attacker.token.get(SM.diving) === true) {
+                    tip += "<br>Diving Charge: +1 Dice";
+                    extraDice++;
+                }
+                if (attacker.abilities.includes("Finish the Fallen") && downed === true) {
+                    if (defender.faction !== "Black Grail" && defender.keywords.includes("Demonic") === false) {
+                        tip += "<br>Finish the Fallen: +1 Dice";
+                        extraDice++;
+                    }
+                }
+    
+            }
+            
+            //Defender Modifiers
+            if (downed === true) {
+                extraDice++;
+                tip += "<br>Down: +1 Dice";
+            }
+    
+    
+    
+            let ignoreArmour = false;
+            //bonus from weapon
+            _.each(weapon.modifiers,modifier => {
+                let sign = 1;
+                if (modifier.includes("-")) {
+                    sign = -1
+                }
+                let number = modifier.replace(/\D/g,'');
+                let bonus = sign * number;
+                if (modifier.includes("Injury" && modifier.includes("Dice"))) {
+                    extraDice += bonus;
+                    tip += "<br>Weapon: " + (bonus < 0 ? "":"+") + bonus + " Dice";
+                }
+                if (modifier.includes("Injury" && modifier.includes("Roll"))) {
+                    diceAddition += bonus;
+                    tip += "<br>Weapon: " + (bonus < 0 ? "":"+") + bonus + " To Roll";
+                }
+                if (result === "Critical" && modifier.includes("Critical")) {
+                    extraDice++;
+                    tip += "<br>Weapon Critical +1 Dice";
+                }
+                if (modifier.includes("Ignore Armour")) {
+                    if (modifier.includes("Down") && downed === false) {return};
+                    if (modifier.includes("Critical") && result !== "Critical") {return};
+    
+                    tip += "<br>Ignores Armour";
+                    ignoreArmour = true;
+                }
+    
+            })
+    
+            //armour and such
+            if (ignoreArmour === false && defender.armour !== 0) {
+                diceAddition += defender.armour;
+                tip += "<br>Armour: " +  (defender.armour < 0 ? "":"+") + defender.armour + " To Roll";
+            }
+            if (defender.equipment.includes("Engineer Body Armour") && weapon.keywords.includes("Shrapnel")) {
+                tip += "<br>Engineer Body Armour: -1 Dice";
+                extraDice--;
+            }
+            if (defender.equipment.includes("Gas Mask") && weapon.keywords.includes("Gas")) {
+                tip += "<br>Gas Mask: -1 Dice";
+                extraDice--;
+            }
+    
+            let dice = numberDice + Math.abs(extraDice);
+            let sign = Math.sign(extraDice);
+            let rolls = [];
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+            }
+            rolls.sort();
+            let usedRolls = [];
+            if (sign < 0) {
+                usedRolls = rolls.slice(0,numberDice); //lowest 
+            } else {
+                usedRolls = rolls.slice(-numberDice); //highest
+            }
+            let total = 0;
+            _.each(usedRolls,roll => {
+                total += roll;
+            })
+            total += diceAddition;
+    
+            tip = '[🎲](#" class="showtip" title="' + tip + ')';
+            let line = tip + " Rolls: ";
+            for (let i=0;i<rolls.length;i++) {
+                line += DisplayDice(rolls[i],"Neutral",24) + " ";
+                if ((sign >=0 && i === (rolls.length - numberDice - 1)) && rolls.length > numberDice) {
+                    line += "▶ ";
+                }
+                if ((sign < 0 && i === (numberDice-1)) && rolls.length > numberDice) {
+                    line += "◀ "
+                }
+            }
+            
+            let btip = "";
+            let subtitle = weapon.name;
+            if (weapon.name === "") {
+                subtitle = attackInfo.reason;
+            }
+            let blood = 1;
+            if (downed === true) {
+                blood++;
+                btip += "<br>+1 Blood due to Down";
+            }
 
+            let remains = (downed === true) ? " remains ":" ";
+    
+            let extraLines = [];
+            if (weapon.keywords.includes("Fire")) {
+                //negating stuff here
+                let list = [""];
+                if (Exclusion(defender,list) === false) {
+                    blood++;
+                    btip += "<br>+1 Blood from Fire";
+                }
+            }
+            if (weapon.keywords.includes("Gas")) {
+                //negating stuff here
+                let list = ["Gas Mask"];
+                if (Exclusion(defender,list) === false) {
+                    blood++;
+                    btip += "<br>+1 Blood from Gas";
+                }
+            }
+            if (weapon.keywords.includes("Shrapnel")) {
+                //negating stuff here
+                let list = ["Engineer Body Armour"];
+                if (Exclusion(defender,list) === false) {
+                    blood++;
+                    btip += "<br>+1 Blood from Shrapnel";
+                }
+            }
+    
+            btip = "Total: " + blood + " Blood" + "<br>----------------------" + btip;
+            btip = '[🎲](#" class="showtip" title="' + btip + ')';
+
+            SetupCard(defender.name,subtitle,defender.faction);
+            outputCard.body.push(line);
+            sendPing(defender.token.get("left"),defender.token.get("top"),Campaign().get("playerpageid"),null,true);
+             
+            let s = (blood === 1) ? "":"s";
+    
+            if (total < 2 && blood === 0) {
+                outputCard.body.push("No Effect")
+            } else if (total < 7) {
+                //will catch no effect rolls with blood from gas or shrapnel or whatever
+                outputCard.body.push("Minor Hit")
+                outputCard.body.push(btip + " " + blood + " Blood Marker" + s);
+                defender.Injury("Minor Hit",blood);
+            } else if (total > 6 && total < 9) {
+                outputCard.body.push("Defender" + remains + "Downed")
+                outputCard.body.push(btip + " " + blood + " Blood Marker" + s);
+                defender.Injury("Down",blood);
+            } else if (total > 8) {
+                let toughFlag = (defender.abilities.includes("Tough") && defender.token.get(SM.wounded) === false) ? true:false;
+    
+                if (toughFlag === true) {
+                    outputCard.body.push(defender.name + " Survives a Major Injury");
+                    outputCard.body.push("Defender" + remains + "Downed")
+                    outputCard.body.push(btip + " " + blood + " Blood Marker" + s);
+                    defender.token.set(SM.wounded,true);
+                    defender.Injury("Down",blood);
+                } else {
+                    outputCard.body.push(defender.name + " taken Out of Action");
+                    defender.Injury("Out of Action");
+                }
+            }
+    
+    
+            if (attackInfo.defenders.length > 0) {
+                ButtonInfo("Next Defender","!Injury");
+            }
+            PrintCard();
+        }
+    }
+    
+    
+    
 
 
 
@@ -3680,6 +3660,9 @@ return
                 break;
             case '!ModelEquipment':
                 ModelEquipment(msg);
+                break;
+            case '!Injury':
+                Injury();
                 break;
         }
     };
