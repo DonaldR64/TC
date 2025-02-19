@@ -2036,25 +2036,15 @@ log(marker)
             numDice: numDice,
             reason: reason,
         }
-    
-        let check = CheckMarkers(id,"ActionTest2"); //this will check for markers
-        //if none, then comes back false and can go onto part2
-        //if there was some, puts up buttons
-        //buttons feed back to marker which then feed into actiontest2
-        if (check === false) {
-            ActionTest2(0);
-        } else {
-            PrintCard();
-        }
+
+        checkModels = [ModelArray[id]];
+        nextStep = "ActionTest2"
+        CheckMarkers();
     }
     
-    const ActionTest2 = (markerDice,newCard) => {
-        if (!newCard) {newCard = false};
-        //newCard means need to setup a new card to print in chat
+    const ActionTest2 = () => {
         let model = ModelArray[testInfo.id];
-        if (newCard === true) {
-            SetupCard(model.name,testInfo.reason,model.faction);
-        }
+        SetupCard(model.name,testInfo.reason,model.faction);
         let bdText = (testInfo.bonusDice === 0) ? "No Modifier":(testInfo.bonusDice<0?"":"+") + testInfo.bonusDice + " Dice";
         let rmText = (testInfo.rollMod === 0) ? "":(testInfo.rollMod<0?" ":" +") + testInfo.rollMod;
         let tip = "Base: " + bdText + rmText;
@@ -2253,12 +2243,14 @@ log(results.success)
                 attacker: model,
                 defenders: [model],
                 weapon: "",
-                extraDice: [level],
                 reason: "Fall",
             }
-            Injury(0);
-            model.token.set("tint_color","#FF0000");
-            model.token.set(info.heightSymbol,false);
+            model.extraDice = 0;
+            model.diceRolled = 2;
+            model.injuryNote = "";
+            checkModels = [model];
+            nextStep = "Injury"
+            CheckMarkers();
         }
     }
     
@@ -2762,6 +2754,9 @@ log("Length: " + attackInfo.defenders.length)
             if (nextStep === "Melee2") {
                 Melee2();
             }
+            if (nextStep === "ActionTest2") {
+                ActionTest2();
+            }
     
         }
     }
@@ -2780,7 +2775,7 @@ log("Length: " + attackInfo.defenders.length)
             if (bb === true) {
                 number = (blood - number); //remaining after 'cost' of bloodbath
                 model.diceRolled = 3;
-                model.injuryNote = "<br>Bloodbath!"
+                model.injuryNote = "Bloodbath"
             }
             model.ChangeMarker(type,-number);
         } else if (type === "Blessing") {
@@ -3066,8 +3061,10 @@ log(defender.name)
             let numberDice = defender.diceRolled;
 log(numberDice)
             let tip = "Rolling: " + numberDice + " Dice;"
-            tip += defender.injuryNote;
-            
+            if (defender.injuryNote === "Bloodbath") {
+                tip += "<br>Bloodbath!!!"
+            }
+
             let extraDice = defender.extraDice;
 log(extraDice)
             if (extraDice !== 0) {
@@ -3253,6 +3250,12 @@ log(extraDice)
                     outputCard.body.push(defender.name + " taken Out of Action");
                     defender.Injury("Out of Action");
                 }
+            }
+
+            if (attackInfo.reason === "Fall") {
+                model.token.set("tint_color","#FF0000");
+                let info = ModelHeight(model);
+                model.token.set(info.heightSymbol,false);
             }
     
     
