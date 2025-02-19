@@ -2465,7 +2465,6 @@ log(weapon)
                         model.extraDice = 0;
                         model.diceRolled = 2;
                         if (weapon.type === "Grenade") {
-            //check sign of extra dice here
                             model.extraDice = -1; //used in injury
                         }
                     }
