@@ -56,7 +56,7 @@ const TC = (() => {
         morale: "status_blue", ///temp for fear immune
         aim: "status_blue", //temp
         cover: "status_blue",
-
+        hide: "status_blue", //swap for the ninja
     }; 
 
 
@@ -725,6 +725,22 @@ return;
                 //remove from ModelArray
                 //adjust counters
                 //add info to end stuff for survival etc
+
+
+                if (this.abilities.includes("Dark Blessing")) {
+                    //apply a blessing to a friend with Elite
+                    _.each(ModelArray,model => {
+                        if (model.faction === this.faction && model.keywords.includes("Elite")) {
+                            model.ChangeMarker("Blessing",1);
+                            outputCard.body.push("Dark Blessing on " + model.name + "!");
+                        }
+                    })
+                }
+
+
+
+
+
             }
         }
 
@@ -1769,9 +1785,15 @@ log(marker)
                 chargeMove = move;
             }
             if (model.token.get(SM.cover) === true) {
-                outputCard.body.push("The model is no longer considered to be in cover");
+                outputCard.body.push("The model is no longer in Cover");
                 model.token.set(SM.cover,false);
             }
+            if (model.token.get(SM.hide) === true) {
+                outputCard.body.push("The model is no longer Hiding");
+                model.token.set(SM.hide,false);
+            }
+
+
 
             if (downed === true) {
                 move = Math.round(move/2);
@@ -1800,6 +1822,12 @@ log(marker)
             }
 
             //if charge - check if has used ranged attack (with exceptions)
+            if (model.moveType === "Flying") {
+                outputCard.body.push(" Flying models treat Difficult and/or Dangerous Terrain as Open Terrain and they do not trigger mines and similar devices. Flying models can climb up and down and they can jump over gaps of up to their Movement characteristic without taking ACTIONS.");
+            }
+            if (model.abilities.includes("Loping Dash")) {
+                outputCard.body.push("The Model ignores the movement penalties of Difficult Terrain");
+            }
 
 
 
@@ -1808,9 +1836,6 @@ log(marker)
             if (subtype === "Move") {
                 //no test
                 outputCard.body.push("Model can move " + move + " Hexes")
-                if (model.moveType === "Flying") {
-                    outputCard.body.push(" Flying models treat Difficult and/or Dangerous Terrain as Open Terrain and they do not trigger mines and similar devices. Flying models can climb up and down and they can jump over gaps of up to their Movement characteristic without taking ACTIONS.");
-                }
             } else if (subtype === "Charge") {
                 outputCard.body.push("Roll: " + DisplayDice(d6,Factions[model.faction].dice),24);
                 outputCard.body.push("Model can charge " + chargeMove + " Hexes");
@@ -1829,6 +1854,9 @@ log(marker)
             let downed = (model.token.get("tint_color") === "#FF0000") ? true:false           
             model.actionsTaken.push("Dash");
             let dice = (downed === true) ? -1:0
+            if (model.abilities.includes("Loping Dash")) {
+                dice += 2;
+            }
             let results = ActionSuccess(dice);
             outputCard.body.push(results.line2);
             if (results.success === false) {
@@ -1849,6 +1877,9 @@ log(marker)
                     outputCard.body.push("All Movement is Halved");
                     model.Stand();
                 }
+
+
+
                 outputCard.body.push("Success! The model may move " + model.move + " Hexes");
             } 
 
@@ -2203,9 +2234,16 @@ log(results.success)
                 outputCard.body.push("If it remains in the Dangerous Terrain, it will need to take an Action test next round");
             }
         }
-      
-    
-    
+        if (testInfo.reason === "Puppet Master" && success !== false) {
+            let roll = randomInteger(6);
+            outputCard.body.push(targets[0].name + " can be moved " + roll + " Hexes");
+            outputCard.body.push("The Heretic Legion Player can move " + targets[0].name + " " + roll + " Hexes in any one direction, including forcing it to jump/fall down or enter into melee combat with any enemy model (as if it had Charged), or leave Combat (as if it had Retreated, including granting any enemies within range free attacks).");
+        }
+        if (testInfo.reason === "Hide" && success !== false) {
+            outputCard.body.push("Enemies cannot target the Commando with Ranged Attacks or Charges. It can still be caught in a nearby Blast");
+            outputCard.body.push("The effect ends if the Commando moves, makes a Ranged Attack or an enemy comes within 2 Hexes");
+            model.token.set(SM.hide,true);
+        }
     
     
     
@@ -2289,6 +2327,13 @@ log(weapon)
         if (firedTimes >= weapon.attacks) {
             errorMsg.push("Weapon has been fired its max. # of times");
         }
+        if (losResult.distance > 2 && defender.token.get(SM.hide) === true) {
+            errorMsg.push("Cannot target the Model");
+        }
+
+
+
+
 
         SetupCard(attacker.name,weapon.name,attacker.faction);
         //errors re range, los
@@ -2411,6 +2456,27 @@ log(weapon)
         }
     
         let modifier = 0;
+
+        if (defender.abilities.includes("Stealth Generator")) {
+            extraDice--;
+            tip += "<br>Stealth Generator -1 Dice";
+        }
+        _.each(ModelArray,model2 => {
+            if (model2.abilities.includes("Unholy Hymn")) {
+                let dist = attacker.cube.distance(model2.cube);
+                if (dist <= 8) {
+                    extraDice--;
+                    tip += "<br>Unholy Hymns -1 Dice";
+                }
+            }
+          
+        })
+
+
+
+
+
+
     //? any in weapons or characters - would be like +1 to hit vs +1 DIce
     
         tip = "Total: " + (extraDice<0?"":"+") + extraDice + " Dice" + "<br>----------------------<br>" + tip;
@@ -3145,6 +3211,12 @@ log(extraDice)
                 tip += "<br>Gas Mask: -1 Dice";
                 extraDice--;
             }
+            if (defender.abilities.includes("Artificial Life") && weapon.keywords.includes("Gas")) {
+                tip += "<br>Artificial Life: -1 Dice";
+                extraDice--;
+            }
+
+
     
             let dice = numberDice + Math.abs(extraDice);
             let sign = Math.sign(extraDice);
@@ -3202,7 +3274,7 @@ log(extraDice)
             }
             if (weapon.keywords.includes("Gas")) {
                 //negating stuff here
-                let list = ["Gas Mask"];
+                let list = ["Gas Mask","Artificial Life"];
                 if (Exclusion(defender,list) === false) {
                     blood++;
                     btip += "<br>+1 Blood from Gas";
@@ -3249,6 +3321,11 @@ log(extraDice)
                 } else {
                     outputCard.body.push(defender.name + " taken Out of Action");
                     defender.Injury("Out of Action");
+                    if (defender.keywords.includes("Elite") && attacker.abilities.includes("Law of Hell")) {
+                        outputCard.body.push("[hr]");
+                        outputCard.body.push(attacker.name + " gains its freedom and is immediately removed from the battle and from your Warband permanently.");
+                        attacker.Injury("Out of Action");
+                    }
                 }
             }
 
@@ -3365,7 +3442,7 @@ log(extraDice)
         }
         
         //Model Abilities needing macros - in form of name and # of targets
-        let macros = [["On My Command!",1],["God is With Us!",1],["Onwards, Christian Soldiers!",0],["Aim",0],["Fortify",0],["De-mine",0]]
+        let macros = [["On My Command!",1],["God is With Us!",1],["Onwards, Christian Soldiers!",0],["Aim",0],["Fortify",0],["De-mine",0],["Puppet Master",1],["Hide",0]]
         for (let i=0;i<macros.length;i++) {
             let macroName = macros[i][0];
             if (model.abilities.includes(macroName)) {
@@ -3499,6 +3576,45 @@ log(extraDice)
 
 
         }
+        if (abilityName === "Puppet Master") {
+            let defender = ModelArray[defenderIDs[0]];
+            let losResult = LOS(attacker,defender);
+            if (losResult.los === false) {
+                outputCard.body.push("Target has to be in LOS");
+                PrintCard();
+            } else if (losResult.distance > 12) {
+                outputCard.body.push("Target is out of Range");
+                PrintCard();
+            } else {
+                ActionTest(abilityName,attacker.id,defender.id,true);
+            }
+        }
+        if (abilityName === "Hide") {
+            let terCheck = hexMap[attacker.hexLabel].cover;
+            if (terCheck === false) {
+                let neighbours = attacker.cube.neighbours();
+                for (let i=0;i<neighbours.length;i++) {
+                    let nHex = hexMap[neighbours[i].label()];
+                    if (nHex.cover === true) {
+                        terCheck = true;
+                        break;
+                    }
+                }
+            }
+            if (terCheck === false) {
+                outputCard.body.push("Commando is not able to hide here");
+                PrintCard();
+            } else {
+                ActionTest(abilityName,attacker.id,"",true,1);
+            }
+
+
+
+
+
+        }
+
+
 
 
 
@@ -3586,7 +3702,6 @@ log(extraDice)
                 }
 
 
-
                 tok.set({
                     left: newLocation.x,
                     top: newLocation.y,
@@ -3596,6 +3711,17 @@ log(extraDice)
                
 
                 ChangeHex(model,oldHexLabel,newHex.label);
+
+                //check for nearby models for certain things
+                _.each(ModelArray,model2 => {
+                    if (model2.id === model.id) {return};
+                    let dist = model2.cube.distance(model.cube);
+                    if (model.token.get(SM.hide) === true && dist <= 2) {
+                        model.token.get(SM.hide,false)
+                    }
+                })
+
+
 
             };
         };
