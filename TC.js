@@ -2384,15 +2384,10 @@ log(weapon)
         //weapon modifiers
         let mods = weapon.modifiers;
         _.each(mods,mod => {
-            let sign = 1;
-            if (mod.includes("-")) {
-                sign = -1;
-            }
             if (mod.includes("Hit")) {
-                let text = (mod.includes("-")) ? "":"+"
-                let bonus = sign * parseInt(mod)
+                let bonus = parseInt(mod)
                 extraDice += bonus;
-                tip += "<br>Weapon: " + text + bonus + " Dice";
+                tip += "<br>Weapon: " + (bonus < 0 ? "":"+") + bonus + " Dice";
             }
     
         })
@@ -2493,8 +2488,6 @@ log("Length: " + attackInfo.defenders.length)
         let attacker = ModelArray[attackerID];
         let defender = ModelArray[defenderID];
         let weapon = attacker.weaponArray.melee[weaponNum];
-        let extraDice = (weapon.type === "Offhand") ? -1:0; 
-    log(weapon)
     
         let errorMsg = [];
         let distance = attacker.cube.distance(defender.cube);
@@ -2519,39 +2512,35 @@ log("Length: " + attackInfo.defenders.length)
     
         attackInfo = {
             attacker: attacker,
+            attackerExtraDice: 0,
             defenders: [defender],
             weapon: weapon,
-            extraDice: [extraDice],
             result: "",
         }
-        let check = CheckMarkers(attackerID,"Melee2");
-        if (check === true) {
-            //has markers
-            PrintCard();
-            return;
-        }
-        Melee2(0);
+
+        checkModels = [attacker];
+        nextStep = "Melee2";
+        CheckMarkers();
     }
     
-    const Melee2 = (extraDice) => {
+    const Melee2 = () => {
         //entry from Melee or from Marker
         let attacker = attackInfo.attacker;
-        let defender = attackInfo.defender[0];
+        let defender = attackInfo.defenders[0];
         let weapon = attackInfo.weapon;
-        let secondaryDice = attackInfo.extraDice[0];
+        let extraDice = attacker.meleeBonus;
         SetupCard(attacker.name,weapon.name,attacker.faction);
         let tip;
     
         //To Hit
         //attacker modifiers
-        if (attacker.meleeBonus > 0) {
-            tip = "<br>Base: +" + attacker.meleeBonus + " Dice";
-        } else {
-            tip = "<br>Base: " + attacker.meleeBonus + " Dice";
+        tip = "<br>Base: " + (attacker.meleeBonus < 0 ? "":"+") + attacker.meleeBonus + " Dice";
+
+        if (attackInfo.attackerExtraDice !== 0) {
+            tip += "<br>Markers: " + (attackInfo.attackerExtraDice < 0 ? "":"+") + attackInfo.attackerExtraDice + " Dice"; 
+            extraDice += attackInfo.attackerExtraDice;
         }
-        if (extraDice !== 0) {
-            tip += "<br>Markers: " + extraDice + " Dice"; 
-        }
+
         if (attacker.token.get(SM.diving) === true) {
             tip += "<br>Diving Charge: +1 Dice";
             extraDice++;
@@ -2560,11 +2549,10 @@ log("Length: " + attackInfo.defenders.length)
             tip += "<br>Downed: -1 Dice";
             extraDice--;
         }
-        if (secondaryDice !== 0) {
-            tip += "<br>Secondary Weapon -1 Dice";
-            extraDice -= 1;
+        if (weapon.type.includes("Offhand")) {
+            tip += "<br>Offhand Weapon -1 Dice";
+            extraDice--
         }
-        extraDice += attacker.meleeBonus;
     
         let fearImmune = false;
         let list = ["Fear","Convent Conditioning"];
@@ -2574,27 +2562,20 @@ log("Length: " + attackInfo.defenders.length)
     
     
     
-    
-    
         //weapon modifiers
         let mods = weapon.modifiers;
         _.each(mods,mod => {
-            let sign = 1;
-            if (mod.includes("-")) {
-                sign = -1;
-            }
             if (mod.includes("Hit")) {
-                let text = (mod.includes("-")) ? "":"+"
-                let bonus = sign * parseInt(mod)
+                let bonus = parseInt(mod)
                 extraDice += bonus;
-                tip += "<br>Weapon: " + text + bonus + " Dice";
+                tip += "<br>Weapon: " + (bonus < 0 ? "":"+") + bonus + " Dice";
             }
     
         })
     
         //defender abilities
         if (defender.abilities.includes("Fear") && fearImmune === false) {
-            extraDice -= 1;
+            extraDice--;
             tip += "<br>Defender Causes Fear"
         }
 
@@ -2620,16 +2601,14 @@ log("Length: " + attackInfo.defenders.length)
         }
         if (defendedObstacle === true) {
             tip += "<br>Defended Obstacle: -1 Dice";
-            extraDice -= 1;
+            extraDice--;
         }
     
         let modifier = 0;
         //? any in weapons or characters - would be like +1 to hit vs +1 DIce
         
-        let t = (extraDice >= 0) ? "+":"";
-        tip = "Total: " + t + extraDice + " Dice" + "<br>----------------------" + tip;
+        tip = "Total: " + (extraDice < 0 ? "":"+") + extraDice + " Dice" + "<br>----------------------" + tip;
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
-    
     
         let results = ActionSuccess(extraDice,modifier,2)
         outputCard.body.push(tip + " " + results.line2);
@@ -2642,20 +2621,31 @@ log("Length: " + attackInfo.defenders.length)
             outputCard.body.push("Attack Hits");
         }
     
+        //mark weapon fired and action
+        attacker.actionsTaken.push("Melee " + weapon.number);
+        PlaySound(weapon.sound);
+        //FX 
+
+
+
+
+
+
+
         //Injuries
-        if (results.success === false) {
-            PrintCard();
-        } else {
-            let check = CheckMarkers(defender.id,"Injury");
-            PrintCard();
-            if (check === false) {
-                Injury(0);
-            }
+        PrintCard();
+        if (results.success !== false) {
+            defender.extraDice = 0;
+            defender.diceRolled = 2;
+            defender.injuryNote = "";
+
+            checkModels = [];
+            _.each(attackInfo.defenders,defender => {
+                checkModels.push(defender);
+            })
+            nextStep = "Injury"
+            CheckMarkers();
         }
-    
-    
-    
-    
     }
     
     
@@ -2768,6 +2758,9 @@ log("Length: " + attackInfo.defenders.length)
             if (nextStep === "Ranged2") {
                 Ranged2();
             } 
+            if (nextStep === "Melee2") {
+                Melee2();
+            }
     
         }
     }
@@ -2793,7 +2786,12 @@ log("Length: " + attackInfo.defenders.length)
             model.ChangeMarker(type,-number)
         } 
         extraDice += number;
-        model.extraDice = extraDice;
+        if (nextStep === "Ranged2" || nextStep === "Melee2") {
+            attackInfo.attackerExtraDice = extraDice;
+        }
+        if (nextStep === "Injury") {
+            model.extraDice = extraDice;
+        }
 
         if (blessing > 0 && type.includes("Blood")) {
             SetupCard(model.name,"Markers",model.faction);
