@@ -2450,6 +2450,7 @@ log(weapon)
             defender.extraDice = 0;
             defender.diceRolled = 2;
             defender.injuryNote = "";
+            
     //modify here ?
             if (weapon.keywords.includes("Blast")) {
                 let index = weapon.keywords.indexOf("Blast");
@@ -2457,7 +2458,8 @@ log(weapon)
                 _.each(ModelArray,model => {
                     if (model.id === defender.id) {return}
                     let dist = model.cube.distance(defender.cube);
-                    if (dist <= radius) {
+                    let vertical = Math.abs(ModelHeight(defender).level - ModelHeight(model).level);
+                    if (dist <= radius && vertical <= radius) {
                         attackInfo.defenders.push(model);
                         model.injuryNote = "";
                         model.extraDice = 0;
