@@ -13,17 +13,6 @@ const Warpath = (() => {
         "Ian": "4219310",
     }
 
-    const PlayerIDs = () => {
-        let players = Object.keys(playerCodes);
-        for (let i=0;i<players.length;i++) {
-            let roll20ID = playerCodes[players[i]];
-            let playerObj = findObjs({_type:'player',_d20userid: roll20ID})[0];
-            if (playerObj) {
-                PlayerInfo[playerObj.get("id")] = players[i];
-            }
-        }
-    }
-
     const simpleObj = (o) => {
         let p = JSON.parse(JSON.stringify(o));
         return p;
@@ -337,57 +326,20 @@ const Warpath = (() => {
         outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
     }
 
-    //related to building hex map
-    const LoadPage = () => {
-        //build Page Info and flesh out Hex Info
-        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
-        pageInfo.name = pageInfo.page.get("name");
-        pageInfo.scale = pageInfo.page.get("snapping_increment");
-        pageInfo.width = pageInfo.page.get("width") * 70;
-        pageInfo.height = pageInfo.page.get("height") * 70;
-        pageInfo.type = pageInfo.page.get("grid_type");
 
-    }
-
-
-
-    const RollDice = (msg) => {
-        PlaySound("Dice");
-        let roll = randomInteger(8);
-        let playerID = msg.playerid;
-        let id,model,player;
-        if (msg.selected) {
-            id = msg.selected[0]._id;
+    //Retrieve Values from Character Sheet Attributes
+    const Attribute = (character,attributename) => {
+        //Retrieve Values from Character Sheet Attributes
+        let attributeobj = findObjs({type:'attribute',characterid: character.id, name: attributename})[0]
+        let attributevalue = "";
+        if (attributeobj) {
+            attributevalue = attributeobj.get('current');
         }
-        let faction = "Neutral";
+        return attributevalue;
+    };
 
-        if (!id && !playerID) {
-            log("Back")
-            return;
-        }
-        if (id) {
-            model = ModelArray[id];
-            if (model) {
-                faction = model.faction;
-                player = model.player;
-            }
-        }
-        if ((!id || !model) && playerID) {
-            faction = state.Warpath.players[playerID];
-            player = (state.Warpath.factions[0] === faction) ? 0:1;
-        }
 
-        if (!state.Warpath.players[playerID] || state.Warpath.players[playerID] === undefined) {
-            if (faction !== "Neutral") {    
-                state.Warpath.players[playerID] = faction;
-            } else {
-                sendChat("","Click on one of your tokens then select Roll again");
-                return;
-            }
-        } 
-        let res = "/direct " + DisplayDice(roll,faction,40);
-        sendChat("player|" + playerID,res);
-    }
+
 
 
     //line line collision where line1 is pt1 and 2, line2 is pt 3 and 4
@@ -420,14 +372,32 @@ const Warpath = (() => {
         let Tag = msg.content.split(";");
         let attID = Tag[1];
         let defID = Tag[2];
-        let attTok = 
+        let spellSlot = parseInt(Tag[3]);
+        let critical = Tag[4];
+        //!Smite;@{selected|token_id};@{target|token_id};?{Spell Level|1|2|3};?{Critical Hit|Yes|No}
 
+        let attTok = findObjs({_type:"graphic", id: attID})[0];
+        let defTok = findObjs({_type:"graphic", id: defID})[0];
+        let attChar = getObj("character", attTok.get("represents")); 
+        let defChar = getObj("character", defTok.get("represents")); 
 
-
-
-
-
-
+        let dice = 2 + (spellSlot - 1);
+        let type = Attribute(defChar,"npc_type").toLowerCase();
+        if (type.includes("undead") || type.includes("fiend"))
+        if (critical = "Yes") {
+            dice *= 2;
+        }
+        let rolls = [];
+        let damage = 0;
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(8);
+            rolls.push(roll);
+            damage += roll;
+        }
+        rolls = rolls.toString();
+        SetupCard(attTok.get("name"),rolls,"Player");
+        outputCard.body.push("The Divine Smite hits doing " + damage + " Radiant Damage");
+        PrintCard();
     }
 
 
@@ -476,7 +446,6 @@ const Warpath = (() => {
     on('ready', () => {
         log("===> CoS <===");
         log("===> Software Version: " + version + " <===")
-        PlayerIDs();
         registerEventHandlers();
         sendChat("","API Ready")
         log("On Ready Done")
