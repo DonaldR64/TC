@@ -110,6 +110,20 @@ const Warpath = (() => {
         return vertices;
     }
 
+    const Factions = {
+        "Player": {
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#00FF00",
+            "borderStyle": "5px ridge",
+        }
+
+    }
+
+
+
+
 
 
     class Point {
@@ -395,11 +409,54 @@ const Warpath = (() => {
             damage += roll;
         }
         rolls = rolls.toString();
-        SetupCard(attTok.get("name"),rolls,"Player");
-        outputCard.body.push("The Divine Smite hits doing " + damage + " Radiant Damage");
+        SetupCard("Divine Smite","Rolls: " + rolls,"Player");
+        outputCard.body.push("[B][#ff0000]" + damage + "[/b][/#]Radiant Damage");
         PrintCard();
     }
 
+    const ShieldShove = (msg) => {
+        let Tag = msg.content.split(";");
+        let attID = Tag[1];
+        let defID = Tag[2];
+        //!SShove;@{selected|token_id};@{target|token_id}
+
+        let attTok = findObjs({_type:"graphic", id: attID})[0];
+        let defTok = findObjs({_type:"graphic", id: defID})[0];
+        let attChar = getObj("character", attTok.get("represents")); 
+        let defChar = getObj("character", defTok.get("represents")); 
+
+        SetupCard("Shield Shove","Bonus Action","Player");
+
+//size check
+        let roll = randomInteger(20);
+        let attAth = parseInt(Attribute(attChar,"athletics_bonus"));
+        let attTotal = roll + attAth;
+
+        let defRoll = randomInteger(20);
+        let defAth = parseInt(Attribute(defChar,"athletics_bonus"));
+        let defAcr = parseInt(Attribute(defChar,"acrobatics_bonus"));
+        let bonus = Math.max(defAth,defAcr);
+        let defTotal = defRoll + bonus;
+
+
+
+
+        outputCard.body.push(attTok.get("name") + " shoves " + defTok.get("name") + " with his Shield");
+    
+
+
+        if (defTotal < attTotal) {
+            outputCard.body.push("The Target is ")
+        }
+
+
+        
+
+
+
+
+        PrintCard();
+    }
 
 
 
@@ -431,7 +488,9 @@ const Warpath = (() => {
             case '!Smite':
                 Smite(msg);
                 break;
-
+            case '!ShieldShove':
+                ShieldShove(msg);
+                break;
 
         }
     };
