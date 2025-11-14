@@ -416,7 +416,19 @@ const Warpath = (() => {
         return gamma;
     }
 
-    
+    const Smite = (msg) => {
+        let Tag = msg.content.split(";");
+        let attID = Tag[1];
+        let defID = Tag[2];
+        let attTok = 
+
+
+
+
+
+
+
+    }
 
 
 
