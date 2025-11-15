@@ -138,22 +138,44 @@ log(pt2)
     }
 
     const Factions = {
-        "PC": {
-            "backgroundColour": "#FFFFFF",
-            "titlefont": "Arial",
-            "fontColour": "#000000",
-            "borderColour": "#00FF00",
-            "borderStyle": "5px ridge",
-        },
         "NPC": {
             "backgroundColour": "#FFFFFF",
             "titlefont": "Arial",
             "fontColour": "#000000",
-            "borderColour": "#00FF00",
+            "borderColour": "#ff0000",
             "borderStyle": "5px ridge",
-        }
+        },
+        "Ted": {
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Candal",
+            "fontColour": "#000000",
+            "borderColour": "#ffd700",
+            "borderStyle": "5px double",
+        },
+        "Vic": {
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Merriweather",
+            "fontColour": "#000000",
+            "borderColour": "#0000ff",
+            "borderStyle": "5px groove",
+        },
+        "Ian": {
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Tahoma",
+            "fontColour": "#000000",
+            "borderColour": "#00ff00",
+            "borderStyle": "5px inset",
+        },
+
+
+
+
+
 
     }
+
+
+
 
 
     let ToHit = (advantage) => {
@@ -182,7 +204,11 @@ log(pt2)
     const Distance = (model1,model2) => {
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
         let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
-        let dist = Math.round(pt1.distance(pt2)/70) * pageInfo.scaleNum;
+        let dist = pt1.distance(pt2);
+        dist -= (model1.size - 1) * 35;
+        dist -= (model2.size - 1) * 35;
+        dist = Math.round(dist/70)
+        dist *= pageInfo.scaleNum;
 log(dist)
         return dist;
     }
@@ -507,7 +533,7 @@ log(dist)
             let aa = AttributeArray(char.id);
             this.charID = char.id;
 
-
+log(this.name)
             this.type = (aa.npc_type || " ").toLowerCase();
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
@@ -515,7 +541,17 @@ log(dist)
             this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
 
             this.npc = (aa.charactersheet_type === "npc") ? true:false;
-            this.displayScheme = (this.npc === true) ? "NPC":"PC";
+            this.displayScheme = "NPC";
+
+            let control = char.get("controlledby");
+log(control)
+            let playerName;
+            if (control) {
+                playerName = control.split(",")[0];
+                this.displayScheme = control;
+                this.npc = false;
+            }
+            this.control = playerName;
 
             this.size = parseInt(aa.token_size) || 1;
 
@@ -539,10 +575,7 @@ log(dist)
             this.casterLevel = parseInt(aa.caster_level) || 0;
 
             this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10);
-log(this.name)
-log("AA.AC" + aa.ac)
-log("NPC: " + this.npc)
-log("AA.NPC.AC: "  + aa.npc_ac)
+
 
 
             ModelArray[token.id] = this;
