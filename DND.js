@@ -810,7 +810,7 @@ log("pN: " + playerName)
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
             area: "Cone",
-            toHit: "Ranged Spell",
+            toHit: "Ranged Spell Auto",
             note: "",
             sound: "Inferno",
         }
