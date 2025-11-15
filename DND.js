@@ -607,6 +607,9 @@ const Warpath = (() => {
             case '!ShieldShove':
                 ShieldShove(msg);
                 break;
+            case '!DirectedSpell':
+                DirectedSpell(msg);
+                break;
 
         }
     };
