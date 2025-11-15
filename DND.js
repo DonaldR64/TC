@@ -170,7 +170,6 @@ log(pt2)
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
         let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
         let dist = pt1.distance(pt2);
-        let mapScale = 
 
 
 
