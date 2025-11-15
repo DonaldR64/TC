@@ -576,6 +576,85 @@ const Warpath = (() => {
 
 
 
+    const SpellInfo = {
+        "Ray of Frost": {
+            level: 0,
+            range: 60,
+            damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
+            damageType: "Cold",
+            target: 1,
+            toHit: true,
+            note: "Target's Speed is reduced by 10 for a turn",
+            fx: "",
+            sound: "",
+        }
+
+
+    }
+
+
+
+    const DirectedSpell = (msg) => {
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        let spellInfo = SpellInfo[spellName];
+
+        if (!spellInfo) {
+            sendChat("","Need Spell Info");
+            return;
+        }
+        let attID = Tag[2];
+        let spellSlot = Tag[3];
+        let defToks = [];
+        let defChars = [];
+        for (let i=4;i<(Tag.length + 1);i++) {
+            let defID = Tag[i];
+            let defTok = findObjs({_type:"graphic", id: defID})[0];
+            defToks.push(defTok);
+            let defChar = getObj("character", defTok.get("represents")); 
+            defChars.push(defChars);
+
+        }
+
+
+
+        //!DirectedSpell;Ray of Frost;@{selected|token_id};0;@{target|token_id}
+        //for higher levels where can use higher spell slot, put in a ?{Spell Slot Level|1|2} etc
+
+
+        let attTok = findObjs({_type:"graphic", id: attID})[0];
+        let defTok = findObjs({_type:"graphic", id: defID})[0];
+        let attChar = getObj("character", attTok.get("represents")); 
+        let defChar = getObj("character", defTok.get("represents")); 
+        let attNPC = (Attribute(attChar,"charactersheet_type") === "npc") ? true:false;
+        let defNPC = (Attribute(defChar,"charactersheet_type") === "npc") ? true:false;
+
+
+        //ranged spell attack
+        //check range, spell slot
+        //if hits, roll damage, check damagetype, vulnerabilities etc
+        //play sound/fx
+
+        let errorMsg = [];
+        let attPt = new Point(attTok.get("left"),attTok.get("top")); 
+        let defPt = new Point(defTok.get("left"),defTok.get("top"));
+        let distance = attPt.distance(defPt);
+
+
+
+        if (distance > spellInfo.range) {
+            errorMsg.push("Out of Range");
+        }
+
+
+
+
+
+
+
+
+    }
+
 
 
 
