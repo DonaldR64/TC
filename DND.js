@@ -1,4 +1,4 @@
-const Warpath = (() => {
+const Strahd = (() => {
     const version = '2025.11.14';
     if (!state.Strahd) {state.Strahd = {}};
 
