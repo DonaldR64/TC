@@ -755,6 +755,9 @@ log(pt2)
         if (spellInfo.toHit === "Ranged Spell") {
             SetupCard(attacker.name,spellName,attacker.displayScheme);
 //check range
+//auto hit eg magic missile
+//saving throws ?
+
             for (let i=0;i<defenders.length;i++) {
                 let defender = defenders[i];
                 outputCard.body.push("[B]" + defender.name + "[/b]");
