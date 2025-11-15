@@ -71,7 +71,9 @@ const Strahd = (() => {
     };
 
     const PlaySound = (name) => {
+log(name)
         let sound = findObjs({type: "jukeboxtrack", title: name})[0];
+log(sound)
         if (sound) {
             sound.set({playing: true,softstop:false});
         }
@@ -553,6 +555,7 @@ log(outputCard.side)
         constructor(token) {
             let char = getObj("character", token.get("represents")); 
             this.token = token;
+            this.id = token.get("id");
             this.name = token.get("name");
             let aa = AttributeArray(char.id);
             this.charID = char.id;
@@ -566,6 +569,11 @@ log(this.name)
 
             this.npc = (aa.charactersheet_type === "npc") ? true:false;
             this.displayScheme = "NPC";
+
+            this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
+
+
+
 
             let control = char.get("controlledby");
 log("C: " + control)
@@ -601,8 +609,21 @@ log("pN: " + playerName)
 
             this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
             this.casterLevel = parseInt(aa.caster_level) || 0;
+            this.spellDC = parseInt(aa.spell_save_dc) || 0;
 
-            this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10);
+            let saveBonus = {
+                strength: parseInt(aa.strength_save_bonus) || 0,
+                dexterity: parseInt(aa.dexterity_save_bonus) || 0,
+                constitution: parseInt(aa.constitution_save_bonus) || 0,
+                intelligence: parseInt(aa.intelligence_save_bonus) || 0,
+                wisdom: parseInt(aa.wisdom_save_bonus) || 0,
+                charisma: parseInt(aa.charisma_save_bonus) || 0,
+            }
+            this.saveBonus = saveBonus;
+
+    log(saveBonus)
+
+
 
 
 
@@ -747,6 +768,7 @@ log("pN: " + playerName)
 
 
     const SpellInfo = {
+
         "Ray of Frost": {
             level: 0,
             range: 60,
@@ -754,12 +776,24 @@ log("pN: " + playerName)
             damageType: "cold",
             critOn: 20,
             savingThrow: "No",
-            target: 1,
+            saveEffect: "",
             area: " ",
             toHit: "Ranged Spell",
             note: "Target's Speed is reduced by 10 for a turn",
-            fx: "System-missile-frost",
-            sound: "laser",
+            sound: "Laser",
+        },
+        "Acid Splash": {
+            level: 0,
+            range: 60,
+            damage: ["1d6","1d6","1d6","1d6","2d6","2d6","2d6","2d6","2d6","2d6","3d6","3d6","3d6","3d6"],
+            damageType: "acid",
+            critOn: 20,
+            savingThrow: "dexterity",
+            saveEffect: "No Damage",
+            area: " ",
+            toHit: "Ranged Spell",
+            note: "",
+            sound: "",
         }
 
 
@@ -861,9 +895,25 @@ log("pN: " + playerName)
         "Restrained": "Restrained-or-Webbed::2006494",
         "Stunned": "Stunned::2006499",
         "Unconscious": "KO::2006544",
+        "Dodge": "half-haze",
     }
 
-
+    const Markers = (initial) => {
+        initial = initial.split(",");
+        let sm = [];
+        let keys = Object.keys(ConditionMarkers);
+        for (let i=0;i<initial.length;i++) {
+            let cond = initial[i];
+            for (let j=0;j<keys.length;j++) {
+                if (ConditionMarkers[keys[j]] === cond) {
+                    sm.push(keys[j]);
+                    break;
+                }
+            }
+        }
+        sm = sm.toString() || " ";
+        return sm;
+    }
 
 
     const DirectedSpell = (msg) => {
@@ -881,9 +931,9 @@ log("pN: " + playerName)
         let attAdvantage = 0;
 
         let attPos = ["Invisible"];
-        let attNeg = ["Blind","Frightened","Poison","Prone","Restrained"];
+        let attNeg = ["Blind","Frightened","Poison","Restrained"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
-        let attMarkers = attacker.token.get("statusmarkers") || " ";
+        let attMarkers = Markers(attacker.token.get("statusmarkers"));
         //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
         let ids = Object.keys(ModelArray);
         idLoop1:
@@ -916,11 +966,11 @@ log("pN: " + playerName)
 log("Att: " + attAdvantage)
 
         let defenders = [];
+        defLoop1:
         for (let i=4;i<(Tag.length + 1);i++) {
             let defender = ModelArray[Tag[i]];
-            if (defender) {
-                defenders.push(defender);
-            }
+            if (!defender) {continue};
+            defenders.push(defender);
         }
 
         if (level > 0) {
@@ -951,9 +1001,9 @@ log("Att: " + attAdvantage)
                 }
 
                 let defAdvantage = 0;
-                let defMarkers = defender.token.get("statusmarkers");
+                let defMarkers = Markers(defender.token.get("statusmarkers"));
                 let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
-                let defNeg = ["Invisible"];
+                let defNeg = ["Invisible","Dodge"];
                 for (let i=0;i<defPos.length;i++) {
                     if (defMarkers.includes(defPos[i])) {
                         defAdvantage = 1;
@@ -1005,10 +1055,19 @@ log("Adv " + advantage)
                     if (crit === true) {
                         outputCard.body.push("[#ff0000]Crit![/#]");
                     }
-
-
-//saving throws ?
-
+                    let saved = false;
+                    if (spellInfo.savingThrow !== "No") {
+                        let bonus = defender.saveBonus[spellInfo.savingThrow];
+                        let saveRoll = randomInteger(20);
+                        let saveTotal = saveRoll + bonus;
+                        let saveTip = "1d20 + " + bonus + " = " + saveRoll + " + " + bonus;
+                        saveTip = '[' + saveTotal + '](#" class="showtip" title="' + saveTip + ')';
+                        let line = "Save: " + saveTip + " vs. DC " + attacker.spellDC;
+                        if (saveTotal >= attacker.spellDC) {
+                            saved = true;
+                        } 
+                        outputCard.body.push(line);
+                    }
 
                     let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,crit,defender);
                     tip = damage.diceType + " = " + damage.rolls.toString();
@@ -1018,8 +1077,22 @@ log("Adv " + advantage)
                     if (damage.note !== "") {
                         tip += "<br>" + note;
                     }
-                    tip = '[' + damage.total + '](#" class="showtip" title="' + tip + ')';
-                    outputCard.body.push("Damage: " + tip);
+
+                    let totalDamage = damage.total;
+                    let add = "";
+                    if (saved === true) {
+                        if (spellInfo.saveEffect === "No Damage") {
+                            totalDamage = 0;
+                            add = " - No Damage"
+                        }
+                        if (spellInfo.saveEffect === "Half Damage") {
+                            totalDamage = Math.round(totalDamage/2);
+                            add = " - 1/2 Damage"
+                        }
+                    }
+                    tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
+
+                    outputCard.body.push("Damage: " + tip + add);
                     if (spellInfo.note !== "") {
                         outputCard.body.push(spellInfo.note);
                     }
@@ -1031,7 +1104,6 @@ log("Adv " + advantage)
                 }
 
                 if (i===0) {
-                    //FX(spellInfo.fx,attacker,defender);
                     PlaySound(spellInfo.sound);
                 }
 
