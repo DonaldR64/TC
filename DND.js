@@ -1142,9 +1142,26 @@ log("Adv " + advantage)
         }
 
 
+        if (spellInfo.toHit = "Area Spell") {
+
+
+
+
+
+            
+        }
+
+
+
+
 
 
     }
+
+
+    
+
+
 
 
 
