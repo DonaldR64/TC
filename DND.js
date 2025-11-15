@@ -517,7 +517,11 @@ log(pt2)
             this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
             this.casterLevel = parseInt(aa.caster_level) || 0;
 
-            this.ac = (this.npc === true) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10);
+            this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10);
+log(this.name)
+log("AA.AC" + aa.ac)
+log("NPC: " + this.npc)
+log("AA.NPC.AC: "  + aa.npc_ac)
 
 
             ModelArray[token.id] = this;
@@ -679,16 +683,23 @@ log(pt2)
 
     const Damage = (damageInfo,damageType,defender) => {
         damageInfo = damageInfo.split("d");
+
         let dice = parseInt(damageInfo[0]);
-        let diceType = parseInt(damageInfo[1]);
+        let part2 = damageInfo[1].split("+");
+        let diceType = parseInt(part2[0]);
+        let bonus = parseInt(part2[1] || 0);
         let rolls = [];
         let total = 0;
         let note = "";
+
         for (let i=0;i<dice;i++) {
             let roll = randomInteger(diceType);
             rolls.push(roll);
             total += roll;
         }
+
+        total += bonus;
+
         if (defender.immunities.includes(damageType)) {
             total = 0;
             note = "Immune to " + damageType;
@@ -702,15 +713,13 @@ log(pt2)
             note = "Resistant to " + damageType;
         }
 
-
         let result = {
             rolls: rolls,
+            bonus: bonus,
             total: total,
             note: note,
         }
         return result;
-
-
     }
 
 
@@ -729,10 +738,14 @@ log(pt2)
         let attID = Tag[2];
         let attacker = ModelArray[attID];
         let level = Tag[3];
-        let advantage = Tag[4];
+        let advantage = "No";
+
+//disadvantage if in HtH 
+//advantage if target is prone etc
+
 
         let defenders = [];
-        for (let i=5;i<(Tag.length + 1);i++) {
+        for (let i=4;i<(Tag.length + 1);i++) {
             let defender = ModelArray[Tag[i]];
             if (defender) {
                 defenders.push(defender);
@@ -752,7 +765,7 @@ log(pt2)
             }
         }
 
-        if (spellInfo.toHit === "Ranged Spell") {
+        if (spellInfo.toHit.includes("Ranged Spell")) {
             SetupCard(attacker.name,spellName,attacker.displayScheme);
 //check range
 //auto hit eg magic missile
@@ -763,31 +776,40 @@ log(pt2)
                 outputCard.body.push("[B]" + defender.name + "[/b]");
                 let result = Result(advantage);
                 let total = result.roll + attacker.spellAttack;
-                let tip = result.rollText;
-                tip += "<br>Defender AC: " + defender.ac;
+                let tip;
+                let line = "";
+                if (spellInfo.toHit.includes("Auto")) {
+                    line = "To Hit: Automatic";
+                } else {
+                    tip = "1d20 + " + attacker.spellAttack + " = " + result.roll + " + " + attacker.spellAttack;
+                    tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+                    line = "Attack: " + tip + " vs. AC " + defender.ac;
+                }
+                outputCard.body.push(line);
 
-                if (total >= defender.ac) {
+                if (total >= defender.ac || spellInfo.toHit.includes("Auto")) {
                     let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,defender);
-                    let tip = "Roll to Hit: " + total + " vs. " + defender.ac;
-                    tip += "<br>Damage Rolls: " + damage.rolls.toString();
+                    tip = spellInfo.damage[attacker.casterLevel] + " = " + damage.rolls.toString();
+                    if (damage.bonus !== 0) {
+                        tip += " + " + damage.bonus;
+                    }
                     if (damage.note !== "") {
                         tip += "<br>" + note;
                     }
-                    tip = '[🎲](#" class="showtip" title="' + tip + ')';
-                    outputCard.body.push(tip + ' [B]Hit[/b] for: ' + damage.total + " Damage");
+                    tip = '[' + damage.total + '](#" class="showtip" title="' + tip + ')';
+                    outputCard.body.push("Damage: " + tip);
                     if (spellInfo.note !== "") {
                         outputCard.body.push(spellInfo.note);
                     }
                 } else {
-                    tip = '[🎲](#" class="showtip" title="' + tip + ')';
-                    outputCard.body.push(tip + " [B]Miss[/b])");
+                    outputCard.body.push("[B]Miss[/b]");
                 }
                 if (defenders.length > 1) {
                     outputCard.body.push("[hr]");
                 }
 
                 if (i===0) {
-                    FX(spellInfo.fx,attacker,defender);
+                    //FX(spellInfo.fx,attacker,defender);
                     PlaySound(spellInfo.sound);
                 }
 
