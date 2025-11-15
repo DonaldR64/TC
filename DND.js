@@ -20,11 +20,10 @@ const Strahd = (() => {
     }
 
     const playerCodes = {
-        "Don": "2520699",
-        "DonAlt": "5097409",
-        "Ted": "6951960",
-        "Vic": "4892",
-        "Ian": "4219310",
+        "-OdzmtPMDNNfcmdvIN5m": "Ted",
+        "all": "Allied",
+        "-OdyHPJkwRBH1F9Zn5AU": "Ian",
+        "A": "Vic",
     }
 
     const simpleObj = (o) => {
@@ -145,25 +144,32 @@ log(pt2)
             "borderColour": "#ff0000",
             "borderStyle": "5px ridge",
         },
-        "Ted": {
+        "Allied": {
             "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#00ff00",
+            "borderStyle": "5px ridge",
+        },
+        "Ted": {
+            "backgroundColour": "#ffd700",
             "titlefont": "Candal",
             "fontColour": "#000000",
-            "borderColour": "#ffd700",
+            "borderColour": "#000000",
             "borderStyle": "5px double",
         },
         "Vic": {
-            "backgroundColour": "#FFFFFF",
+            "backgroundColour": "#0000ff",
             "titlefont": "Merriweather",
-            "fontColour": "#000000",
+            "fontColour": "#ffffff",
             "borderColour": "#0000ff",
             "borderStyle": "5px groove",
         },
         "Ian": {
-            "backgroundColour": "#FFFFFF",
+            "backgroundColour": "#00ff00",
             "titlefont": "Tahoma",
             "fontColour": "#000000",
-            "borderColour": "#00ff00",
+            "borderColour": "#000000",
             "borderStyle": "5px inset",
         },
 
@@ -301,9 +307,10 @@ log(dist)
         } else {
             output += "/desc ";
         }
+log(outputCard.side)
 
         if (!outputCard.side || !Factions[outputCard.side]) {
-            outputCard.side = "Neutral";
+            outputCard.side = "Allied";
         }
 
         //start of card
@@ -544,15 +551,15 @@ log(this.name)
             this.displayScheme = "NPC";
 
             let control = char.get("controlledby");
-log(control)
+log("C: " + control)
             let playerName;
             if (control) {
-                playerName = control.split(",")[0];
-                this.displayScheme = control;
+                playerName = playerCodes[control.split(",")[0]];
+                this.displayScheme = playerName;
                 this.npc = false;
             }
             this.control = playerName;
-
+log("pN: " + playerName)
             this.size = parseInt(aa.token_size) || 1;
 
             let skillNames = ["acrobatics","athletics"];
