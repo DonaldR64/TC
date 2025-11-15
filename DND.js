@@ -63,6 +63,8 @@ const Warpath = (() => {
             }
         } else {
             let fxType =  findObjs({type: "custfx", name: fxname})[0];
+log(fxname)
+log(fxType)
             if (fxType) {
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
             }
@@ -113,7 +115,14 @@ const Warpath = (() => {
     }
 
     const Factions = {
-        "Player": {
+        "PC": {
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#00FF00",
+            "borderStyle": "5px ridge",
+        },
+        "NPC": {
             "backgroundColour": "#FFFFFF",
             "titlefont": "Arial",
             "fontColour": "#000000",
@@ -122,6 +131,29 @@ const Warpath = (() => {
         }
 
     }
+
+
+    let Result = (advantage) => {
+        let roll1 = randomInteger(20);
+        let roll2 = randomInteger(20);
+        let rollText,bonusText,roll;
+        if (advantage === "Advantage") {
+            roll = Math.max(roll1,roll2);
+            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Advantage]";
+        } else if (advantage === "Disadvantage") {
+            roll = Math.min(roll1,roll2);
+            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Disadvantage]";
+        } else {
+            roll = roll1;
+            rollText = "Roll: " + roll;
+        }
+        let result = {
+            roll: roll,
+            rollText: rollText,
+        }
+        return result;
+    }
+
 
 
 
@@ -471,9 +503,10 @@ const Warpath = (() => {
             }
             this.skills = skills;
 
+            this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
+            this.casterLevel = parseInt(aa.caster_level) || 0;
 
-
-
+            this.ac = (this.npc === true) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10);
 
 
             ModelArray[token.id] = this;
@@ -501,7 +534,7 @@ const Warpath = (() => {
         let valid = false;
         let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
         if (slots === 0) {
-            SetupCard(attacker.name,sub,"Player");
+            SetupCard(attacker.name,sub,attacker.displayScheme);
             outputCard.body.push("No Available Spell Slots of this level");
             PrintCard();
             return;
@@ -546,7 +579,7 @@ const Warpath = (() => {
             damage = damage * 2;
         }
 
-        SetupCard(attacker.name,sub,"Player");
+        SetupCard(attacker.name,sub,attacker.displayScheme);
 
         let tip = "Rolls: " + rolls;
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
@@ -569,7 +602,7 @@ const Warpath = (() => {
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID];
 
-        SetupCard(attacker.name,"Shield Shove","Player");
+        SetupCard(attacker.name,"Shield Shove",attacker.displayScheme);
         if (defender.immunities.includes("prone")) {
             outputCard.body.push(defender.name + " is immune to Shove");
             PrintCard();
@@ -621,17 +654,55 @@ const Warpath = (() => {
             level: 0,
             range: 60,
             damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
-            damageType: "Cold",
+            damageType: "cold",
             target: 1,
-            area: false,
-            toHit: true,
+            area: " ",
+            toHit: "Ranged Spell",
             note: "Target's Speed is reduced by 10 for a turn",
-            fx: "",
-            sound: "",
+            fx: "missile-frost",
+            sound: "laser",
         }
 
 
     }
+
+    const Damage = (damageInfo,damageType,defender) => {
+        damageInfo = damageInfo.split("d");
+        let dice = parseInt(damageInfo[0]);
+        let diceType = parseInt(damageInfo[1]);
+        let rolls = [];
+        let total = 0;
+        let note = "";
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(diceType);
+            rolls.push(roll);
+            total += roll;
+        }
+        if (defender.immunities.includes(damageType)) {
+            total = 0;
+            note = "Immune to " + damageType;
+        }
+        if (defender.vulnerabilities.includes(damageType)) {
+            total *= 2;
+            note = "Vulnerable to " + damageType;
+        }
+        if (defender.resistances.includes(damageType)) {
+            total = Math.round(total/2);
+            note = "Resistant to " + damageType;
+        }
+
+
+        let result = {
+            rolls: rolls,
+            total: total,
+            note: note,
+        }
+        return result;
+
+
+    }
+
+
 
 
 
@@ -646,22 +717,80 @@ const Warpath = (() => {
         }
         let attID = Tag[2];
         let attacker = ModelArray[attID];
-        let spellSlot = Tag[3];
-        let defToks = [];
+        let level = Tag[3];
+        let advantage = Tag[4];
+
         let defenders = [];
-        for (let i=4;i<(Tag.length + 1);i++) {
+        for (let i=5;i<(Tag.length + 1);i++) {
             let defender = ModelArray[Tag[i]];
             if (defender) {
                 defenders.push(defender);
             }
         }
 
-        //!DirectedSpell;Ray of Frost;@{selected|token_id};0;@{target|token_id}
-        //for higher levels where can use higher spell slot, put in a ?{Spell Slot Level|1|2} etc
+        if (level > 0) {
+            let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
+            if (slots === 0) {
+                SetupCard(attacker.name,spellName,attacker.displayScheme);
+                outputCard.body.push("No Available Spell Slots of level " + level);
+                PrintCard();
+                return;
+            } else {
+                slots--;
+                AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
+            }
+        }
 
-        
+        if (spellInfo.toHit === "Ranged Spell") {
+            SetupCard(attacker.name,spellName,attacker.displayScheme);
+//check range
+            for (let i=0;i<defenders.length;i++) {
+                let defender = defenders[i];
+                outputCard.body.push("[B]" + defender.name + "[/b]");
+                let result = Result(advantage);
+                let total = result.roll + attacker.spellAttack;
+                let tip = result.rollText;
+                tip += "<br>Defender AC: " + defender.ac;
+
+                if (total >= defender.ac) {
+                    let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,defender);
+                    let tip = "Roll to Hit: " + total + " vs. " + defender.ac;
+                    tip += "<br>Damage Rolls: " + damage.rolls.toString();
+                    if (damage.note !== "") {
+                        tip += "<br>" + note;
+                    }
+                    tip = '[🎲](#" class="showtip" title="' + tip + ')';
+                    outputCard.body.push(tip + ' [B]Hit[/b] for: ' + damage.total + " Damage");
+                    if (spellInfo.note !== "") {
+                        outputCard.body.push(spellInfo.note);
+                    }
+                } else {
+                    tip = '[🎲](#" class="showtip" title="' + tip + ')';
+                    outputCard.body.push(tip + " [B]Miss[/b])");
+                }
+                if (defenders.length > 1) {
+                    outputCard.body.push("[hr]");
+                }
+
+                if (i===0) {
+                    FX(spellInfo.fx,attacker,defender);
+                    PlaySound(spellInfo.sound);
+                }
+
+            }
 
 
+
+
+            PrintCard();
+
+
+
+
+
+
+
+        }
 
 
 
