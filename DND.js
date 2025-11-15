@@ -144,7 +144,7 @@ log(pt2)
     }
 
 
-    let Result = (advantage) => {
+    let ToHit = (advantage) => {
         let roll1 = randomInteger(20);
         let roll2 = randomInteger(20);
         let rollText,bonusText,roll;
@@ -166,7 +166,17 @@ log(pt2)
     }
 
 
+    const Distance = (model1,model2) => {
+        let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
+        let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
+        let dist = pt1.distance(pt2);
+        let mapScale = 
 
+
+
+
+
+    }
 
 
 
@@ -670,6 +680,7 @@ log("AA.NPC.AC: "  + aa.npc_ac)
             range: 60,
             damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
             damageType: "cold",
+            critOn: 20,
             target: 1,
             area: " ",
             toHit: "Ranged Spell",
@@ -681,7 +692,7 @@ log("AA.NPC.AC: "  + aa.npc_ac)
 
     }
 
-    const Damage = (damageInfo,damageType,defender) => {
+    const Damage = (damageInfo,damageType,crit,defender) => {
         damageInfo = damageInfo.split("d");
 
         let dice = parseInt(damageInfo[0]);
@@ -691,6 +702,9 @@ log("AA.NPC.AC: "  + aa.npc_ac)
         let rolls = [];
         let total = 0;
         let note = "";
+        if (crit === true) {
+            dice *= 2;
+        }
 
         for (let i=0;i<dice;i++) {
             let roll = randomInteger(diceType);
@@ -712,6 +726,8 @@ log("AA.NPC.AC: "  + aa.npc_ac)
             total = Math.round(total/2);
             note = "Resistant to " + damageType;
         }
+
+
 
         let result = {
             rolls: rolls,
@@ -767,6 +783,9 @@ log("AA.NPC.AC: "  + aa.npc_ac)
 
         if (spellInfo.toHit.includes("Ranged Spell")) {
             SetupCard(attacker.name,spellName,attacker.displayScheme);
+            let distance = 
+
+
 //check range
 //auto hit eg magic missile
 //saving throws ?
@@ -774,9 +793,10 @@ log("AA.NPC.AC: "  + aa.npc_ac)
             for (let i=0;i<defenders.length;i++) {
                 let defender = defenders[i];
                 outputCard.body.push("[B]" + defender.name + "[/b]");
-                let result = Result(advantage);
+                let result = ToHit(advantage);
                 let total = result.roll + attacker.spellAttack;
                 let tip;
+                let crit = false;
                 let line = "";
                 if (spellInfo.toHit.includes("Auto")) {
                     line = "To Hit: Automatic";
@@ -784,11 +804,17 @@ log("AA.NPC.AC: "  + aa.npc_ac)
                     tip = "1d20 + " + attacker.spellAttack + " = " + result.roll + " + " + attacker.spellAttack;
                     tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
                     line = "Attack: " + tip + " vs. AC " + defender.ac;
+                    if (result.roll >= spellInfo.critOn) {
+                        crit = true;
+                    }
                 }
                 outputCard.body.push(line);
 
-                if (total >= defender.ac || spellInfo.toHit.includes("Auto")) {
-                    let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,defender);
+                if ((total >= defender.ac || spellInfo.toHit.includes("Auto") || crit === true) && result.roll !== 1) {
+                    if (crit === true) {
+                        outputCard.body.push("[ff0000]Crit![/#]");
+                    }
+                    let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,crit,defender);
                     tip = spellInfo.damage[attacker.casterLevel] + " = " + damage.rolls.toString();
                     if (damage.bonus !== 0) {
                         tip += " + " + damage.bonus;
