@@ -52,6 +52,18 @@ const Warpath = (() => {
     const FX = (fxname,model1,model2) => {
         //model2 is target, model1 is shooter
         //if its an area effect, model1 isnt used
+        let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
+        let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
+log(pt1)
+log(pt2)
+        spawnFxBetweenPoints(pt1, pt2,"missile-frost");
+
+
+
+
+        return
+
+
         if (fxname.includes("System")) {
             //system fx
             fxname = fxname.replace("System-","");
@@ -60,11 +72,10 @@ const Warpath = (() => {
                 spawnFx(model2.token.get("left"),model2.token.get("top"), fxname);
             } else {
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
+
             }
         } else {
             let fxType =  findObjs({type: "custfx", name: fxname})[0];
-log(fxname)
-log(fxType)
             if (fxType) {
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
             }
@@ -659,7 +670,7 @@ log(fxType)
             area: " ",
             toHit: "Ranged Spell",
             note: "Target's Speed is reduced by 10 for a turn",
-            fx: "missile-frost",
+            fx: "System-missile-frost",
             sound: "laser",
         }
 
