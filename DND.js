@@ -17,6 +17,15 @@ const Strahd = (() => {
         pageInfo.width = pageInfo.page.get("width") * 70;
         pageInfo.height = pageInfo.page.get("height") * 70;
         pageInfo.scaleNum = pageInfo.page.get("scale_number");
+
+        _.each(playerCodes,pID => {
+            let pObj = getObj('player', pID);
+            if (pObj) {
+                let colour = playerColours[pID];
+                pObj.set({color: colour});
+            }
+        })
+
     }
 
     const playerCodes = {
@@ -25,6 +34,14 @@ const Strahd = (() => {
         "-OdyHPJkwRBH1F9Zn5AU": "Ian",
         "A": "Vic",
     }
+
+    const playerColours = {
+        "-OdzmtPMDNNfcmdvIN5m": "#ffd700",
+        "-OdyHPJkwRBH1F9Zn5AU": "#228C22",
+        "A": "#0000ff",
+    }
+
+
 
     const simpleObj = (o) => {
         let p = JSON.parse(JSON.stringify(o));
@@ -166,9 +183,9 @@ log(pt2)
             "borderStyle": "5px groove",
         },
         "Ian": {
-            "backgroundColour": "#00ff00",
+            "backgroundColour": "#228c22",
             "titlefont": "Tahoma",
-            "fontColour": "#000000",
+            "fontColour": "#ffffff",
             "borderColour": "#000000",
             "borderStyle": "5px inset",
         },
@@ -188,15 +205,15 @@ log(pt2)
         let roll1 = randomInteger(20);
         let roll2 = randomInteger(20);
         let rollText,bonusText,roll;
-        if (advantage === "Advantage") {
+        if (advantage > 0) {
             roll = Math.max(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Advantage]";
-        } else if (advantage === "Disadvantage") {
+            rollText = roll1 + " / " + roll2 + " [Advantage]";
+        } else if (advantage < 0) {
             roll = Math.min(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Disadvantage]";
+            rollText = roll1 + " / " + roll2 + " [Disadvantage]";
         } else {
             roll = roll1;
-            rollText = "Roll: " + roll;
+            rollText = roll;
         }
 
         let result = {
@@ -558,7 +575,11 @@ log("C: " + control)
                 this.displayScheme = playerName;
                 this.npc = false;
             }
-            this.control = playerName;
+if (this.name === "Eivirin") {
+    this.displayScheme = "Vic";
+}
+
+
 log("pN: " + playerName)
             this.size = parseInt(aa.token_size) || 1;
 
@@ -793,6 +814,55 @@ log("pN: " + playerName)
     }
 
 
+    const SetCondition = (msg) => {
+        let Tag = msg.content.split(";");
+        let id = msg.selected[0]._id;
+        if (!id) {
+            sendChat("","Select a Token");
+            return;
+        }
+        let model = ModelArray[id];
+        if (!model) {
+            sendChat("","Not in Array");
+            return;
+        }
+        let condition = Tag[1];
+        let marker = ConditionMarkers[condition];
+        let status = Tag[2];
+        if (marker) {
+
+
+        }
+
+        if (status === "On") {
+            model.token.set("status_" + marker,true);
+        } else if (status === "Off") {
+            model.token.set("status_" + marker,false);
+        } else if (status === "Clear") {
+            model.token.set("statusmarkers","");
+        }
+        
+    }
+
+
+
+    const ConditionMarkers = {
+        "Blind": "Blind-::2006481",
+        "Charmed": "Charmed::2006504",
+        "Deaf": "Deaf::2006484",
+        "Frightened": "Fear-or-Afraid::2006486",
+        "Grappled": "Grappled::2006490",
+        "Incapacitated": "interdiction",
+        "Invisible": "Invisible::2006516",
+        "Paralyzed": "Paralyzed::2006491",
+        "Petrified": "Petrified-or-Stone-2::2006594",
+        "Poisoned": "Poison::2006492",
+        "Prone": "Prone::2006547",
+        "Restrained": "Restrained-or-Webbed::2006494",
+        "Stunned": "Stunned::2006499",
+        "Unconscious": "KO::2006544",
+    }
+
 
 
 
@@ -808,11 +878,42 @@ log("pN: " + playerName)
         let attID = Tag[2];
         let attacker = ModelArray[attID];
         let level = Tag[3];
-        let advantage = "No";
+        let attAdvantage = 0;
 
-//disadvantage if in HtH 
-//advantage if target is prone etc
-
+        let attPos = ["Invisible"];
+        let attNeg = ["Blind","Frightened","Poison","Prone","Restrained"];
+        let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
+        let attMarkers = attacker.token.get("statusmarkers") || " ";
+        //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
+        let ids = Object.keys(ModelArray);
+        idLoop1:
+        for (let i=0;i<ids.length;i++) {
+            let model2 = ModelArray[ids[i]];
+            if (model2.displayScheme !== "NPC") {continue};
+            let sm = model2.token.get("statusmarkers");
+            for (let j=0;j<ignore.length;j++) {
+                if (sm.includes(ignore[j])) {continue idLoop1};
+            }
+            let dist = Distance(attacker,model2);
+            if (dist > 5) {
+                continue;
+            }
+            attAdvantage = -1;
+        }
+        for (let i=0;i<attPos.length;i++) {
+            if (attMarkers.includes(attPos[i])) {
+                attAdvantage += 1;
+                break;
+            }
+        }
+        for (let i=0;i<attNeg.length;i++) {
+            if (attMarkers.includes(attNeg[i])) {
+                attAdvantage -= 1;
+                break;
+            }
+        }
+        attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
+log("Att: " + attAdvantage)
 
         let defenders = [];
         for (let i=4;i<(Tag.length + 1);i++) {
@@ -848,15 +949,50 @@ log("pN: " + playerName)
                     outputCard.body.push("Spell Range: " + spellInfo.range);
                     continue;
                 }
+
+                let defAdvantage = 0;
+                let defMarkers = defender.token.get("statusmarkers");
+                let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
+                let defNeg = ["Invisible"];
+                for (let i=0;i<defPos.length;i++) {
+                    if (defMarkers.includes(defPos[i])) {
+                        defAdvantage = 1;
+                        break;
+                    }
+                }
+                for (let i=0;i<defNeg.length;i++) {
+                    if (defMarkers.includes(defNeg[i])) {
+                        defAdvantage -= 1;
+                        break;
+                    }
+                }
+                
+                if (defMarkers.includes("Prone")) {
+                    if (distance <= 5) {
+                        defAdvantage += 1;
+                    } else {
+                        defAdvantage -= 1;
+                    }
+                }
+                defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
+log("DEF " + defAdvantage)
+
+                let advantage = attAdvantage + defAdvantage;
+                advantage = Math.min(Math.max(-1,advantage),1);
+log("Adv " + advantage)
+
                 let result = ToHit(advantage);
                 let total = result.roll + attacker.spellAttack;
                 let tip;
                 let crit = false;
+                if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
+                    crit = true;
+                }
                 let line = "";
                 if (spellInfo.toHit.includes("Auto")) {
                     line = "To Hit: Automatic";
                 } else {
-                    tip = "1d20 + " + attacker.spellAttack + " = " + result.roll + " + " + attacker.spellAttack;
+                    tip = "1d20 + " + attacker.spellAttack + " = " + result.rollText + " + " + attacker.spellAttack;
                     tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
                     line = "Attack: " + tip + " vs. AC " + defender.ac;
                     if (result.roll >= spellInfo.critOn) {
@@ -950,6 +1086,11 @@ log("pN: " + playerName)
             case '!DirectedSpell':
                 DirectedSpell(msg);
                 break;
+            case '!SetCondition':
+                SetCondition(msg);
+                break;
+
+
 
         }
     };
