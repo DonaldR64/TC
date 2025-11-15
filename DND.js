@@ -772,7 +772,9 @@ log("pN: " + playerName)
         "Ray of Frost": {
             level: 0,
             range: 60,
-            damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
+            damage: "1d8",
+            cLevel: {5: "2d8", 11: "3d8"},
+            sLevel: "Nil",
             damageType: "cold",
             critOn: 20,
             savingThrow: "No",
@@ -785,7 +787,9 @@ log("pN: " + playerName)
         "Acid Splash": {
             level: 0,
             range: 60,
-            damage: ["1d6","1d6","1d6","1d6","2d6","2d6","2d6","2d6","2d6","2d6","3d6","3d6","3d6","3d6"],
+            damage: "1d6",
+            cLevel: {5: "2d6", 11: "3d6"},
+            sLevel: "Nil",
             damageType: "acid",
             critOn: 20,
             savingThrow: "dexterity",
@@ -794,6 +798,21 @@ log("pN: " + playerName)
             toHit: "Ranged Spell",
             note: "",
             sound: "",
+        },
+        "Burning Hands": {
+            level: 1,
+            range: 15,
+            damage: "3d6",
+            cLevel: {0:0},
+            sLevel: "1d6",
+            damageType: "fire",
+            critOn: 20,
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",
+            area: "Cone",
+            toHit: "Ranged Spell",
+            note: "",
+            sound: "Inferno",
         }
 
 
