@@ -7,6 +7,18 @@ const Strahd = (() => {
 
     const ModelArray = {};
 
+    const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
+
+    const LoadPage = () => {
+        //build Page Info
+        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
+        pageInfo.name = pageInfo.page.get("name");
+        pageInfo.scale = pageInfo.page.get("snapping_increment");
+        pageInfo.width = pageInfo.page.get("width") * 70;
+        pageInfo.height = pageInfo.page.get("height") * 70;
+        pageInfo.scaleNum = pageInfo.page.get("scale_number");
+    }
+
     const playerCodes = {
         "Don": "2520699",
         "DonAlt": "5097409",
@@ -158,6 +170,7 @@ log(pt2)
             roll = roll1;
             rollText = "Roll: " + roll;
         }
+
         let result = {
             roll: roll,
             rollText: rollText,
@@ -169,12 +182,9 @@ log(pt2)
     const Distance = (model1,model2) => {
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
         let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
-        let dist = pt1.distance(pt2);
-
-
-
-
-
+        let dist = Math.round(pt1.distance(pt2)/70) * pageInfo.scaleNum;
+log(dist)
+        return dist;
     }
 
 
@@ -485,6 +495,8 @@ log(pt2)
         });
 
 
+
+
     }
 
     class Model {
@@ -680,6 +692,7 @@ log("AA.NPC.AC: "  + aa.npc_ac)
             damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
             damageType: "cold",
             critOn: 20,
+            savingThrow: "No",
             target: 1,
             area: " ",
             toHit: "Ranged Spell",
@@ -726,12 +739,14 @@ log("AA.NPC.AC: "  + aa.npc_ac)
             note = "Resistant to " + damageType;
         }
 
-
+        diceType = dice + "d" + diceType;
+        if (bonus !== 0) {diceType += "+" + bonus}
 
         let result = {
             rolls: rolls,
             bonus: bonus,
             total: total,
+            diceType: diceType,
             note: note,
         }
         return result;
@@ -782,16 +797,17 @@ log("AA.NPC.AC: "  + aa.npc_ac)
 
         if (spellInfo.toHit.includes("Ranged Spell")) {
             SetupCard(attacker.name,spellName,attacker.displayScheme);
-            let distance = 
-
-
-//check range
-//auto hit eg magic missile
-//saving throws ?
-
+    
             for (let i=0;i<defenders.length;i++) {
                 let defender = defenders[i];
                 outputCard.body.push("[B]" + defender.name + "[/b]");
+                let distance = Distance(attacker,defender);
+                if (distance > spellInfo.range) {
+                    outputCard.body.push("Target is Out of Range");
+                    outputCard.body.push("Distance to Target: " + distance);
+                    outputCard.body.push("Spell Range: " + spellInfo.range);
+                    continue;
+                }
                 let result = ToHit(advantage);
                 let total = result.roll + attacker.spellAttack;
                 let tip;
@@ -811,10 +827,15 @@ log("AA.NPC.AC: "  + aa.npc_ac)
 
                 if ((total >= defender.ac || spellInfo.toHit.includes("Auto") || crit === true) && result.roll !== 1) {
                     if (crit === true) {
-                        outputCard.body.push("[ff0000]Crit![/#]");
+                        outputCard.body.push("[#ff0000]Crit![/#]");
                     }
+
+
+//saving throws ?
+
+
                     let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,crit,defender);
-                    tip = spellInfo.damage[attacker.casterLevel] + " = " + damage.rolls.toString();
+                    tip = damage.diceType + " = " + damage.rolls.toString();
                     if (damage.bonus !== 0) {
                         tip += " + " + damage.bonus;
                     }
@@ -903,6 +924,8 @@ log("AA.NPC.AC: "  + aa.npc_ac)
     on('ready', () => {
         log("===> CoS <===");
         log("===> Software Version: " + version + " <===");
+        LoadPage();
+log(pageInfo);
         BuildArrays();
         registerEventHandlers();
         sendChat("","API Ready")
