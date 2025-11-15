@@ -5,6 +5,8 @@ const Warpath = (() => {
 
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
+    const ModelArray = {};
+
     const playerCodes = {
         "Don": "2520699",
         "DonAlt": "5097409",
@@ -342,9 +344,9 @@ const Warpath = (() => {
 
 
     //Retrieve Values from Character Sheet Attributes
-    const Attribute = (character,attributename) => {
+    const Attribute = (charID,attributename) => {
         //Retrieve Values from Character Sheet Attributes
-        let attributeobj = findObjs({type:'attribute',characterid: character.id, name: attributename})[0]
+        let attributeobj = findObjs({type:'attribute',characterid: charID, name: attributename})[0]
         let attributevalue = "";
         if (attributeobj) {
             attributevalue = attributeobj.get('current');
@@ -380,6 +382,20 @@ const Warpath = (() => {
         }
     };
 
+    const AttributeArray = (characterID) => {
+        let aa = {}
+        let attributes = findObjs({_type:'attribute',_characterid: characterID});
+        for (let j=0;j<attributes.length;j++) {
+            let name = attributes[j].get("name")
+            let current = attributes[j].get("current")   
+            if (!current || current === "") {current = " "} 
+            aa[name] = current;
+            let max = attributes[j].get("max")   
+            if (!max || max === "") {max = " "} 
+            aa[name + "_max"] = max;
+        }
+        return aa;
+    };
 
 
     //line line collision where line1 is pt1 and 2, line2 is pt 3 and 4
@@ -397,59 +413,109 @@ const Warpath = (() => {
         return;
     }
 
+    //an array of the PCs and any other tokens on page
+    //will need to rebuild on page change or when add a token
+    const BuildArrays = () => {
 
-    const TargetAngle = (shooter,target) => {
-        let shooterHex = HexMap[shooter.hexLabel];
-        let targetHex = HexMap[target.hexLabel];
-        //angle from shooter's hex to target's hex
-        let phi = Angle(shooterHex.cube.angle(targetHex.cube));
-        let theta = Angle(shooter.token.get("rotation"));
-        let gamma = Angle(phi - theta);
-        return gamma;
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+        });
+
+        tokens.forEach((token) => {
+            let character = getObj("character", token.get("represents"));           
+            if (character === null || character === undefined) {
+                return;
+            };
+            let model = new Model(token);
+            model.name = token.get("name");
+        });
+
+
     }
+
+    class Model {
+        constructor(token) {
+            let char = getObj("character", token.get("represents")); 
+            this.token = token;
+            this.name = token.get("name");
+            let aa = AttributeArray(char.id);
+            this.charID = char.id;
+
+
+            this.type = (aa.npc_type || " ").toLowerCase();
+
+            this.immunities = (aa.npc_immunities || " ").toLowerCase();
+            this.resistances = (aa.npc_resistance || " ").toLowerCase();
+            this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
+
+            this.npc = (aa.charactersheet_type === "npc") ? true:false;
+            this.displayScheme = (this.npc === true) ? "NPC":"PC";
+
+            this.size = parseInt(aa.token_size) || 1;
+
+            let skillNames = ["acrobatics","athletics"];
+            let skills = {};
+
+            for (let i=0;i<skillNames.length;i++) {
+                let skillName = skillNames[i];
+                let bonusName = skillName+"_bonus";
+                let flag = "npc_" + skillName + "_flag";
+                let npcName = "npc_" + skillName;
+                let skill = parseInt(aa[bonusName]) || 0;
+                if (aa[flag] === 1) {
+                    skill = parseInt(aa[npcName]) || 0;
+                }
+                skills[skillName] = skill;
+            }
+            this.skills = skills;
+
+
+
+
+
+
+            ModelArray[token.id] = this;
+
+        }
+
+
+
+
+    }
+
 
     const Smite = (msg) => {
         let Tag = msg.content.split(";");
         let attID = Tag[1];
         let defID = Tag[2];
-        let spellSlot = parseInt(Tag[3]);
+        let level = parseInt(Tag[3]);
         let critical = Tag[4];
         let sub = (critical === "Yes") ? "Divine Smite Critical": "Divine Smite";
         //!Smite;@{selected|token_id};@{target|token_id};?{Spell Level|1|2|3};?{Critical Hit|Yes|No}
 
-        let attTok = findObjs({_type:"graphic", id: attID})[0];
-        let defTok = findObjs({_type:"graphic", id: defID})[0];
-        let attChar = getObj("character", attTok.get("represents")); 
-        let defChar = getObj("character", defTok.get("represents")); 
+        let attacker = ModelArray[attID];
+        let defender = ModelArray[defID]; 
 
         let valid = false;
-
-        for (let i=spellSlot;i>0;i--) {
-            let ss = "lvl" + i + "_slots_expended";
-            let spellSlotNum = parseInt(Attribute(attChar,ss));
-            if (spellSlotNum > 0) {
-                valid = true;
-                spellSlot = i;
-                spellSlotNum--;
-                AttributeSet(attChar.get("id"),ss,spellSlotNum)
-                break;
-            }
-        }
-
-        if (valid === false) {
-            SetupCard(attTok.get("name"),sub,"Player");
-            outputCard.body.push("No Available Spell Slots of this level or lower");
+        let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
+        if (slots === 0) {
+            SetupCard(attacker.name,sub,"Player");
+            outputCard.body.push("No Available Spell Slots of this level");
             PrintCard();
             return;
+        } else {
+            slots--;
+            AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
         }
 
-        let dice = 2 + (spellSlot - 1);
-        let type = Attribute(defChar,"npc_type").toLowerCase();
-        if (type.includes("undead")) {
+        let dice = 2 + (level - 1);
+        if (defender.type.includes("undead")) {
             dice += 1;
             sub += " vs. Undead";
         }
-        if (type.includes("fiend")) {
+        if (defender.type.includes("fiend")) {
             dice += 1;
             sub += " vs. Fiend";
         }
@@ -467,23 +533,20 @@ const Warpath = (() => {
         rolls = rolls.toString();
         let extra = "";
 
-        let immunities = Attribute(defChar,"npc_immunities").toLowerCase();
-        if (immunities.includes("radiant")) {
-            extra = defTok.get("name") + " is immune to Radiant Damage";   
+        if (defender.immunities.includes("radiant")) {
+            extra = defender.name + " is immune to Radiant Damage";   
             damage = 0;
         }
-        let resistances = Attribute(defChar,"npc_resistances").toLowerCase();
-        if (resistances.includes("radiant")) {
-            extra = defTok.get("name" + " is resistant to Radiant Damage");
+        if (defender.resistances.includes("radiant")) {
+            extra = defender.name + " is resistant to Radiant Damage";
             damage = Math.round(damage * .5);
         }
-        let vulnerabilities = Attribute(defChar,"npc_vulnerabilities").toLowerCase();
-        if (vulnerabilities.includes("radiant")) {
-            extra = defTok.get("name" + " is vulnerable to Radiant Damage");
+        if (defender.vulnerabilities.includes("radiant")) {
+            extra = defender.name + " is vulnerable to Radiant Damage";
             damage = damage * 2;
         }
 
-        SetupCard(attTok.get("name"),sub,"Player");
+        SetupCard(attacker.name,sub,"Player");
 
         let tip = "Rolls: " + rolls;
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
@@ -492,7 +555,8 @@ const Warpath = (() => {
         if (extra !== "") {
             outputCard.body.push(extra);
         }
-        outputCard.body.push("Level " + spellSlot + " Spell Slot Used");
+        outputCard.body.push("Level " + level + " Spell Slot Used");
+        if (slots === 0) {outputCard.body.push("[None Left]")};
         PrintCard();
     }
 
@@ -502,74 +566,50 @@ const Warpath = (() => {
         let defID = Tag[2];
         //!SShove;@{selected|token_id};@{target|token_id}
 
-        let attTok = findObjs({_type:"graphic", id: attID})[0];
-        let defTok = findObjs({_type:"graphic", id: defID})[0];
-        let attChar = getObj("character", attTok.get("represents")); 
-        let defChar = getObj("character", defTok.get("represents")); 
-        let attNPC = (Attribute(attChar,"charactersheet_type") === "npc") ? true:false;
-        let defNPC = (Attribute(defChar,"charactersheet_type") === "npc") ? true:false;
+        let attacker = ModelArray[attID];
+        let defender = ModelArray[defID];
 
-        SetupCard(attTok.get("name"),"Shield Shove","Player");
-
-        let immunities = Attribute(defChar,"npc_condition_immunities").toLowerCase();
-        if (immunities.includes("prone")) {
-            outputCard.body.push(defTok.get("name") + " is immune to Shove");
+        SetupCard(attacker.name,"Shield Shove","Player");
+        if (defender.immunities.includes("prone")) {
+            outputCard.body.push(defender.name + " is immune to Shove");
             PrintCard();
             return;
         }
-
-        let attSize = parseInt(Attribute(attChar,"token_size"));
-        let defSize = parseInt(Attribute(defChar,"token_size"));
-
-        if (defSize > attSize) {
-            outputCard.body.push(defTok.get("name") + " is too large to Shove");
+        if (defender.size > attacker.size) {
+            outputCard.body.push(defender.name + " is too large to Shove");
             PrintCard();
             return;
         }
 
         let attRoll = randomInteger(20);
-        let attAth = parseInt(Attribute(attChar,"athletics_bonus"));
-        if (attNPC === true && parseInt(Attribute(attChar,"npc_athletics_flag")) === 1) {
-            attAth = parseInt(Attribute(attChar,"npc_athletics"));
-        }
-
-        let attTotal = attRoll + attAth;
+        let attTotal = attRoll + attacker.skills.athletics;
 
         let defRoll = randomInteger(20);
-        let defAth = parseInt(Attribute(defChar,"athletics_bonus"));
-        if (defNPC === true && parseInt(Attribute(defChar,"npc_athletics_flag")) === 1) {
-            defAth = parseInt(Attribute(defChar,"npc_athletics"));
-        }
-
-        let defAcr = parseInt(Attribute(defChar,"acrobatics_bonus"));
-        if (defNPC === true && parseInt(Attribute(defChar,"npc_acrobatics_flag")) === 1) {
-            defAcr = parseInt(Attribute(defChar,"npc_acrobatics"));
-        }
         let verb;
 
-        if (defAth >= defAcr) {
+        if (defender.skills.athletics >= defender.skills.acrobatics) {
             defAtt = " [Athletics]";
             verb = " resists ";
-            bonus = defAth;
+            bonus = defender.skills.athletics;;
         } else {
             defAtt = " [Acrobatics]";
             verb = " dodges ";
-            bonus = defAcr
+            bonus = defender.skills.acrobatics;
         }
         let defTotal = defRoll + bonus;
 
-        let tip = attTok.get("name") + " Rolls: " + attRoll + " + " + attAth; 
-        tip += "<br>" + defTok.get("name") + " Rolls: " + defRoll + " + " + bonus + defAtt;
+        let tip = attacker.name + " Rolls: " + attRoll + " + " + attacker.skills.athletics; 
+        tip += "<br>" + defender.name + " Rolls: " + defRoll + " + " + bonus + defAtt;
         tip = '[🎲](#" class="showtip" title="' + tip + ')';
 
-        outputCard.body.push(tip + " " + attTok.get("name") + " shoves " + defTok.get("name") + " with his Shield");
+        outputCard.body.push(tip + " " + attacker.name + " shoves " + defender.name + " with his Shield");
 
         if (defTotal < attTotal) {
             outputCard.body.push("[B]Success[/b]");
-            outputCard.body.push(defTok.get("name") + " can be either pushed back 5ft or knocked prone");
+            outputCard.body.push(defender.name + " can be either pushed back 5ft or knocked prone");
         } else {
             outputCard.body.push("[B][#ff0000]Failure[/b][/#]");
-            outputCard.body.push(defTok.get("name") + verb + "the Shove");
+            outputCard.body.push(defender.name + verb + "the Shove");
         }
         PrintCard();
     }
@@ -583,6 +623,7 @@ const Warpath = (() => {
             damage: ["1d8","1d8","1d8","1d8","2d8","2d8","2d8","2d8","2d8","2d8","3d8","3d8","3d8","3d8",],
             damageType: "Cold",
             target: 1,
+            area: false,
             toHit: true,
             note: "Target's Speed is reduced by 10 for a turn",
             fx: "",
@@ -604,49 +645,21 @@ const Warpath = (() => {
             return;
         }
         let attID = Tag[2];
+        let attacker = ModelArray[attID];
         let spellSlot = Tag[3];
         let defToks = [];
-        let defChars = [];
+        let defenders = [];
         for (let i=4;i<(Tag.length + 1);i++) {
-            let defID = Tag[i];
-            let defTok = findObjs({_type:"graphic", id: defID})[0];
-            defToks.push(defTok);
-            let defChar = getObj("character", defTok.get("represents")); 
-            defChars.push(defChars);
-
+            let defender = ModelArray[Tag[i]];
+            if (defender) {
+                defenders.push(defender);
+            }
         }
-
-
 
         //!DirectedSpell;Ray of Frost;@{selected|token_id};0;@{target|token_id}
         //for higher levels where can use higher spell slot, put in a ?{Spell Slot Level|1|2} etc
 
-
-        let attTok = findObjs({_type:"graphic", id: attID})[0];
-        let defTok = findObjs({_type:"graphic", id: defID})[0];
-        let attChar = getObj("character", attTok.get("represents")); 
-        let defChar = getObj("character", defTok.get("represents")); 
-        let attNPC = (Attribute(attChar,"charactersheet_type") === "npc") ? true:false;
-        let defNPC = (Attribute(defChar,"charactersheet_type") === "npc") ? true:false;
-
-
-        //ranged spell attack
-        //check range, spell slot
-        //if hits, roll damage, check damagetype, vulnerabilities etc
-        //play sound/fx
-
-        let errorMsg = [];
-        let attPt = new Point(attTok.get("left"),attTok.get("top")); 
-        let defPt = new Point(defTok.get("left"),defTok.get("top"));
-        let distance = attPt.distance(defPt);
-
-
-
-        if (distance > spellInfo.range) {
-            errorMsg.push("Out of Range");
-        }
-
-
+        
 
 
 
@@ -675,10 +688,7 @@ const Warpath = (() => {
     
         switch(args[0]) {
             case '!Dump':
-                log("State");
-                log(state.Warpath);
-            case '!ClearState':
-                ClearState(msg);
+                log(ModelArray);
                 break;
             case '!Smite':
                 Smite(msg);
@@ -702,7 +712,8 @@ const Warpath = (() => {
     };
     on('ready', () => {
         log("===> CoS <===");
-        log("===> Software Version: " + version + " <===")
+        log("===> Software Version: " + version + " <===");
+        BuildArrays();
         registerEventHandlers();
         sendChat("","API Ready")
         log("On Ready Done")
