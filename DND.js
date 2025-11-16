@@ -927,7 +927,7 @@ log("pN: " + playerName)
         let magicInfo = Tag[4];
 
 
-        //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info
+        //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info or Silver or similar goes here
 
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID];
@@ -992,7 +992,13 @@ log("pN: " + playerName)
 
         //Magic Items
         if (magicInfo) {
-            
+            if (magicInfo.includes("+")) {
+                magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
+                attackBonus += magicBonus;
+                weapon.bonus += magicBonus;
+            }
+
+
 
         }
 
