@@ -979,6 +979,31 @@ log("pN: " + playerName)
     }
 
 
+    const Spell2 = (msg) => {
+        let targetID = msg.selected[0]._id;
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+
+
+        if (spellName === "Sleep") {
+            //5d8 hp. +2d8 for spell level > 1
+
+
+
+
+
+
+        }
+
+
+
+
+
+    }
+
+
+
+
 
 
 
