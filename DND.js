@@ -1322,7 +1322,9 @@ log("Final Adv: " + advantage)
             case '!Spell2':
                 Spell2(msg);
                 break;
-
+            case '!Attack':
+                Attack(msg);
+                break;
 
         }
     };
