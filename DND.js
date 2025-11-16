@@ -880,8 +880,39 @@ log("pN: " + playerName)
             critOn: 20,
             sound: "Club",
         },
-
-
+        Acornbearer: {
+            dice: 1,
+            diceType: 1,
+            bonus: 0,
+            properties: "Finesse",
+            damageType: "piercing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Sword",
+        },
+        'Quarterstaff (2H)': {
+            dice: 1,
+            diceType: 8,
+            bonus: 0,
+            properties: "",
+            damageType: "bludgeoning",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Staff",
+        },
+        'Scimitar': {
+            dice: 1,
+            diceType: 6,
+            bonus: 0,
+            properties: "Finesse",
+            damageType: "slashing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Sword",
+        },
 
 
 
@@ -912,9 +943,10 @@ log("pN: " + playerName)
             errorMsg.push("Defender not in Array");
             defender = attacker;
         }
-        let weapon = DeepCopy(WeaponInfo[weaponName]);
-
-        if (!weapon) {
+        let weapon = WeaponInfo[weaponName];
+        if (weapon) {
+            weapon = DeepCopy(WeaponInfo[weaponName]);
+        } else {
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
@@ -1091,7 +1123,7 @@ log(weapon)
                 tip += " + " + damage.bonus;
             }
             if (damage.note !== "") {
-                tip += "<br>" + note;
+                tip += "<br>" + damage.note;
             }
             let totalDamage = damage.total;
             tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
@@ -1142,11 +1174,11 @@ log(weapon)
         }
         if (defender.vulnerabilities.includes(damageInfo.damageType)) {
             total *= 2;
-            note = "Vulnerable to " +  damageInfo.damageType;
+            note = "Vulnerable to " +  damageInfo.damageType + " = * 2";
         }
         if (defender.resistances.includes(damageInfo.damageType)) {
             total = Math.round(total/2);
-            note = "Resistant to " + damageInfo.damageType;
+            note = "Resistant to " + damageInfo.damageType + " = * 1/2";
         }
 
         diceType = dice + "d" + diceType;
@@ -1456,7 +1488,7 @@ log("Final Adv: " + advantage)
                         tip += " + " + damage.bonus;
                     }
                     if (damage.note !== "") {
-                        tip += "<br>" + note;
+                        tip += "<br>" + damage.note;
                     }
 
                     let totalDamage = damage.total;
