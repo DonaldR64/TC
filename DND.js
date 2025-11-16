@@ -595,7 +595,9 @@ if (this.name === "Eivirin") {
 
 
 log("pN: " + playerName)
-            this.size = parseInt(aa.token_size) || 1;
+            let dim = Math.max(token.get("width"),token.get("height"));
+            dim = Math.round(dim/70);
+            this.size = dim;
 
             let skillNames = ["acrobatics","athletics"];
             let skills = {};
@@ -860,12 +862,25 @@ log("pN: " + playerName)
             dice: 1,
             diceType: 8,
             bonus: 0,
-            stat: "strength",
+            properties: "Versatile",
             damageType: "slashing",
-            range: "reach",
+            type: "Melee",
+            range: [0,0],
             critOn: 20,
             sound: "Sword",
-        }
+        },
+        Dagger: {
+            dice: 1,
+            diceType: 4,
+            bonus: 0,
+            properties: "Finesse, Thrown",
+            damageType: "slashing",
+            type: "Melee,Ranged",
+            range: [20,60],
+            critOn: 20,
+            sound: "Club",
+        },
+
 
 
 
@@ -878,22 +893,16 @@ log("pN: " + playerName)
         let attID = Tag[1];
         let defID = Tag[2];
         let weaponName = Tag[3];
-        let attAdvantage = Tag[4];
-
-        let bonusTH = parseInt(Tag[5]) || 0;
-        let bonusD = parseInt(Tag[6]) || 0;
+        let magicInfo = Tag[4];
 
 
-        //!Attack;@{selected|token_id};@{target|token_id};Longsword;?{Advantage|No,0|Yes|1,Disadvantage,-1};0,2;
-        //incorporate magic item etc bonuses into above
-        //? redo the advantage later
+        //!Attack;@{selected|token_id};@{target|token_id};Longsword
 
 
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID];
 
         let errorMsg = [];
-        let HtH = false;
 
         if (!attacker) {
             errorMsg.push("Attacker not in Array");
@@ -904,22 +913,58 @@ log("pN: " + playerName)
             defender = attacker;
         }
         let weapon = DeepCopy(WeaponInfo[weaponName]);
-        weapon.bonus += bonusD;
 
         if (!weapon) {
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
 
+        let adjacent = false;
         let distance = Distance(attacker,defender);
 
-        if (weapon.range === "reach") {
-            weapon.range = pageInfo.scaleNum; //1 square
-            HtH = true;
+        if (distance <= pageInfo.scaleNum) {
+            adjacent = true;
         }
-        if (distance > weapon.range) {
-            errorMsg.push("Target is Out of Range");
+        if (weapon.properties.includes("Reach") && distance <= (2*pageInfo.scaleNum)) {
+            adjacent = true;
         }
+        if (adjacent !== true && weapon.type.includes("Ranged") === false) {
+            errorMsg.push("Target not in Reach");
+        } 
+
+        let statBonus = attacker.statBonus["strength"];
+        if (adjacent === false && weapon.properties.includes("Thrown") === false) {
+            statBonus = attacker.statBonus["dexterity"];
+        }
+        if (weapon.properties.includes("Finesse")) {
+            statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
+        }
+
+        if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
+            errorMsg.push("Target is Out of Max Range");
+        }
+
+        //damage bonuses, move into weapon for Damage routine
+        //stat
+        if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
+            weapon.bonus += statBonus;
+        }
+        //abilities
+        if (attacker.name === "Wirsten" && adjacent === true) {
+            weapon.bonus += 2; //Duellist
+        }
+
+
+        //attack bonuses - later check has proficiency?
+        attackBonus = statBonus + attacker.pb;
+
+        //Magic Items
+        if (magicInfo) {
+            
+
+        }
+
+
 
 
 
@@ -930,49 +975,104 @@ log("pN: " + playerName)
             return;
         }
 
-        SetupCard(attacker.name,weaponName,attacker.displayScheme);
+        SetupCard(attacker.name,"Attack",attacker.displayScheme);
+        if (adjacent === true && weapon.type.includes("Melee")) {
+            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
+        }
+        if (adjacent === false && weapon.properties.includes("Thrown")) {
+            outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
+            weapon.sound = "Shuriken"
+        }
+        if (adjacent === false && weapon.properties.includes("Thrown") === false) {
+            outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
+        }
+
+        //Advantage/Disadvantage checking
+        let attAdvantage = 0;
+
+        let attPos = ["Invisible"];
+        let attNeg = ["Blind","Frightened","Poison","Restrained"];
+        let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
+        let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        //check if next to an enemy token if ranged attack, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
+        if (adjacent === true && weapon.type.includes("Melee") === false) {
+            let ids = Object.keys(ModelArray);
+            idLoop1:
+            for (let i=0;i<ids.length;i++) {
+                let model2 = ModelArray[ids[i]];
+                if (model2.displayScheme !== "NPC") {continue};
+                let sm = model2.token.get("statusmarkers");
+                for (let j=0;j<ignore.length;j++) {
+                    if (sm.includes(ignore[j])) {continue idLoop1};
+                }
+                let dist = Distance(attacker,model2);
+                if (dist > 5) {
+                    continue;
+                }
+                attAdvantage = -1;
+            }
+        }    
+        //prone if adjacent
+        if (adjacent === true && attMarkers.includes("Prone")) {
+            attAdvantage = -1;
+        }
+        //ranged weapons
+        if (adjacent === false && distance > weapon.range[0]) {
+            attAdvantage = -1;
+        }
+        for (let i=0;i<attPos.length;i++) {
+            if (attMarkers.includes(attPos[i])) {
+                attAdvantage = Math.min(attAdvantage +1,1);
+                break;
+            }
+        }
+        for (let i=0;i<attNeg.length;i++) {
+            if (attMarkers.includes(attNeg[i])) {
+                attAdvantage = Math.max(attAdvantage -1, -1);
+                break;
+            }
+        }
+log("Att Adv: " + attAdvantage)
 
         let defAdvantage = 0;
         let defMarkers = Markers(defender.token.get("statusmarkers"));
         let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
         let defNeg = ["Invisible","Dodge"];
+        if (defMarkers.includes("Prone")) {
+            if (adjacent === true) {
+                defAdvantage = 1;
+            } else {
+                defAdvantage = -1;
+            }
+        }
         for (let i=0;i<defPos.length;i++) {
             if (defMarkers.includes(defPos[i])) {
-                defAdvantage = 1;
+                defAdvantage = Math.min(defAdvantage +1,1);
                 break;
             }
         }
         for (let i=0;i<defNeg.length;i++) {
             if (defMarkers.includes(defNeg[i])) {
-                defAdvantage -= 1;
+                defAdvantage = Math.max(defAdvantage -1,-1);
                 break;
             }
         }
-        
-        if (defMarkers.includes("Prone")) {
-            if (distance <= 5) {
-                defAdvantage += 1;
-            } else {
-                defAdvantage -= 1;
-            }
-        }
-        defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
-        log("Def Adv: " + defAdvantage)
+log("Def Adv: " + defAdvantage)
 
         let advantage = attAdvantage + defAdvantage;
         advantage = Math.min(Math.max(-1,advantage),1);
-        ("Final Adv: " + advantage)
+log("Final Adv: " + advantage)
 
         let result = ToHit(advantage);
-        let bonus = attacker.statBonus[weapon.stat] + attacker.pb + bonusTH;
-        let total = result.roll + bonus;
+
+        let total = result.roll + attackBonus;
         let tip;
         let crit = false;
-        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && HtH === true) {
+        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && adjacent === true) {
             crit = true;
         }
 
-        tip = "1d20 + " + bonus + " = " + result.rollText + " + " + bonus;
+        tip = "1d20 + " + attackBonus + " = " + result.rollText + " + " + attackBonus;
         tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
         if (result.roll >= weapon.critOn) {
             crit = true;
