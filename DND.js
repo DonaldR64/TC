@@ -791,10 +791,8 @@ log("pN: " + playerName)
         "Ray of Frost": {
             level: 0,
             range: 60,
-            dice: 1,
-            diceType: 8,
-            bonus: 0,
-            cLevel: {5: 2, 11: 3},
+            base: '1d8',
+            cLevel: {5: '2d8', 11: '3d8'},
             sLevel: 0,
             damageType: "cold",
             critOn: 20,
@@ -807,10 +805,8 @@ log("pN: " + playerName)
         "Acid Splash": {
             level: 0,
             range: 60,
-            dice: 1,
-            diceType: 6,
-            bonus: 0,
-            cLevel: {5: 2, 11: 3},
+            base: '1d6',
+            cLevel: {5: '2d6', 11: '3d6'},
             sLevel: 0,
             damageType: "acid",
             critOn: 20,
@@ -823,11 +819,9 @@ log("pN: " + playerName)
         "Burning Hands": {
             level: 1,
             range: 15,
-            dice: 3,
-            diceType: 6,
-            bonus: 0,
+            base: '3d6',
             cLevel: {},
-            sLevel: 1, //extra dice per level > 1
+            sLevel: '1d6',
             damageType: "fire",
             critOn: 20,
             savingThrow: "dexterity",
@@ -839,9 +833,7 @@ log("pN: " + playerName)
         "Magic Missile": {
             level: 1,
             range: 120,
-            dice: 1,
-            diceType: 4,
-            bonus: 1,
+            base: '1d4+1',
             cLevel: {},
             sLevel: 0,
             damageType: "force",
@@ -859,9 +851,7 @@ log("pN: " + playerName)
 
     const WeaponInfo = {
         Longsword: {
-            dice: 1,
-            diceType: 8,
-            bonus: 0,
+            base: '1d8',
             properties: "Versatile",
             damageType: "slashing",
             type: "Melee",
@@ -870,9 +860,7 @@ log("pN: " + playerName)
             sound: "Sword",
         },
         Dagger: {
-            dice: 1,
-            diceType: 4,
-            bonus: 0,
+            base: '1d4',
             properties: "Finesse, Thrown",
             damageType: "slashing",
             type: "Melee,Ranged",
@@ -881,9 +869,7 @@ log("pN: " + playerName)
             sound: "Club",
         },
         Acornbearer: {
-            dice: 1,
-            diceType: 1,
-            bonus: 0,
+            base: '1',
             properties: "Finesse",
             damageType: "piercing",
             type: "Melee",
@@ -892,9 +878,7 @@ log("pN: " + playerName)
             sound: "Sword",
         },
         'Quarterstaff (2H)': {
-            dice: 1,
-            diceType: 8,
-            bonus: 0,
+            base: '1d8',
             properties: "",
             damageType: "bludgeoning",
             type: "Melee",
@@ -903,9 +887,7 @@ log("pN: " + playerName)
             sound: "Staff",
         },
         'Scimitar': {
-            dice: 1,
-            diceType: 6,
-            bonus: 0,
+            base: "1d6",
             properties: "Finesse",
             damageType: "slashing",
             type: "Melee",
@@ -913,7 +895,7 @@ log("pN: " + playerName)
             critOn: 20,
             sound: "Sword",
         },
-
+       
 
 
 
@@ -979,11 +961,11 @@ log("pN: " + playerName)
         //damage bonuses, move into weapon for Damage routine
         //stat
         if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
-            weapon.bonus += statBonus;
+            weapon.base += "+" + statBonus;
         }
         //abilities
         if (attacker.name === "Wirsten" && adjacent === true) {
-            weapon.bonus += 2; //Duellist
+            weapon.base += "+2"; //Duellist
         }
 
 
@@ -995,7 +977,7 @@ log("pN: " + playerName)
             if (magicInfo.includes("+")) {
                 magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
                 attackBonus += magicBonus;
-                weapon.bonus += magicBonus;
+                weapon.base += "+" + magicBonus;
             }
 
 
@@ -1124,7 +1106,7 @@ log("Final Adv: " + advantage)
             outputCard.body.push("[B]Hit![/b]")
 log(weapon)
             let damage = Damage(weapon,crit,defender);
-            tip = damage.diceType + " = " + damage.rolls.toString();
+            tip = damage.text + " = [" + damage.rolls.toString() + "]"
             if (damage.bonus !== 0) {
                 tip += " + " + damage.bonus;
             }
@@ -1156,20 +1138,50 @@ log(weapon)
 
     const Damage = (damageInfo,crit,defender) => {
         //spellinfo if a spell, weaponinfo if a weapon
-        let dice = damageInfo.dice;
-        let diceType = damageInfo.diceType;
-        let bonus = damageInfo.bonus;
+        //1d8+1d6+3
+        let base = damageInfo.base.split("+");
+        let comp = [];
+        _.each(base,e => {
+            e = e.split("d");
+            n = parseInt(e[0]) || 1;
+            if (e[1]) {
+                t = parseInt(e[1]);
+            } else {
+                t = 0;
+            }
+            info = {
+                num: n,
+                type: t,
+            }
+            comp.push(info);
+        })
+
         let rolls = [];
+        let bonus = 0;
         let total = 0;
         let note = "";
+        let text = [];
         if (crit === true) {
             dice *= 2;
         }
 
-        for (let i=0;i<dice;i++) {
-            let roll = randomInteger(diceType);
-            rolls.push(roll);
-            total += roll;
+
+        for (let i=0;i<comp.length;i++) {
+            let info = comp[i];
+            if (info.type === 0) {
+                bonus += info.num;
+            } else {
+                let dice = info.num;
+                if (crit === true) {
+                    dice *= 2;
+                }                
+                text.push(info.num + "d" + info.type);
+                for (let d=0;d<dice;d++) {
+                    let roll = randomInteger(info.type);
+                    rolls.push(roll);
+                    total += roll;
+                }
+            }
         }
 
         total += bonus;
@@ -1218,14 +1230,15 @@ log(weapon)
             note = "Vulnerable to " +  damageInfo.damageType + " = Double";
         }
 
-        diceType = dice + "d" + diceType;
-        if (bonus !== 0) {diceType += "+" + bonus}
+        text = text.toString();
+        text = text.replace(","," + ");
+        text += " + " + bonus;
 
         let result = {
             rolls: rolls,
             bonus: bonus,
             total: total,
-            diceType: diceType,
+            text: text,
             note: note,
         }
         return result;
@@ -1523,7 +1536,7 @@ log("Final Adv: " + advantage)
                     }
 
                     let damage = Damage(spellInfo,crit,defender);
-                    tip = damage.diceType + " = " + damage.rolls.toString();
+                    tip = damage.text + " = [" + damage.rolls.toString() + "]";
                     if (damage.bonus !== 0) {
                         tip += " + " + damage.bonus;
                     }
