@@ -542,7 +542,7 @@ log(outputCard.side)
             if (character === null || character === undefined) {
                 return;
             };
-            let model = new Model(token.id);
+            let model = new Model(token);
             model.name = token.get("name");
         });
 
@@ -552,8 +552,7 @@ log(outputCard.side)
     }
 
     class Model {
-        constructor(id) {
-            let token = findObjs({_type:"graphic", id: id})[0];
+        constructor(token) {
             let char = getObj("character", token.get("represents")); 
             this.token = token;
             this.id = token.get("id");
@@ -960,47 +959,18 @@ log("pN: " + playerName)
         
         SetupCard(caster.name,spellName,caster.displayScheme);
 
- 
         if (spellName === "Sleep") {
-            let level = Tag[2] || 1;
-            let targetID = Tag[3];
-            let target = ModelArray[targetID]; //check models in 20ft of this point
-
-            let dice = 5;
-            if (level > 1) {
-                dice += 2*(level - 1);
-            }
-            let rolls = [];
-            let totalHP = 0;
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                totalHP += roll;
-            }
-
-            let creatureArray = [];
-            _.each(ModelArray,model => {
-                let distance = Distance(target,model);
-                if (distance <= 20) {
-                    
-
-
-
-                }
-
-
-
-
-
+            //create the sleep token, place on caster, with instructions
+            let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
+            let sleepToken = PlaceTarget(caster,"-Oe9qGhZGXjCXNE7icg0",img,70,70)
+            sleepToken.set({
+                aura1_radius: 20,
+                aura1_color: "#cfe2f3",
+                showplayers_aura1: true,
+                disableSnapping: true,
             })
-
-
-
-
-
-
-
-
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
         }
 
 
@@ -1258,28 +1228,29 @@ log("Final Adv: " + advantage)
     }
 
 
+
+
+
+
+
     
 
 
-    const PlaceTarget = (msg) => {
-        let casterID = msg.selected[0]._id;
-        let caster = ModelArray[casterID];
-        let targetCharID = "-Oe8qdnMHHQEe4fSqqhm";
-        let targetImg = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
+    const PlaceTarget = (caster,targetCharID,img,w,h) => {
         let newToken = createObj("graphic", {
             left: caster.token.get("left"),
             top: caster.token.get("top"),
-            width: 70, 
-            height: 70,  
+            width: w, 
+            height: h,  
             name: "",
             pageid: Campaign().get("playerpageid"),
-            imgsrc: targetImg,
+            imgsrc: img,
             layer: "objects",
             represents: targetCharID,
         })
         toFront(newToken);
-        let id = newToken.id;
-        let target = new Model(id);
+        let target = new Model(newToken);
+        return newToken;
     }
 
 
@@ -1323,7 +1294,9 @@ log("Final Adv: " + advantage)
             case '!MiscSpell':
                 MiscSpell(msg);
                 break;
-
+            case '!Spell2':
+                Spell2(msg);
+                break;
 
 
         }
