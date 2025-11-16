@@ -542,7 +542,7 @@ log(outputCard.side)
             if (character === null || character === undefined) {
                 return;
             };
-            let model = new Model(token);
+            let model = new Model(token.id);
             model.name = token.get("name");
         });
 
@@ -552,7 +552,8 @@ log(outputCard.side)
     }
 
     class Model {
-        constructor(token) {
+        constructor(id) {
+            let token = findObjs({_type:"graphic", id: id})[0];
             let char = getObj("character", token.get("represents")); 
             this.token = token;
             this.id = token.get("id");
@@ -772,9 +773,11 @@ log("pN: " + playerName)
         "Ray of Frost": {
             level: 0,
             range: 60,
-            damage: "1d8",
-            cLevel: {5: "2d8", 11: "3d8"},
-            sLevel: "Nil",
+            dice: 1,
+            diceType: 8,
+            bonus: 0,
+            cLevel: {5: 2, 11: 3},
+            sLevel: 0,
             damageType: "cold",
             critOn: 20,
             savingThrow: "No",
@@ -787,9 +790,11 @@ log("pN: " + playerName)
         "Acid Splash": {
             level: 0,
             range: 60,
-            damage: "1d6",
-            cLevel: {5: "2d6", 11: "3d6"},
-            sLevel: "Nil",
+            dice: 1,
+            diceType: 6,
+            bonus: 0,
+            cLevel: {5: 2, 11: 3},
+            sLevel: 0,
             damageType: "acid",
             critOn: 20,
             savingThrow: "dexterity",
@@ -802,9 +807,11 @@ log("pN: " + playerName)
         "Burning Hands": {
             level: 1,
             range: 15,
-            damage: "3d6",
-            cLevel: {0:0},
-            sLevel: "1d6",
+            dice: 3,
+            diceType: 6,
+            bonus: 0,
+            cLevel: {},
+            sLevel: 1, //extra dice per level > 1
             damageType: "fire",
             critOn: 20,
             savingThrow: "dexterity",
@@ -818,13 +825,11 @@ log("pN: " + playerName)
 
     }
 
-    const Damage = (damageInfo,damageType,crit,defender) => {
-        damageInfo = damageInfo.split("d");
-
-        let dice = parseInt(damageInfo[0]);
-        let part2 = damageInfo[1].split("+");
-        let diceType = parseInt(part2[0]);
-        let bonus = parseInt(part2[1] || 0);
+    const Damage = (damageInfo,crit,defender) => {
+        //spellinfo if a spell, weaponinfo if a weapon
+        let dice = damageInfo.dice;
+        let diceType = damageInfo.diceType;
+        let bonus = damageInfo.bonus;
         let rolls = [];
         let total = 0;
         let note = "";
@@ -840,17 +845,17 @@ log("pN: " + playerName)
 
         total += bonus;
 
-        if (defender.immunities.includes(damageType)) {
+        if (defender.immunities.includes(damageInfo.damageType)) {
             total = 0;
-            note = "Immune to " + damageType;
+            note = "Immune to " + damageInfo.damageType;
         }
-        if (defender.vulnerabilities.includes(damageType)) {
+        if (defender.vulnerabilities.includes(damageInfo.damageType)) {
             total *= 2;
-            note = "Vulnerable to " + damageType;
+            note = "Vulnerable to " +  damageInfo.damageType;
         }
-        if (defender.resistances.includes(damageType)) {
+        if (defender.resistances.includes(damageInfo.damageType)) {
             total = Math.round(total/2);
-            note = "Resistant to " + damageType;
+            note = "Resistant to " + damageInfo.damageType;
         }
 
         diceType = dice + "d" + diceType;
@@ -938,15 +943,23 @@ log("pN: " + playerName)
     const DirectedSpell = (msg) => {
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
-        let spellInfo = SpellInfo[spellName];
-
+        let spellInfo = DeepCopy(SpellInfo[spellName]);
         if (!spellInfo) {
             sendChat("","Need Spell Info");
             return;
         }
         let attID = Tag[2];
-        let attacker = ModelArray[attID];
         let level = Tag[3];
+
+        let attacker = ModelArray[attID];
+        if (spellInfo.cLevel[attacker.casterLevel]) {
+            spellInfo.dice = spellInfo.cLevel[attacker.casterLevel];
+        }
+        if (level > spellInfo.level) {
+            let delta = level - spellInfo.level;
+            spellInfo.dice + (sLevel * sLevel);
+        }
+
         let attAdvantage = 0;
 
         let attPos = ["Invisible"];
@@ -982,15 +995,7 @@ log("pN: " + playerName)
             }
         }
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
-log("Att: " + attAdvantage)
-
-        let defenders = [];
-        defLoop1:
-        for (let i=4;i<(Tag.length + 1);i++) {
-            let defender = ModelArray[Tag[i]];
-            if (!defender) {continue};
-            defenders.push(defender);
-        }
+log("Att Adv: " + attAdvantage)
 
         if (level > 0) {
             let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
@@ -1006,6 +1011,13 @@ log("Att: " + attAdvantage)
         }
 
         if (spellInfo.toHit.includes("Ranged Spell")) {
+            let defenders = [];
+            for (let i=4;i<(Tag.length + 1);i++) {
+                let defender = ModelArray[Tag[i]];
+                if (!defender) {continue};
+                defenders.push(defender);
+            }
+
             SetupCard(attacker.name,spellName,attacker.displayScheme);
     
             for (let i=0;i<defenders.length;i++) {
@@ -1044,11 +1056,11 @@ log("Att: " + attAdvantage)
                     }
                 }
                 defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
-log("DEF " + defAdvantage)
+log("Def Adv: " + defAdvantage)
 
                 let advantage = attAdvantage + defAdvantage;
                 advantage = Math.min(Math.max(-1,advantage),1);
-log("Adv " + advantage)
+log("Final Adv: " + advantage)
 
                 let result = ToHit(advantage);
                 let total = result.roll + attacker.spellAttack;
@@ -1088,7 +1100,7 @@ log("Adv " + advantage)
                         outputCard.body.push(line);
                     }
 
-                    let damage = Damage(spellInfo.damage[attacker.casterLevel],spellInfo.damageType,crit,defender);
+                    let damage = Damage(spellInfo,crit,defender);
                     tip = damage.diceType + " = " + damage.rolls.toString();
                     if (damage.bonus !== 0) {
                         tip += " + " + damage.bonus;
@@ -1148,7 +1160,7 @@ log("Adv " + advantage)
 
 
 
-            
+
         }
 
 
@@ -1162,8 +1174,29 @@ log("Adv " + advantage)
     
 
 
+    const PlaceTarget = (msg) => {
+        let casterID = msg.selected[0]._id;
+        let caster = ModelArray[casterID];
+        let targetCharID = "-Oe8qdnMHHQEe4fSqqhm";
+        let targetImg = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
+        let newToken = createObj("graphic", {
+            left: caster.token.get("left"),
+            top: caster.token.get("top"),
+            width: 70, 
+            height: 70,  
+            name: "",
+            pageid: Campaign().get("playerpageid"),
+            imgsrc: targetImg,
+            layer: "objects",
+            represents: targetCharID,
+        })
+        toFront(newToken);
+        let id = newToken.id;
+        let target = new Model(id);
+    }
 
 
+    // a removeGraphic routine, which removes token from array and an addGraphic to add
 
 
 
@@ -1197,7 +1230,9 @@ log("Adv " + advantage)
             case '!SetCondition':
                 SetCondition(msg);
                 break;
-
+            case '!PlaceTarget':
+                PlaceTarget(msg);
+                break;
 
 
         }
