@@ -961,8 +961,47 @@ log("pN: " + playerName)
         SetupCard(caster.name,spellName,caster.displayScheme);
 
  
-        
+        if (spellName === "Sleep") {
+            let level = Tag[2] || 1;
+            let targetID = Tag[3];
+            let target = ModelArray[targetID]; //check models in 20ft of this point
 
+            let dice = 5;
+            if (level > 1) {
+                dice += 2*(level - 1);
+            }
+            let rolls = [];
+            let totalHP = 0;
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                totalHP += roll;
+            }
+
+            let creatureArray = [];
+            _.each(ModelArray,model => {
+                let distance = Distance(target,model);
+                if (distance <= 20) {
+                    
+
+
+
+                }
+
+
+
+
+
+            })
+
+
+
+
+
+
+
+
+        }
 
 
 
