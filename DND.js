@@ -635,6 +635,7 @@ log("pN: " + playerName)
                 wisdom: parseInt(aa.wisdom_mod) || 0,
                 charisma: parseInt(aa.charisma_mod) || 0,
             }
+            this.statBonus = statBonus;
 
             this.pb = parseInt(aa.pb) || 0;
 
@@ -854,7 +855,7 @@ log("pN: " + playerName)
     }
 
 
-    const Weapons = {
+    const WeaponInfo = {
         Longsword: {
             dice: 1,
             diceType: 8,
@@ -879,8 +880,8 @@ log("pN: " + playerName)
         let weaponName = Tag[3];
         let attAdvantage = Tag[4];
 
-        let bonusTH = parseInt(Tag[5]);
-        let bonusD = parseInt(Tag[6]);
+        let bonusTH = parseInt(Tag[5]) || 0;
+        let bonusD = parseInt(Tag[6]) || 0;
 
 
         //!Attack;@{selected|token_id};@{target|token_id};Longsword;?{Advantage|No,0|Yes|1,Disadvantage,-1};0,2;
@@ -902,7 +903,7 @@ log("pN: " + playerName)
             errorMsg.push("Defender not in Array");
             defender = attacker;
         }
-        let weapon = DeepCopy(Weapons[weaponName]);
+        let weapon = DeepCopy(WeaponInfo[weaponName]);
         weapon.bonus += bonusD;
 
         if (!weapon) {
@@ -963,7 +964,7 @@ log("pN: " + playerName)
         ("Final Adv: " + advantage)
 
         let result = ToHit(advantage);
-        let bonus = attacker.statBonus[weapon.stat + "_mod"] + attacker.pb + bonusTH;
+        let bonus = attacker.statBonus[weapon.stat] + attacker.pb + bonusTH;
         let total = result.roll + bonus;
         let tip;
         let crit = false;
@@ -971,7 +972,7 @@ log("pN: " + playerName)
             crit = true;
         }
 
-        tip = "1d20 + " + attacker.bonus + " = " + result.rollText + " + " + attacker.bonus;
+        tip = "1d20 + " + bonus + " = " + result.rollText + " + " + bonus;
         tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
         if (result.roll >= weapon.critOn) {
             crit = true;
@@ -982,6 +983,8 @@ log("pN: " + playerName)
         }
 
         if ((total >= defender.ac && result.roll !== 1) || crit === true) {
+            outputCard.body.push("[B]Hit![/b]")
+log(weapon)
             let damage = Damage(weapon,crit,defender);
             tip = damage.diceType + " = " + damage.rolls.toString();
             if (damage.bonus !== 0) {
