@@ -927,8 +927,7 @@ log("pN: " + playerName)
         let magicInfo = Tag[4];
 
 
-        //!Attack;@{selected|token_id};@{target|token_id};Longsword
-
+        //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info
 
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID];
@@ -950,6 +949,7 @@ log("pN: " + playerName)
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
+        weapon.info = "Weapon, " + magicInfo;
 
         let adjacent = false;
         let distance = Distance(attacker,defender);
@@ -1167,18 +1167,49 @@ log(weapon)
         }
 
         total += bonus;
+        let immune = false, vulnerable = false, resistant = false;
 
         if (defender.immunities.includes(damageInfo.damageType)) {
-            total = 0;
-            note = "Immune to " + damageInfo.damageType;
-        }
-        if (defender.vulnerabilities.includes(damageInfo.damageType)) {
-            total *= 2;
-            note = "Vulnerable to " +  damageInfo.damageType + " = * 2";
+            if (damageInfo.info.includes("Weapon")) {
+                immune = true;
+                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                    immune = false;
+                }
+                if (defender.immunities.includes("silver") && damageInfo.info.includes("Silver")) {
+                    immune = false;
+                }
+            }
+            if (damageInfo.info.includes("Spell")) {
+                immune = true;
+            }
         }
         if (defender.resistances.includes(damageInfo.damageType)) {
+            if (damageInfo.info.includes("Weapon")) {
+                resistant = true;
+                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                    resistant = false;
+                }
+                if (defender.resistances.includes("silver") && damageInfo.info.includes("Silver")) {
+                    resistant = false;
+                }
+            }
+            if (damageInfo.info.includes("Spell")) {
+                resistant = true;
+            }
+        }
+        if (defender.vulnerabilities.includes(damageInfo.damageType)) {
+            vulnerable = true;
+        }
+
+        if (immune === true) {
+            total = 0;
+            note = "Immune to " + damageInfo.damageType;
+        } else if (resistant === true) {
             total = Math.round(total/2);
-            note = "Resistant to " + damageInfo.damageType + " = * 1/2";
+            note = "Resistant to " + damageInfo.damageType + " = Half";
+        } else if (vulnerable === true) {
+            total *= 2;
+            note = "Vulnerable to " +  damageInfo.damageType + " = Double";
         }
 
         diceType = dice + "d" + diceType;
@@ -1320,11 +1351,14 @@ log(weapon)
 
 
 
-    const DirectedSpell = (msg) => {
+    const SpellAttack = (msg) => {
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
-        let spellInfo = DeepCopy(SpellInfo[spellName]);
-        if (!spellInfo) {
+        let spellInfo = SpellInfo[spellName];
+        if (spellInfo) {
+            spellInfo = DeepCopy(SpellInfo[spellName]);
+            spellInfo.info = "Spell";
+        } else {
             sendChat("","Need Spell Info");
             return;
         }
@@ -1618,8 +1652,8 @@ log("Final Adv: " + advantage)
             case '!ShieldShove':
                 ShieldShove(msg);
                 break;
-            case '!DirectedSpell':
-                DirectedSpell(msg);
+            case '!SpellAttack':
+                SpellAttack(msg);
                 break;
             case '!SetCondition':
                 SetCondition(msg);
