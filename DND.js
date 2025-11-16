@@ -782,8 +782,7 @@ log("pN: " + playerName)
             critOn: 20,
             savingThrow: "No",
             saveEffect: "",
-            area: " ",
-            toHit: "Ranged Spell",
+            toHit: "Direct",
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
         },
@@ -799,8 +798,7 @@ log("pN: " + playerName)
             critOn: 20,
             savingThrow: "dexterity",
             saveEffect: "No Damage",
-            area: " ",
-            toHit: "Ranged Spell",
+            toHit: "Direct",
             note: "",
             sound: "",
         },
@@ -816,10 +814,25 @@ log("pN: " + playerName)
             critOn: 20,
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
-            area: "Cone",
-            toHit: "Area Spell",
+            toHit: "Cone",
             note: "",
             sound: "Inferno",
+        },
+        "Magic Missile": {
+            level: 1,
+            range: 120,
+            dice: 1,
+            diceType: 4,
+            bonus: 1,
+            cLevel: {},
+            sLevel: 0,
+            damageType: "force",
+            critOn: 20,
+            savingThrow: "No",
+            saveEffect: "",
+            toHit: "Direct Auto",
+            note: "",
+            sound: "Splinter2",
         }
 
 
@@ -939,6 +952,28 @@ log("pN: " + playerName)
         return sm;
     }
 
+    const MiscSpell = (msg) => {
+        let id = msg.selected[0]._id;
+        let caster = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        
+        SetupCard(caster.name,spellName,caster.displayScheme);
+
+ 
+        
+
+
+
+
+
+    }
+
+
+
+
+
+
 
     const DirectedSpell = (msg) => {
         let Tag = msg.content.split(";");
@@ -1006,20 +1041,23 @@ log("Att Adv: " + attAdvantage)
                 return;
             } else {
                 slots--;
+                if (slots === 0) {
+                    outputCard.body.push("No More Level " + level + " Spell Slots");
+                }
                 AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
             }
         }
 
-        if (spellInfo.toHit.includes("Ranged Spell")) {
+        SetupCard(attacker.name,spellName,attacker.displayScheme);
+
+
+        if (spellInfo.toHit.includes("Direct")) {
             let defenders = [];
             for (let i=4;i<(Tag.length + 1);i++) {
                 let defender = ModelArray[Tag[i]];
                 if (!defender) {continue};
                 defenders.push(defender);
-            }
-
-            SetupCard(attacker.name,spellName,attacker.displayScheme);
-    
+            }    
             for (let i=0;i<defenders.length;i++) {
                 let defender = defenders[i];
                 outputCard.body.push("[B]" + defender.name + "[/b]");
@@ -1069,9 +1107,8 @@ log("Final Adv: " + advantage)
                 if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
                     crit = true;
                 }
-                let line = "";
                 if (spellInfo.toHit.includes("Auto")) {
-                    line = "To Hit: Automatic";
+                    result.roll = 21;
                 } else {
                     tip = "1d20 + " + attacker.spellAttack + " = " + result.rollText + " + " + attacker.spellAttack;
                     tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
@@ -1079,8 +1116,8 @@ log("Final Adv: " + advantage)
                     if (result.roll >= spellInfo.critOn) {
                         crit = true;
                     }
+                    outputCard.body.push(line);
                 }
-                outputCard.body.push(line);
 
                 if ((total >= defender.ac || spellInfo.toHit.includes("Auto") || crit === true) && result.roll !== 1) {
                     if (crit === true) {
@@ -1141,8 +1178,9 @@ log("Final Adv: " + advantage)
             }
 
 
-
-
+            if (level > 0) {            
+                outputCard.body.push("Level " + level + " Spell Slot Used");
+            }
             PrintCard();
 
 
@@ -1154,7 +1192,17 @@ log("Final Adv: " + advantage)
         }
 
 
-        if (spellInfo.toHit = "Area Spell") {
+        if (spellInfo.toHit = "Cone") {
+            let coneTarget = ModelArray[Tag[4]];
+            let distance = Distance(attacker,coneTarget);
+            if (distance > spellInfo.range) {
+                outputCard.body.push("Target is Out of Range");
+                outputCard.body.push("Distance to Target: " + distance);
+                outputCard.body.push("Spell Range: " + spellInfo.range);
+                PrintCard();
+                return;
+            }
+
 
 
 
@@ -1233,6 +1281,10 @@ log("Final Adv: " + advantage)
             case '!PlaceTarget':
                 PlaceTarget(msg);
                 break;
+            case '!MiscSpell':
+                MiscSpell(msg);
+                break;
+
 
 
         }
