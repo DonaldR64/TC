@@ -1360,8 +1360,14 @@ log(defender.vulnerabilities)
         
         SetupCard(caster.name,spellName,caster.displayScheme);
 
-//does have spell slot ?
-
+        if (level > 0) {
+            let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+            if (slots === 0) {
+                outputCard.body.push("No Available Spell Slots of level " + level);
+                PrintCard();
+                return;
+            } 
+        }
 
         if (spellName === "Sleep") {
             let charID = "-Oe8qdnMHHQEe4fSqqhm";
@@ -1383,7 +1389,7 @@ log(defender.vulnerabilities)
                 abilArray[a].remove();
             } 
             abilityName = "Cast Sleep";
-            action = "!Spell2;Sleep;" + id;
+            action = "!Spell2;Sleep;" + id + ";" + level;
             AddAbility(abilityName,action,charID);
 
             outputCard.body.push("Place Target and then Use Macro to Cast");
@@ -1405,6 +1411,7 @@ log(defender.vulnerabilities)
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
         let casterID = Tag[2];
+        let level = parseInt(Tag[3]);
         let caster = ModelArray[casterID];
 
         if (spellName === "Sleep") {
@@ -1416,12 +1423,15 @@ log(defender.vulnerabilities)
                 PrintCard();
                 return;
             }
+            let dice = 5 + ((level -1) * 2);
             //5d8 hp. +2d8 for spell level > 1
             //models within 20 ft of centre
             let possibles = [];
             _.each(ModelArray,model => {
-                let distance = Distance2(sleepTarget,model).distance;
-                if (distance <= 23) {
+                let squares = Distance2(sleepTarget,model).squares;
+log(model.name)
+log(squares)
+                if (squares <= 4) {
                     possibles.push(model);
                 }
             })
@@ -1429,12 +1439,12 @@ log(defender.vulnerabilities)
             possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
             let hp = 0;
             let rolls = [];
-            for (let i=0;i<5;i++) {
+            for (let i=0;i<dice;i++) {
                 let roll = randomInteger(8);
                 rolls.push(roll);
                 hp += roll;
             }
-            let tip = "5d8 = " + rolls.toString();
+            let tip = dice + "d8 = " + rolls.toString();
             tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
 
             outputCard.body.push(tip + " HP Affected");
@@ -1465,8 +1475,22 @@ log(defender.vulnerabilities)
             sleepTarget.token.remove();
             delete ModelArray[targetID];
             PlaySound("Sleep");
+
+            if (level > 0) {
+                let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+                slots--;
+                outputCard.body.push(level + " Spell Slot Used");
+                if (slots === 0) {
+                    outputCard.body.push("No More of that Level");
+                }
+                AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
+            }
+
             PrintCard();
-//use spell slot
+
+
+
+
 
 
         }
