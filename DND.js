@@ -230,30 +230,20 @@ log(pt2)
     }
 
 
-    const Distance = (model1,model2) => {
-        let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
-        let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
-        let dist = pt1.distance(pt2);
-        dist -= (model1.size - 1) * 35;
-        dist -= (model2.size - 1) * 35;
-        dist = Math.round(dist/70)
-        dist *= pageInfo.scaleNum;
-log(dist)
-        return dist;
-    }
-
 const Distance2 = (model1,model2) => {
     let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
     let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
     let x = Math.round(Math.abs(pt1.x - pt2.x) / 70);
-    let y = Math.round(Math.abs(pt2.y - pt2.y) / 70);
-    x -= ((model1.size-1) + (model2.size - 1));
-    y -= ((model1.size-1) + (model2.size - 1));
+    let y = Math.round(Math.abs(pt1.y - pt2.y) / 70);
+    let sizeMod = Math.max(0,(model1.size - 1)) + Math.max(0,(model2.size - 1));
+    x -= sizeMod;
+    y -= sizeMod;
 
 log(model1.name)
 log(pt1)
 log(model2.name)
 log(pt2)
+log("X: " + x + " / " + "Y: " + y)
     let squares = Math.max(x,y);   
     let distance = squares * pageInfo.scaleNum;
     let result = {
@@ -868,6 +858,18 @@ log("pN: " + playerName)
             note: "",
             sound: "Splinter2",
             fx: "missile-magic",
+        },
+        "Sleep": {
+            level: 1,
+            range: 90,
+            aoe: "Square, Target",
+            radius: 20,
+        },
+        "Entangle": {
+            level: 1,
+            range: 90,
+            aoe: "Square, Target",
+            radius: 10,
         }
 
 
@@ -1357,7 +1359,7 @@ log(defender.vulnerabilities)
         return sm;
     }
 
-    const MiscSpell = (msg) => {
+    const Spell = (msg) => {
         let id = msg.selected[0]._id;
         let caster = ModelArray[id];
         let Tag = msg.content.split(";");
@@ -1365,7 +1367,7 @@ log(defender.vulnerabilities)
         let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
         
         SetupCard(caster.name,spellName,caster.displayScheme);
-
+//move this to function
         if (level > 0) {
             let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
             if (slots === 0) {
@@ -1376,33 +1378,29 @@ log(defender.vulnerabilities)
         }
 
         if (spellName === "Sleep") {
-            let charID = "-Oe8qdnMHHQEe4fSqqhm";
             //create the sleep token, place on caster, with instructions
-            let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
-            let sleepToken = PlaceTarget(caster,charID,img,70,70)
-            sleepToken.set({
-                aura1_radius: 17.5, //20 ft radius
-                aura1_square: false, 
+            let target = SpellTarget(caster,"Sleep",level);
+            target.token.set({
+                aura1_radius: 20,
+                aura1_square: true,
                 aura1_color: "#cfe2f3",
                 showplayers_aura1: true,
-                disableSnapping: true,
-                disableTokenMenu: true,
-            })
-            let char = getObj("character", charID);
-            let abilArray = findObjs({_type: "ability", _characterid: char.id});
-            //clear old abilities
-            for(let a=0;a<abilArray.length;a++) {
-                abilArray[a].remove();
-            } 
-            abilityName = "Cast Sleep";
-            action = "!Spell2;Sleep;" + id + ";" + level;
-            AddAbility(abilityName,action,charID);
-
+            });
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
 
-
+        if (spellName === "Entangle") {
+            let target = SpellTarget(caster,"Entangle",1);
+            target.token.set({
+                aura1_radius: 10,
+                aura1_square: true,
+                aura1_color: "#b6d7ab",
+                showplayers_aura1: true,
+            });
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
 
 
         
@@ -1412,41 +1410,29 @@ log(defender.vulnerabilities)
     }
 
 
-    const Spell2 = (msg) => {
+    const CastSpell = (msg) => {
         let targetID = msg.selected[0]._id;
+        let target = ModelArray[targetID];
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
         let casterID = Tag[2];
         let level = parseInt(Tag[3]);
         let caster = ModelArray[casterID];
+        SetupCard(caster.name,spellName,caster.displayScheme);
+        let spellInfo = SpellInfo[spellName];
+        let spellDist = Distance2(caster,target).distance;
+        if (spellDist > spellInfo.range) {
+            outputCard.body.push("Out of Range of Spell");
+            PrintCard();
+            return;
+        }
 
         if (spellName === "Sleep") {
-            SetupCard(caster.name,"Sleep",caster.displayScheme);
-            let sleepTarget = ModelArray[targetID];
-            let spellDist = Distance2(sleepTarget,caster).distance;
-log(spellDist)
-            if (spellDist > 90) {
-                outputCard.body.push("Out of Range of Spell");
-                PrintCard();
-                return;
-            }
+            //models within 20 ft of centre
+            let possibles = AOEArray(target,"Circle",20)
+            possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
             let dice = 5 + ((level -1) * 2);
             //5d8 hp. +2d8 for spell level > 1
-            //models within 20 ft of centre
-            let possibles = [];
-            _.each(ModelArray,model => {
-                if (model.id === targetID) {return};
-                let squares = Distance2(sleepTarget,model).squares;
-                if (squares <= 4) {
-                    possibles.push(model);
-                }
-            })
-            //sort by hp, low to high
-            possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
-            
- _.each(possibles,p => sendChat("",p.name))
-
-
             let hp = 0;
             let rolls = [];
             for (let i=0;i<dice;i++) {
@@ -1482,10 +1468,11 @@ log(spellDist)
                     "status_KO::2006544": true,
                 })
             }
-            sleepTarget.token.remove();
-            delete ModelArray[targetID];
+            //target.token.remove();
+            //delete ModelArray[targetID];
             PlaySound("Sleep");
-
+/*
+Move to a function
             if (level > 0) {
                 let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
                 slots--;
@@ -1495,8 +1482,7 @@ log(spellDist)
                 }
                 AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
             }
-
-            PrintCard();
+*/
 
 
 
@@ -1505,10 +1491,34 @@ log(spellDist)
 
         }
 
+        if (spellName === "Entangle") {
+            let possibles = AOEArray(target,"Square",10);
+            _.each(possibles,model => {
+                let dc = caster.spellDC;
+                let tip;
+                let result = Save(model,dc,"strength");
+                if (result.save === false) {
+                    model.token.set({
+                        "Restrained-or-Webbed::2006494": true,
+                    })
+                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " and is restrained");
+                } else if (result.save === true) {
+                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " and is free to act");                
+                }
+            })
+            //remove target
+            //place difficult ground marker or repurpose the targettoken?
+            PlaySound("Entangle");
+        }
 
 
 
 
+
+
+        PrintCard();
     }
 
 
@@ -1807,25 +1817,50 @@ log("Final Adv: " + advantage)
         })
     }    
 
+    const AOEArray = (target,shape,distance) => {
+        //create an array of tokens under the token's area
+        let possibles = [];
+        distance = distance / pageInfo.scaleNum;
+        if (shape === "Square" || shape === "Circle") {
+            _.each(ModelArray,model => {
+                if (model.id === target.id) {return}
+                let d = Distance2(target,model).squares;
+                if (d <= distance) {
+                    possibles.push(model);
+                }
+            })
+        }
+        return possibles;
+    }
+        
 
-    
 
+    const SpellTarget = (caster,spellName,level) => {
+        let char = getObj("character", "-Oe8qdnMHHQEe4fSqqhm");
+        let abilArray = findObjs({_type: "ability", _characterid: char.id});
+        //clear old abilities
+        for(let a=0;a<abilArray.length;a++) {
+            abilArray[a].remove();
+        } 
+        let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
+        AddAbility(spellName,action,"-Oe8qdnMHHQEe4fSqqhm")
 
-    const PlaceTarget = (caster,targetCharID,img,w,h) => {
+        let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
         let newToken = createObj("graphic", {
             left: caster.token.get("left"),
             top: caster.token.get("top"),
-            width: w, 
-            height: h,  
-            name: "",
-            pageid: Campaign().get("playerpageid"),
+            disableTokenMenu: true,
+            width: 70, 
+            height: 70,  
+            name: "Target",
+            pageid: caster.token.get("_pageid"),
             imgsrc: img,
             layer: "objects",
-            represents: targetCharID,
+            represents: "-Oe8qdnMHHQEe4fSqqhm",
         })
         toFront(newToken);
         let target = new Model(newToken);
-        return newToken;
+        return target;
     }
 
 
@@ -1841,6 +1876,29 @@ log("Final Adv: " + advantage)
 
 
     }
+
+
+    const Save = (model,dc,stat) => {
+        let saved = false;
+        let bonus = model.saveBonus[stat];
+        let saveRoll = randomInteger(20);
+        let saveTotal = saveRoll + bonus;
+        if (saveTotal >= dc) {
+            saved = true;
+        } 
+        let saveTip = "Save: " + saveTotal + " vs. DC " + dc;
+        saveTip += "<br>Roll: " + saveRoll + " + " + bonus;
+        
+        let result = {
+            save: saved,
+            tip: saveTip,
+        }
+        return result;
+    }
+
+
+
+
 
 
 
@@ -1901,11 +1959,11 @@ log("Final Adv: " + advantage)
             case '!PlaceTarget':
                 PlaceTarget(msg);
                 break;
-            case '!MiscSpell':
-                MiscSpell(msg);
+            case '!Spell':
+                Spell(msg);
                 break;
-            case '!Spell2':
-                Spell2(msg);
+            case '!CastSpell':
+                CastSpell(msg);
                 break;
             case '!Attack':
                 Attack(msg);
