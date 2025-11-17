@@ -1435,6 +1435,7 @@ log(spellDist)
             //models within 20 ft of centre
             let possibles = [];
             _.each(ModelArray,model => {
+                if (model.id === targetID) {return};
                 let squares = Distance2(sleepTarget,model).squares;
                 if (squares <= 4) {
                     possibles.push(model);
@@ -1442,6 +1443,10 @@ log(spellDist)
             })
             //sort by hp, low to high
             possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
+            
+ _.each(possibles,p => sendChat("",p.name))
+
+
             let hp = 0;
             let rolls = [];
             for (let i=0;i<dice;i++) {
