@@ -821,7 +821,7 @@ log("pN: " + playerName)
             range: 15,
             base: '3d6',
             cLevel: {},
-            sLevel: '1d6',
+            sLevel: ['4d6','5d6','6d6','7d6'],
             damageType: "fire",
             critOn: 20,
             savingThrow: "dexterity",
@@ -1386,11 +1386,11 @@ log(weapon)
 
         let attacker = ModelArray[attID];
         if (spellInfo.cLevel[attacker.casterLevel]) {
-            spellInfo.dice = spellInfo.cLevel[attacker.casterLevel];
+            spellInfo.base = spellInfo.cLevel[attacker.casterLevel];
         }
         if (level > spellInfo.level) {
-            let delta = level - spellInfo.level;
-            spellInfo.dice + (sLevel * sLevel);
+            let delta = level - spellInfo.level - 1;
+            spellInfo.base = spellInfo.sLevel[delta];
         }
 
         let attAdvantage = 0;
@@ -1654,7 +1654,7 @@ log("Final Adv: " + advantage)
         let d2 = null;
         do { d2 = new Date(); }
         while(d2-d < ms);
-        
+
     }
 
 
