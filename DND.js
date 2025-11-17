@@ -5,7 +5,7 @@ const Strahd = (() => {
 
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
-    const ModelArray = {};
+    let ModelArray = {};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
@@ -71,9 +71,7 @@ const Strahd = (() => {
     };
 
     const PlaySound = (name) => {
-log(name)
         let sound = findObjs({type: "jukeboxtrack", title: name})[0];
-log(sound)
         if (sound) {
             sound.set({playing: true,softstop:false});
         }
@@ -536,7 +534,7 @@ log(outputCard.side)
     //an array of the PCs and any other tokens on page
     //will need to rebuild on page change or when add a token
     const BuildArrays = () => {
-
+        ModelArray = {};
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
@@ -570,7 +568,7 @@ log(this.name)
             this.type = (aa.npc_type || " ").toLowerCase();
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
-            this.resistances = (aa.npc_resistance || " ").toLowerCase();
+            this.resistances = (aa.npc_resistances || " ").toLowerCase();
             this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
 
             this.npc = (aa.charactersheet_type === "npc") ? true:false;
@@ -906,7 +904,7 @@ log("pN: " + playerName)
         let attID = Tag[1];
         let defID = Tag[2];
         let weaponName = Tag[3];
-        let magicInfo = Tag[4];
+        let magicInfo = Tag[4] || "Non-Magic"
 
 
         //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info or Silver or similar goes here
@@ -1077,6 +1075,16 @@ log("Att Adv: " + attAdvantage)
                 break;
             }
         }
+        
+        creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
+        if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
+            defAdvantage = Math.max(defAdvantage -1,-1);
+        }
+
+
+
+
+
 log("Def Adv: " + defAdvantage)
 
         let advantage = attAdvantage + defAdvantage;
@@ -1180,6 +1188,11 @@ log(weapon)
                 }
             }
         }
+log(damageInfo.info)
+log(defender.immunities)
+log(defender.resistances)
+log(defender.vulnerabilities)
+
 
         total += bonus;
         let immune = false, vulnerable = false, resistant = false;
@@ -1290,6 +1303,7 @@ log(weapon)
         "Stunned": "Stunned::2006499",
         "Unconscious": "KO::2006544",
         "Dodge": "half-haze",
+        "Protection": "Shield::2006495",
     }
 
     const Markers = (initial) => {
@@ -1470,24 +1484,33 @@ log("Att Adv: " + attAdvantage)
                 let defNeg = ["Invisible","Dodge"];
                 for (let i=0;i<defPos.length;i++) {
                     if (defMarkers.includes(defPos[i])) {
-                        defAdvantage = 1;
+                        defAdvantage = Math.min(defAdvantage +1, 1);
                         break;
                     }
                 }
                 for (let i=0;i<defNeg.length;i++) {
                     if (defMarkers.includes(defNeg[i])) {
-                        defAdvantage -= 1;
+                        defAdvantage = Math.max(defAdvantage -1,-1);
                         break;
                     }
                 }
                 
                 if (defMarkers.includes("Prone")) {
                     if (distance <= 5) {
-                        defAdvantage += 1;
+                        defAdvantage = Math.min(defAdvantage +1, 1);
                     } else {
-                        defAdvantage -= 1;
+                        defAdvantage = Math.max(defAdvantage -1,-1);
                     }
                 }
+
+                creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
+                if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
+                    defAdvantage = Math.max(defAdvantage -1,-1);
+                }
+
+
+
+
                 defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
 log("Def Adv: " + defAdvantage)
 
@@ -1674,7 +1697,11 @@ log("Final Adv: " + advantage)
         }
     }
 
-
+    const changePage = () => {
+        LoadPage();
+        BuildArrays();
+        sendChat("","Page Change");
+    }
 
 
 
@@ -1717,9 +1744,6 @@ log("Final Adv: " + advantage)
             case '!Attack':
                 Attack(msg);
                 break;
-            case '!Info':
-                Info(msg);
-                break;
 
         }
     };
@@ -1731,12 +1755,14 @@ log("Final Adv: " + advantage)
         on('chat:message', handleInput);
         on('destroy:graphic',destroyGraphic);
         on('add:graphic',addGraphic);
+        on('change:campaign:playerpageid',changePage);
+
+
     };
     on('ready', () => {
         log("===> CoS <===");
         log("===> Software Version: " + version + " <===");
         LoadPage();
-log(pageInfo);
         BuildArrays();
         registerEventHandlers();
         sendChat("","API Ready")
