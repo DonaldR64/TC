@@ -1883,9 +1883,10 @@ log("Final Adv: " + advantage)
         let bonus = model.saveBonus[stat];
         let saveRoll = randomInteger(20);
         let saveTotal = Math.max(saveRoll + bonus,1);
-        if (saveTotal >= dc) {
+        if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
             saved = true;
         } 
+
         let saveTip = "Save: " + saveTotal + " vs. DC " + dc;
         saveTip += "<br>Roll: " + saveRoll + " + " + bonus;
         
