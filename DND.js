@@ -589,7 +589,7 @@ log("C: " + control)
                 this.displayScheme = playerName;
                 this.npc = false;
             }
-if (this.name === "Eivirin") {
+if (this.name === "Eivirin" || this.name.includes("Ratatoskr")) {
     this.displayScheme = "Vic";
 }
 
@@ -868,8 +868,8 @@ log("pN: " + playerName)
             critOn: 20,
             sound: "Club",
         },
-        Acornbearer: {
-            base: '1',
+        Acornbringer: {
+            base: '1d1',
             properties: "Finesse",
             damageType: "piercing",
             type: "Melee",
@@ -1139,6 +1139,7 @@ log(weapon)
     const Damage = (damageInfo,crit,defender) => {
         //spellinfo if a spell, weaponinfo if a weapon
         //1d8+1d6+3
+        //3
         let base = damageInfo.base.split("+");
         let comp = [];
         _.each(base,e => {
@@ -1161,10 +1162,6 @@ log(weapon)
         let total = 0;
         let note = "";
         let text = [];
-        if (crit === true) {
-            dice *= 2;
-        }
-
 
         for (let i=0;i<comp.length;i++) {
             let info = comp[i];
@@ -1643,21 +1640,39 @@ log("Final Adv: " + advantage)
     }
 
 
-    // a removeGraphic routine, which removes token from array and an addGraphic to add
+    const Info = (msg) => {
+        if (!msg.selected) {return};
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        if (!model) {
+            sendChat("","Not in Array")
+        } else {
+            sendChat("",model.name);
+        }
 
-
-    const Delay = (msg) => {
-        let Tag = msg.content.split(";");
-        let ms = parseInt(Tag[1]);
-        ms = Math.min(ms,500);
-        let d = new Date();
-        let d2 = null;
-        do { d2 = new Date(); }
-        while(d2-d < ms);
 
     }
 
 
+
+    const addGraphic = (obj) => {
+        log("Add")
+        if (!obj.get("name")) {
+            let char = getObj("character", obj.get("represents")); 
+            if (!char) {return};
+            obj.set({
+                name: char.get("name")
+            })
+        }
+        let model = new Model(obj);
+    }
+
+    const destroyGraphic = (obj) => {
+        log("Destroy " + obj.get("name"))
+        if (ModelArray[obj.get("id")]) {
+            delete ModelArray[obj.get("id")];
+        }
+    }
 
 
 
@@ -1672,7 +1687,11 @@ log("Final Adv: " + advantage)
     
         switch(args[0]) {
             case '!Dump':
-                log(ModelArray);
+                let names = [];
+                _.each(ModelArray,model => {
+                    names.push(model.name)
+                })
+                log(names);
                 break;
             case '!Smite':
                 Smite(msg);
@@ -1698,8 +1717,8 @@ log("Final Adv: " + advantage)
             case '!Attack':
                 Attack(msg);
                 break;
-            case '!Delay':
-                Delay(msg);
+            case '!Info':
+                Info(msg);
                 break;
 
         }
@@ -1710,7 +1729,8 @@ log("Final Adv: " + advantage)
 
     const registerEventHandlers = () => {
         on('chat:message', handleInput);
-    
+        on('destroy:graphic',destroyGraphic);
+        on('add:graphic',addGraphic);
     };
     on('ready', () => {
         log("===> CoS <===");
