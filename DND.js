@@ -1646,7 +1646,16 @@ log("Final Adv: " + advantage)
     // a removeGraphic routine, which removes token from array and an addGraphic to add
 
 
-
+    const Delay = (msg) => {
+        let Tag = msg.content.split(";");
+        let ms = parseInt(Tag[1]);
+        ms = Math.min(ms,500);
+        let d = new Date();
+        let d2 = null;
+        do { d2 = new Date(); }
+        while(d2-d < ms);
+        
+    }
 
 
 
@@ -1688,6 +1697,9 @@ log("Final Adv: " + advantage)
                 break;
             case '!Attack':
                 Attack(msg);
+                break;
+            case '!Delay':
+                Delay(msg);
                 break;
 
         }
