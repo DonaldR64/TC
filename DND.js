@@ -568,6 +568,7 @@ log(this.name)
             this.type = (aa.npc_type || " ").toLowerCase();
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
+            this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
             this.resistances = (aa.npc_resistances || " ").toLowerCase();
             this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
 
@@ -1075,7 +1076,7 @@ log("Att Adv: " + attAdvantage)
                 break;
             }
         }
-        
+
         creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
         if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
             defAdvantage = Math.max(defAdvantage -1,-1);
@@ -1332,15 +1333,27 @@ log(defender.vulnerabilities)
         SetupCard(caster.name,spellName,caster.displayScheme);
 
         if (spellName === "Sleep") {
+            let charID = "-Oe8qdnMHHQEe4fSqqhm";
             //create the sleep token, place on caster, with instructions
             let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
-            let sleepToken = PlaceTarget(caster,"-Oe9qGhZGXjCXNE7icg0",img,70,70)
+            let sleepToken = PlaceTarget(caster,charID,img,70,70)
             sleepToken.set({
                 aura1_radius: 20,
                 aura1_color: "#cfe2f3",
                 showplayers_aura1: true,
                 disableSnapping: true,
+                disableTokenMenu: true,
             })
+            let char = getObj("character", charID);
+            let abilArray = findObjs({_type: "ability", _characterid: char.id});
+            //clear old abilities
+            for(let a=0;a<abilArray.length;a++) {
+                abilArray[a].remove();
+            } 
+            abilityName = "Cast Sleep";
+            action = "!Spell2;Sleep;" + id;
+            AddAbility(abilityName,action,charID);
+
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1355,16 +1368,68 @@ log(defender.vulnerabilities)
         let targetID = msg.selected[0]._id;
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
-
+        let casterID = Tag[2];
+        let caster = ModelArray[casterID];
 
         if (spellName === "Sleep") {
+            SetupCard(caster.name,"Sleep",caster.displayScheme);
+            let sleepTarget = ModelArray[targetID];
+            let spellDist = Distance(sleepTarget,caster);
+            if (spellDist > 90) {
+                outputCard.body.push("Out of Range of Spell");
+                PrintCard();
+                return;
+            }
             //5d8 hp. +2d8 for spell level > 1
+            //models within 20 ft of centre
+            let possibles = [];
+            _.each(ModelArray,model => {
+                let distance = Distance(sleepTarget,model);
+                if (distance <= 23) {
+                    possibles.push(model);
+                }
+            })
+            //sort by hp, low to high
+            possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
+            let hp = 0;
+            let rolls = [];
+            for (let i=0;i<5;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                hp += roll;
+            }
+            let tip = "5d8 = " + rolls.toString();
+            tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
 
+            outputCard.body.push(tip + " HP Affected");
+            for (let i = 0;i<possibles.length; i++) {
+                let possible = possibles[i];
+                if (possible.type.includes("undead")) {
+                    outputCard.body.push(possible.name + " is Immune");
+                    continue;
+                };
+                if (possible.conditionImmunities.includes("charmed")) {
+                    outputCard.body.push(possible.name + " is Immune");
+                    continue;
+                };
+                let posMarkers = Markers(possible.token.get("statusmarkers"));
+                if (posMarkers.includes("Unconscious")) {
+                    outputCard.body.push(possible.name + " is already Unconscious");
+                    continue;
+                };
 
-
-
-
-
+                let phb = parseInt(possibles[i].token.get("bar1_value"));
+                if (phb > hp) {break}
+                hp -= phb;
+                outputCard.body.push(possible.name + " Falls Asleep");
+                possible.token.set({
+                    "status_KO::2006544": true,
+                })
+            }
+            sleepTarget.token.remove();
+            delete ModelArray[targetID];
+            PlaySound("Sleep");
+            PrintCard();
         }
 
 
@@ -1639,7 +1704,14 @@ log("Final Adv: " + advantage)
 
 
 
-
+    const AddAbility = (abilityName,action,charID) => {
+        createObj("ability", {
+            name: abilityName,
+            characterid: charID,
+            action: action,
+            istokenaction: true,
+        })
+    }    
 
 
     
