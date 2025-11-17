@@ -1329,8 +1329,12 @@ log(defender.vulnerabilities)
         let caster = ModelArray[id];
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
+        let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
         
         SetupCard(caster.name,spellName,caster.displayScheme);
+
+//does have spell slot ?
+
 
         if (spellName === "Sleep") {
             let charID = "-Oe8qdnMHHQEe4fSqqhm";
@@ -1430,6 +1434,9 @@ log(defender.vulnerabilities)
             delete ModelArray[targetID];
             PlaySound("Sleep");
             PrintCard();
+//use spell slot
+
+
         }
 
 
