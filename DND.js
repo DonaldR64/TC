@@ -242,7 +242,22 @@ log(dist)
         return dist;
     }
 
+const Distance2 = (model1,model2) => {
+    let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
+    let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
+    let x = Math.round(Math.abs(pt1.x - pt2.x) / 70);
+    let y = Math.round(Math.abs(pt2.y - pt2.y) / 70);
+    x -= ((model1.size-1) + (model2.size - 1));
+    y -= ((model1.size-1) + (model2.size - 1));
+    let squares = Math.max(x,y);
+    let distance = squares * pageInfo.scaleNum;
+    let result = {
+        squares: squares,
+        distance: distance,
+    }
+    return result
 
+}
 
 
     class Point {
@@ -726,6 +741,9 @@ log("pN: " + playerName)
         }
         outputCard.body.push("Level " + level + " Spell Slot Used");
         if (slots === 0) {outputCard.body.push("[None Left]")};
+
+        spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
+
         PrintCard();
     }
 
@@ -800,6 +818,7 @@ log("pN: " + playerName)
             toHit: "Direct",
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
+            fx: "missile-frost",
         },
         "Acid Splash": {
             level: 0,
@@ -842,6 +861,7 @@ log("pN: " + playerName)
             toHit: "Direct Auto",
             note: "",
             sound: "Splinter2",
+            fx: "missile-magic",
         }
 
 
@@ -933,12 +953,16 @@ log("pN: " + playerName)
         weapon.info = "Weapon, " + magicInfo;
 
         let adjacent = false;
-        let distance = Distance(attacker,defender);
 
-        if (distance <= pageInfo.scaleNum) {
+        let distance2 = Distance2(attacker,defender);
+        let distance = distance2.distance;
+        let squares = distance2.squares;
+log(distance2)
+
+        if (squares === 1) {
             adjacent = true;
         }
-        if (weapon.properties.includes("Reach") && distance <= (2*pageInfo.scaleNum)) {
+        if (weapon.properties.includes("Reach") && squares <= 2) {
             adjacent = true;
         }
         if (adjacent !== true && weapon.type.includes("Ranged") === false) {
@@ -1024,8 +1048,8 @@ log("pN: " + playerName)
                 for (let j=0;j<ignore.length;j++) {
                     if (sm.includes(ignore[j])) {continue idLoop1};
                 }
-                let dist = Distance(attacker,model2);
-                if (dist > 5) {
+                let squares = Distance2(attacker,model2).squares;
+                if (squares > 1) {
                     continue;
                 }
                 attAdvantage = -1;
@@ -1125,6 +1149,7 @@ log(weapon)
             let totalDamage = damage.total;
             tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
             outputCard.body.push("Damage: " + tip);
+            spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -1132,6 +1157,8 @@ log(weapon)
         PlaySound(weapon.sound);
 
         PrintCard();
+        
+
 
 
 
@@ -1366,6 +1393,10 @@ log(defender.vulnerabilities)
 
 
 
+        
+
+
+
     }
 
 
@@ -1379,7 +1410,7 @@ log(defender.vulnerabilities)
         if (spellName === "Sleep") {
             SetupCard(caster.name,"Sleep",caster.displayScheme);
             let sleepTarget = ModelArray[targetID];
-            let spellDist = Distance(sleepTarget,caster);
+            let spellDist = Distance2(sleepTarget,caster).distance;
             if (spellDist > 90) {
                 outputCard.body.push("Out of Range of Spell");
                 PrintCard();
@@ -1389,7 +1420,7 @@ log(defender.vulnerabilities)
             //models within 20 ft of centre
             let possibles = [];
             _.each(ModelArray,model => {
-                let distance = Distance(sleepTarget,model);
+                let distance = Distance2(sleepTarget,model).distance;
                 if (distance <= 23) {
                     possibles.push(model);
                 }
@@ -1469,6 +1500,9 @@ log(defender.vulnerabilities)
         let level = Tag[3];
 
         let attacker = ModelArray[attID];
+        let attPt = new Point(attacker.token.get("left"),attacker.token.get("top"));
+
+
         if (spellInfo.cLevel[attacker.casterLevel]) {
             spellInfo.base = spellInfo.cLevel[attacker.casterLevel];
         }
@@ -1493,8 +1527,8 @@ log(defender.vulnerabilities)
             for (let j=0;j<ignore.length;j++) {
                 if (sm.includes(ignore[j])) {continue idLoop1};
             }
-            let dist = Distance(attacker,model2);
-            if (dist > 5) {
+            let squares = Distance2(attacker,model2).squares;
+            if (squares > 1) {
                 continue;
             }
             attAdvantage = -1;
@@ -1542,8 +1576,9 @@ log("Att Adv: " + attAdvantage)
             }    
             for (let i=0;i<defenders.length;i++) {
                 let defender = defenders[i];
+                let defPt = new Point(defender.token.get('left'),defender.token.get('top'));
                 outputCard.body.push("[B]" + defender.name + "[/b]");
-                let distance = Distance(attacker,defender);
+                let distance = Distance2(attacker,defender).distance;
                 if (distance > spellInfo.range) {
                     outputCard.body.push("Target is Out of Range");
                     outputCard.body.push("Distance to Target: " + distance);
@@ -1666,6 +1701,8 @@ log("Final Adv: " + advantage)
                     PlaySound(spellInfo.sound);
                 }
 
+        
+
             }
 
 
@@ -1685,7 +1722,7 @@ log("Final Adv: " + advantage)
 
         if (spellInfo.toHit = "Cone") {
             let coneTarget = ModelArray[Tag[4]];
-            let distance = Distance(attacker,coneTarget);
+            let distance = Distance2(attacker,coneTarget).distance;
             if (distance > spellInfo.range) {
                 outputCard.body.push("Target is Out of Range");
                 outputCard.body.push("Distance to Target: " + distance);
@@ -1824,6 +1861,8 @@ log("Final Adv: " + advantage)
             case '!Attack':
                 Attack(msg);
                 break;
+
+
 
         }
     };
