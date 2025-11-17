@@ -249,12 +249,16 @@ const Distance2 = (model1,model2) => {
     let y = Math.round(Math.abs(pt2.y - pt2.y) / 70);
     x -= ((model1.size-1) + (model2.size - 1));
     y -= ((model1.size-1) + (model2.size - 1));
-    let squares = Math.max(x,y);
+
+log(model1.name + ": " + model1.size)
+log(model2.name + ": " + model2.size)
+    let squares = Math.max(x,y);   
     let distance = squares * pageInfo.scaleNum;
     let result = {
         squares: squares,
         distance: distance,
     }
+log(result)
     return result
 
 }
@@ -1418,6 +1422,7 @@ log(defender.vulnerabilities)
             SetupCard(caster.name,"Sleep",caster.displayScheme);
             let sleepTarget = ModelArray[targetID];
             let spellDist = Distance2(sleepTarget,caster).distance;
+log(spellDist)
             if (spellDist > 90) {
                 outputCard.body.push("Out of Range of Spell");
                 PrintCard();
@@ -1429,8 +1434,6 @@ log(defender.vulnerabilities)
             let possibles = [];
             _.each(ModelArray,model => {
                 let squares = Distance2(sleepTarget,model).squares;
-log(model.name)
-log(squares)
                 if (squares <= 4) {
                     possibles.push(model);
                 }
