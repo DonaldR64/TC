@@ -1342,7 +1342,8 @@ log(defender.vulnerabilities)
             let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
             let sleepToken = PlaceTarget(caster,charID,img,70,70)
             sleepToken.set({
-                aura1_radius: 20,
+                aura1_radius: 17.5, //20 ft radius
+                aura1_square: false, 
                 aura1_color: "#cfe2f3",
                 showplayers_aura1: true,
                 disableSnapping: true,
