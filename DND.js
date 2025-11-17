@@ -1499,7 +1499,7 @@ Move to a function
                 let result = Save(model,dc,"strength");
                 if (result.save === false) {
                     model.token.set({
-                        "Restrained-or-Webbed::2006494": true,
+                        "status_Restrained-or-Webbed::2006494": true,
                     })
                     tip = '[fails](#" class="showtip" title="' + result.tip + ')';
                     outputCard.body.push(model.name + " " + tip + " and is restrained");
@@ -1882,7 +1882,7 @@ log("Final Adv: " + advantage)
         let saved = false;
         let bonus = model.saveBonus[stat];
         let saveRoll = randomInteger(20);
-        let saveTotal = saveRoll + bonus;
+        let saveTotal = Math.max(saveRoll + bonus,1);
         if (saveTotal >= dc) {
             saved = true;
         } 
