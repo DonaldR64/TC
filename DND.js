@@ -250,8 +250,10 @@ const Distance2 = (model1,model2) => {
     x -= ((model1.size-1) + (model2.size - 1));
     y -= ((model1.size-1) + (model2.size - 1));
 
-log(model1.name + ": " + model1.size)
-log(model2.name + ": " + model2.size)
+log(model1.name)
+log(pt1)
+log(model2.name)
+log(pt2)
     let squares = Math.max(x,y);   
     let distance = squares * pageInfo.scaleNum;
     let result = {
@@ -1774,6 +1776,21 @@ log("Final Adv: " + advantage)
     }
 
 
+    const TokenInfo = (msg) => {
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let token = model.token;
+        SetupCard(model.name,"","NPC");
+        let pt1 = new Point(model.token.get("left"),model.token.get("top"));
+
+        outputCard.body.push(pt1.x + " / " + pt1.y)
+        outputCard.body.push("Size: " + model.size)
+
+        PrintCard();
+
+    }
+
+
 
 
     const AddAbility = (abilityName,action,charID) => {
@@ -1888,7 +1905,9 @@ log("Final Adv: " + advantage)
             case '!Attack':
                 Attack(msg);
                 break;
-
+            case '!TokenInfo':
+                TokenInfo(msg);
+                break;
 
 
         }
