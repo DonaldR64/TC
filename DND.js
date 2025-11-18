@@ -929,7 +929,6 @@ log(outputCard.side)
             cLevel: {5: '2d8', 11: '3d8'},
             sLevel: 0,
             damageType: "cold",
-            critOn: 20,
             savingThrow: "No",
             saveEffect: "",
             toHit: "Direct",
@@ -944,7 +943,6 @@ log(outputCard.side)
             cLevel: {5: '2d6', 11: '3d6'},
             sLevel: 0,
             damageType: "acid",
-            critOn: 20,
             savingThrow: "dexterity",
             saveEffect: "No Damage",
             toHit: "Direct",
@@ -958,7 +956,6 @@ log(outputCard.side)
             cLevel: {},
             sLevel: ['4d6','5d6','6d6','7d6'],
             damageType: "fire",
-            critOn: 20,
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
             toHit: "Cone",
@@ -972,7 +969,6 @@ log(outputCard.side)
             cLevel: {},
             sLevel: 0,
             damageType: "force",
-            critOn: 20,
             savingThrow: "No",
             saveEffect: "",
             toHit: "Direct Auto",
@@ -1683,7 +1679,7 @@ log(defender.vulnerabilities)
                     tip = '[fails](#" class="showtip" title="' + result.tip + ')';
                     outputCard.body.push(model.name + " " + tip + " and is restrained");
                 } else if (result.save === true) {
-                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    tip = '[saves](#" class="showtip" title="' + result.tip + ')';
                     outputCard.body.push(model.name + " " + tip + " and is free to act");                
                 }
             })
@@ -1811,19 +1807,18 @@ log(defender.vulnerabilities)
         let attID = Tag[2];
         let level = parseInt(Tag[3]);
 
-        let attacker = ModelArray[attID];
-        let attPt = new Point(attacker.token.get("left"),attacker.token.get("top"));
+        let caster = ModelArray[attID];
 
-        SetupCard(attacker.name,spellName,attacker.displayScheme);
-        if (SpellSlots(attacker,level) === false) {
+        SetupCard(caster.name,spellName,caster.displayScheme);
+        if (SpellSlots(caster,level) === false) {
             outputCard.body.push("No Available Spell Slots of level " + level);
             PrintCard();
             return;
         }
 
 
-        if (spellInfo.cLevel[attacker.casterLevel]) {
-            spellInfo.base = spellInfo.cLevel[attacker.casterLevel];
+        if (spellInfo.cLevel[caster.casterLevel]) {
+            spellInfo.base = spellInfo.cLevel[caster.casterLevel];
         }
         if (level > spellInfo.level) {
             let delta = level - spellInfo.level - 1;
@@ -1836,23 +1831,22 @@ log(defender.vulnerabilities)
         let attPos = ["Invisible"];
         let attNeg = ["Blind","Frightened","Poison","Restrained"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
-        let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        let attMarkers = Markers(caster.token.get("statusmarkers"));
 
         //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
         let ids = Object.keys(ModelArray);
-        idLoop1:
         for (let i=0;i<ids.length;i++) {
             let model2 = ModelArray[ids[i]];
             if (model2.displayScheme !== "NPC") {continue};
             let sm = model2.token.get("statusmarkers");
             for (let j=0;j<ignore.length;j++) {
-                if (sm.includes(ignore[j])) {continue idLoop1};
+                if (sm.includes(ignore[j])) {continue};
             }
-            let squares = Distance2(attacker,model2).squares;
-            if (squares > 1) {
-                continue;
+            let squares = caster.Distance(model2);
+            if (squares === 1) {
+                attAdvantage = Math.max(-1,attAdvantage -1);
+                break;
             }
-            attAdvantage = Math.max(-1,attAdvantage -1);
         }
         for (let i=0;i<attPos.length;i++) {
             if (attMarkers.includes(attPos[i])) {
@@ -1869,14 +1863,6 @@ log(defender.vulnerabilities)
 
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
 
-
-
-
-
-
-
-
-
         if (spellInfo.toHit.includes("Direct")) {
             let defenders = [];
             for (let i=4;i<(Tag.length + 1);i++) {
@@ -1888,7 +1874,7 @@ log(defender.vulnerabilities)
                 let defender = defenders[i];
                 let defPt = new Point(defender.token.get('left'),defender.token.get('top'));
                 outputCard.body.push("[B]" + defender.name + "[/b]");
-                let distance = Distance2(attacker,defender).distance;
+                let distance = caster.Distance(defender) * pageInfo.scaleNum;
                 if (distance > spellInfo.range) {
                     outputCard.body.push("Target is Out of Range");
                     outputCard.body.push("Distance to Target: " + distance);
@@ -1897,7 +1883,6 @@ log(defender.vulnerabilities)
                 }
 
                 let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
-
 
                 let defAdvantage = (fFire === true) ? 1:0;
                 let defMarkers = Markers(defender.token.get("statusmarkers"));
@@ -1925,12 +1910,9 @@ log(defender.vulnerabilities)
                 }
 
                 creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
-                if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
+                if (defMarkers.includes("Protection") && creatTypes.includes(caster.type)) {
                     defAdvantage = Math.max(defAdvantage -1,-1);
                 }
-
-
-
 
                 defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
 log("Def Adv: " + defAdvantage)
@@ -1940,7 +1922,7 @@ log("Def Adv: " + defAdvantage)
 log("Final Adv: " + advantage)
 
                 let result = ToHit(advantage);
-                let total = result.roll + attacker.spellAttack;
+                let total = result.roll + caster.spellAttack;
                 let tip;
                 let crit = false;
                 if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
@@ -1949,10 +1931,10 @@ log("Final Adv: " + advantage)
                 if (spellInfo.toHit.includes("Auto")) {
                     result.roll = 21;
                 } else {
-                    tip = "1d20 + " + attacker.spellAttack + " = " + result.rollText + " + " + attacker.spellAttack;
+                    tip = "1d20 + " + caster.spellAttack + " = " + result.rollText + " + " + caster.spellAttack;
                     tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
                     line = "Attack: " + tip + " vs. AC " + defender.ac;
-                    if (result.roll >= spellInfo.critOn) {
+                    if (result.roll === 20) {
                         crit = true;
                     }
                     outputCard.body.push(line);
@@ -1964,16 +1946,21 @@ log("Final Adv: " + advantage)
                     }   
                     let saved = false;
                     if (spellInfo.savingThrow !== "No") {
-                        let bonus = defender.saveBonus[spellInfo.savingThrow];
-                        let saveRoll = randomInteger(20);
-                        let saveTotal = saveRoll + bonus;
-                        let saveTip = "1d20 + " + bonus + " = " + saveRoll + " + " + bonus;
-                        saveTip = '[' + saveTotal + '](#" class="showtip" title="' + saveTip + ')';
-                        let line = "Save: " + saveTip + " vs. DC " + attacker.spellDC;
-                        if (saveTotal >= attacker.spellDC) {
+                        let result = Save(defender,caster.spellDC,spellInfo.savingThrow);
+                        if (result.save === true) {
                             saved = true;
-                        } 
-                        outputCard.body.push(line);
+                            tip = tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
+                            if (spellInfo.saveEffect === "No Damage") {
+                                tip += " and takes No Damage";
+                            }
+                            if (spellInfo.saveEffect === "Half Damage") {
+                                tip += " and takes 1/2 Damage";
+                            }
+                        } else {
+                            tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')';
+                            tip += " the Save"
+                        }
+                        outputCard.body.push(defender.name + " " + tip);
                     }
 
                     let damage = Damage(spellInfo,crit,defender);
@@ -1986,20 +1973,17 @@ log("Final Adv: " + advantage)
                     }
 
                     let totalDamage = damage.total;
-                    let add = "";
                     if (saved === true) {
                         if (spellInfo.saveEffect === "No Damage") {
                             totalDamage = 0;
-                            add = " - No Damage"
                         }
                         if (spellInfo.saveEffect === "Half Damage") {
                             totalDamage = Math.round(totalDamage/2);
-                            add = " - 1/2 Damage"
                         }
                     }
                     tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
 
-                    outputCard.body.push("Damage: " + tip + add);
+                    outputCard.body.push("Damage: " + tip);
                     if (spellInfo.note !== "") {
                         outputCard.body.push(spellInfo.note);
                     }
@@ -2018,7 +2002,7 @@ log("Final Adv: " + advantage)
 
             }
 
-            UseSlot(attacker,level);
+            UseSlot(caster,level);
             PrintCard();
 
 
