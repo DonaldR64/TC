@@ -1589,7 +1589,14 @@ log(defender.vulnerabilities)
             UseSlot(caster,level);
             PrintCard();
         }
-
+        
+        if (spellName === "Burning Hands") {
+            let charID = '-OeO1brn6UTZcSKyZmKE';
+            let img = getCleanImgSrc("");
+            let target = SpellTarget(caster,"Burning Hands",1,charID,img,15);
+            outputCard.body.push("Move Target and then Use Macro to Cast");
+            PrintCard();
+        }
 
 
 
