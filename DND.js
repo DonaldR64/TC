@@ -1427,14 +1427,10 @@ log(defender.vulnerabilities)
         let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
         
         SetupCard(caster.name,spellName,caster.displayScheme);
-//move this to function
-        if (level > 0) {
-            let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-            if (slots === 0) {
-                outputCard.body.push("No Available Spell Slots of level " + level);
-                PrintCard();
-                return;
-            } 
+        if (SpellSlots(caster,level) === false) {
+            outputCard.body.push("No Available Spell Slots of level " + level);
+            PrintCard();
+            return;
         }
 
         if (spellName === "Sleep") {
@@ -1478,6 +1474,26 @@ log(defender.vulnerabilities)
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
+
+        if (spellName === "Cure Wounds") {
+            let rolls = [];
+            let bonus = Math.max(0,(caster.spellDC - 10));
+            let total = bonus;
+            for (i=0;i<level;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                total += roll;
+            }
+            let tip = level + "d8 + " + bonus + " = [" + rolls.toString() + "] + " + bonus;
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
+            PlaySound("Angels");
+            UseSlot(caster,level);
+            PrintCard();
+        }
+
+
+
 
 
 
@@ -1545,19 +1561,6 @@ log(defender.vulnerabilities)
             target.token.remove();
             delete ModelArray[targetID];
             PlaySound("Sleep");
-/*
-Move to a function
-            if (level > 0) {
-                let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-                slots--;
-                outputCard.body.push(level + " Spell Slot Used");
-                if (slots === 0) {
-                    outputCard.body.push("No More of that Level");
-                }
-                AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
-            }
-*/
-
 
 
 
@@ -1659,15 +1662,29 @@ Move to a function
             PlaySound("Scan");
         }
 
-
-
-
-
-
-
-
+        UseSlot(caster,level);
         PrintCard();
     }
+
+    const SpellSlots = (caster,level) => {
+        if (level === 0) {return true};
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        if (slots === 0) {return false};
+    }
+
+    const UseSlot = (caster,level) => {
+        if (level === 0) {return};
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        slots = Math.max(0,slots - 1);
+        AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
+        outputCard.body.push("[hr]")
+        outputCard.body.push("Level " + level + " Spell Slot Used");
+        if (slots === 0) {
+            outputCard.body.push("No More of that Level");
+        }
+    }
+
+
 
 
 
@@ -1689,10 +1706,17 @@ Move to a function
             return;
         }
         let attID = Tag[2];
-        let level = Tag[3];
+        let level = parseInt(Tag[3]);
 
         let attacker = ModelArray[attID];
         let attPt = new Point(attacker.token.get("left"),attacker.token.get("top"));
+
+        SetupCard(attacker.name,spellName,attacker.displayScheme);
+        if (SpellSlots(attacker,level) === false) {
+            outputCard.body.push("No Available Spell Slots of level " + level);
+            PrintCard();
+            return;
+        }
 
 
         if (spellInfo.cLevel[attacker.casterLevel]) {
@@ -1742,23 +1766,12 @@ Move to a function
 
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
 
-        if (level > 0) {
-            let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
-            if (slots === 0) {
-                SetupCard(attacker.name,spellName,attacker.displayScheme);
-                outputCard.body.push("No Available Spell Slots of level " + level);
-                PrintCard();
-                return;
-            } else {
-                slots--;
-                if (slots === 0) {
-                    outputCard.body.push("No More Level " + level + " Spell Slots");
-                }
-                AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
-            }
-        }
 
-        SetupCard(attacker.name,spellName,attacker.displayScheme);
+
+
+
+
+
 
 
         if (spellInfo.toHit.includes("Direct")) {
@@ -1902,10 +1915,7 @@ log("Final Adv: " + advantage)
 
             }
 
-
-            if (level > 0) {            
-                outputCard.body.push("Level " + level + " Spell Slot Used");
-            }
+            UseSlot(attacker,level);
             PrintCard();
 
 
@@ -1915,27 +1925,6 @@ log("Final Adv: " + advantage)
 
 
         }
-
-
-        if (spellInfo.toHit = "Cone") {
-            let coneTarget = ModelArray[Tag[4]];
-            let distance = Distance2(attacker,coneTarget).distance;
-            if (distance > spellInfo.range) {
-                outputCard.body.push("Target is Out of Range");
-                outputCard.body.push("Distance to Target: " + distance);
-                outputCard.body.push("Spell Range: " + spellInfo.range);
-                PrintCard();
-                return;
-            }
-
-
-
-
-
-
-
-        }
-
 
 
 
