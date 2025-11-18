@@ -6,6 +6,7 @@ const Strahd = (() => {
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
     let ModelArray = {};
+    let MapArray = {};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
@@ -14,8 +15,8 @@ const Strahd = (() => {
         pageInfo.page = getObj('page', Campaign().get("playerpageid"));
         pageInfo.name = pageInfo.page.get("name");
         pageInfo.scale = pageInfo.page.get("snapping_increment");
-        pageInfo.width = pageInfo.page.get("width") * 70;
-        pageInfo.height = pageInfo.page.get("height") * 70;
+        pageInfo.width = pageInfo.page.get("width");
+        pageInfo.height = pageInfo.page.get("height");
         pageInfo.scaleNum = pageInfo.page.get("scale_number");
 
         _.each(playerCodes,pID => {
@@ -82,15 +83,6 @@ const Strahd = (() => {
         //if its an area effect, model1 isnt used
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
         let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
-log(pt1)
-log(pt2)
-        spawnFxBetweenPoints(pt1, pt2,"missile-frost");
-
-
-
-
-        return
-
 
         if (fxname.includes("System")) {
             //system fx
@@ -279,6 +271,9 @@ log(pt2)
     }
 
 
+
+
+
 const Distance2 = (model1,model2) => {
     let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
     let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
@@ -310,32 +305,199 @@ log(result)
             this.x = x;
             this.y = y;
         };
-        toOffset() {
-            let cube = this.toCube();
-            let offset = cube.toOffset();
-            return offset;
-        };
-        toCube() {
-            let x = this.x - HexInfo.pixelStart.x;
-            let y = this.y - HexInfo.pixelStart.y;
-            let q,r;
-            if (pageInfo.type === "hex") {
-                q = (M.b0 * x + M.b1 * y) / HexInfo.size;
-                r = (M.b3 * y) / HexInfo.size;
-            } else if (pageInfo.type === "hexr") {
-                q = (M.b3 * x) / HexInfo.size;
-                r = (M.b1 * x + M.b0 * y) / HexInfo.size;
-            }
-            let cube = new Cube(q,r,-q-r).round();
-            return cube;
-        };
         distance(b) {
             return Math.sqrt(((this.x - b.x) * (this.x - b.x)) + ((this.y - b.y) * (this.y - b.y)));
         }
-        label() {
-            return this.toCube().label();
+        toIndex() {
+            let s = this.toSq();
+            return (s.x + "/" + s.y);
+        }
+        toSq() {
+            let x = Math.round((this.x - 35)/70);
+            let y = Math.round((this.y - 35)/70);        
+            return {x:x, y:y};
         }
     }
+
+    class Square {
+        constructor(x,y) {
+            this.x = x;
+            this.y = y;
+            this.centre = new Point(x*70 + 35, y*70 + 35);
+            this.index = x + "/" + y;
+            this.tokenIDs = [];
+        };
+        toPoint() {
+            let x = this.x * 70 + 35;
+            let y = this.y * 70 + 35;
+            return new Point(x,y);
+        }
+        distance(b) {
+            let dX = Math.abs(b.x - this.x);
+            let dY = Math.abs(b.y - this.y);
+            return Math.max(dX,dY);
+        }
+    }
+
+
+    class Model {
+        constructor(token) {
+            let char = getObj("character", token.get("represents")); 
+            this.token = token;
+            this.id = token.get("id");
+            this.name = token.get("name");
+            let aa = AttributeArray(char.id);
+            this.charID = char.id;
+
+log(this.name)
+            this.type = (aa.npc_type || " ").toLowerCase();
+
+            this.immunities = (aa.npc_immunities || " ").toLowerCase();
+            this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
+            this.resistances = (aa.npc_resistances || " ").toLowerCase();
+            this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
+
+            this.npc = (aa.charactersheet_type === "npc") ? true:false;
+            this.displayScheme = "NPC";
+
+            this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
+
+
+
+
+            let control = char.get("controlledby");
+log("C: " + control)
+            let playerName;
+            if (control) {
+                playerName = playerCodes[control.split(",")[0]];
+                this.displayScheme = playerName;
+                this.npc = false;
+            }
+if (this.name === "Eivirin" || this.name.includes("Ratatoskr")) {
+    this.displayScheme = "Vic";
+}
+
+
+log("pN: " + playerName)
+            let dim = Math.max(token.get("width"),token.get("height"));
+            dim = Math.round(dim/70);
+            this.size = dim;
+
+            let skillNames = ["acrobatics","athletics"];
+            let skills = {};
+
+            for (let i=0;i<skillNames.length;i++) {
+                let skillName = skillNames[i];
+                let bonusName = skillName+"_bonus";
+                let flag = "npc_" + skillName + "_flag";
+                let npcName = "npc_" + skillName;
+                let skill = parseInt(aa[bonusName]) || 0;
+                if (aa[flag] === 1) {
+                    skill = parseInt(aa[npcName]) || 0;
+                }
+                skills[skillName] = skill;
+            }
+            this.skills = skills;
+
+            this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
+            this.casterLevel = parseInt(aa.caster_level) || 0;
+            this.spellDC = parseInt(aa.spell_save_dc) || 0;
+
+            let saveBonus = {
+                strength: parseInt(aa.strength_save_bonus) || 0,
+                dexterity: parseInt(aa.dexterity_save_bonus) || 0,
+                constitution: parseInt(aa.constitution_save_bonus) || 0,
+                intelligence: parseInt(aa.intelligence_save_bonus) || 0,
+                wisdom: parseInt(aa.wisdom_save_bonus) || 0,
+                charisma: parseInt(aa.charisma_save_bonus) || 0,
+            }
+            this.saveBonus = saveBonus;
+
+            let statBonus = {
+                strength: parseInt(aa.strength_mod) || 0,
+                dexterity: parseInt(aa.dexterity_mod) || 0,
+                constitution: parseInt(aa.constitution_mod) || 0,
+                intelligence: parseInt(aa.intelligence_mod) || 0,
+                wisdom: parseInt(aa.wisdom_mod) || 0,
+                charisma: parseInt(aa.charisma_mod) || 0,
+            }
+            this.statBonus = statBonus;
+
+            this.pb = parseInt(aa.pb) || 0;
+
+            this.squares = ModelSquares(this);
+
+
+            _.each(this.squares,square => {
+                MapArray[square].tokenIDs.push(this.id);
+            })
+
+
+
+            ModelArray[token.id] = this;
+
+        }
+
+        Distance (model2) {
+            let dist = Infinity;
+            _.each(this.squares,square => {
+                _.each(model2.squares, square2 => {
+                    dist = Math.min(MapArray[square].distance(MapArray[square2]),dist);
+                })
+            })
+            return dist;
+        }
+
+
+    }
+
+    const ModelSquares = (model) => {
+        let c = new Point(model.token.get("left"),model.token.get("top"));
+        let centrePts = [];
+        let squares = [];
+
+
+        if (model.size === 1 || model.size === 3) {
+            centrePts.push(c);
+        }
+        if (model.size === 2 || model.size === 4) {
+            centrePts.push(new Point(c.x - 35,c.y - 35));
+            centrePts.push(new Point(c.x + 35,c.y - 35));
+            centrePts.push(new Point(c.x - 35,c.y + 35));
+            centrePts.push(new Point(c.x + 35,c.y + 35));
+        }
+        if (model.size === 3) {
+            centrePts.push(new Point(c.x - 70,c.y - 70));
+            centrePts.push(new Point(c.x,c.y - 70));
+            centrePts.push(new Point(c.x + 70,c.y - 70));
+            centrePts.push(new Point(c.x - 70,c.y));
+            centrePts.push(new Point(c.x,c.y));
+            centrePts.push(new Point(c.x + 70,c.y));
+            centrePts.push(new Point(c.x - 70,c.y + 70));
+            centrePts.push(new Point(c.x,c.y + 70));
+            centrePts.push(new Point(c.x + 70,c.y + 70));
+        }
+        if (model.size === 4) {
+            centrePts.push(new Point(c.x - 105,c.y - 105));
+            centrePts.push(new Point(c.x - 35,c.y - 105));
+            centrePts.push(new Point(c.x + 35,c.y - 105));
+            centrePts.push(new Point(c.x + 105,c.y - 105));
+            centrePts.push(new Point(c.x - 105,c.y - 35));
+            centrePts.push(new Point(c.x + 105,c.y - 35));
+            centrePts.push(new Point(c.x - 105,c.y + 35));
+            centrePts.push(new Point(c.x + 105,c.y + 35));
+            centrePts.push(new Point(c.x - 105,c.y + 105));
+            centrePts.push(new Point(c.x - 35,c.y + 105));
+            centrePts.push(new Point(c.x + 35,c.y + 105));
+            centrePts.push(new Point(c.x + 105,c.y + 105));
+        }
+        _.each(centrePts,c => {
+            let index = c.toIndex();
+            squares.push(index);
+        })
+        return squares;
+    }
+
 
 
     const Angle = (theta) => {
@@ -615,103 +777,14 @@ log(outputCard.side)
 
     }
 
-    class Model {
-        constructor(token) {
-            let char = getObj("character", token.get("represents")); 
-            this.token = token;
-            this.id = token.get("id");
-            this.name = token.get("name");
-            let aa = AttributeArray(char.id);
-            this.charID = char.id;
-
-log(this.name)
-            this.type = (aa.npc_type || " ").toLowerCase();
-
-            this.immunities = (aa.npc_immunities || " ").toLowerCase();
-            this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
-            this.resistances = (aa.npc_resistances || " ").toLowerCase();
-            this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
-
-            this.npc = (aa.charactersheet_type === "npc") ? true:false;
-            this.displayScheme = "NPC";
-
-            this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
-
-
-
-
-            let control = char.get("controlledby");
-log("C: " + control)
-            let playerName;
-            if (control) {
-                playerName = playerCodes[control.split(",")[0]];
-                this.displayScheme = playerName;
-                this.npc = false;
+    const BuildMap = () => {
+        MapArray = {};
+        for (let x=0;x<= pageInfo.width;x++) {
+            for (let y=0;y<= pageInfo.height;y++) {
+                let index = x +"/" + y;
+                MapArray[index] = new Square(x,y);
             }
-if (this.name === "Eivirin" || this.name.includes("Ratatoskr")) {
-    this.displayScheme = "Vic";
-}
-
-
-log("pN: " + playerName)
-            let dim = Math.max(token.get("width"),token.get("height"));
-            dim = Math.round(dim/70);
-            this.size = dim;
-
-            let skillNames = ["acrobatics","athletics"];
-            let skills = {};
-
-            for (let i=0;i<skillNames.length;i++) {
-                let skillName = skillNames[i];
-                let bonusName = skillName+"_bonus";
-                let flag = "npc_" + skillName + "_flag";
-                let npcName = "npc_" + skillName;
-                let skill = parseInt(aa[bonusName]) || 0;
-                if (aa[flag] === 1) {
-                    skill = parseInt(aa[npcName]) || 0;
-                }
-                skills[skillName] = skill;
-            }
-            this.skills = skills;
-
-            this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
-            this.casterLevel = parseInt(aa.caster_level) || 0;
-            this.spellDC = parseInt(aa.spell_save_dc) || 0;
-
-            let saveBonus = {
-                strength: parseInt(aa.strength_save_bonus) || 0,
-                dexterity: parseInt(aa.dexterity_save_bonus) || 0,
-                constitution: parseInt(aa.constitution_save_bonus) || 0,
-                intelligence: parseInt(aa.intelligence_save_bonus) || 0,
-                wisdom: parseInt(aa.wisdom_save_bonus) || 0,
-                charisma: parseInt(aa.charisma_save_bonus) || 0,
-            }
-            this.saveBonus = saveBonus;
-
-            let statBonus = {
-                strength: parseInt(aa.strength_mod) || 0,
-                dexterity: parseInt(aa.dexterity_mod) || 0,
-                constitution: parseInt(aa.constitution_mod) || 0,
-                intelligence: parseInt(aa.intelligence_mod) || 0,
-                wisdom: parseInt(aa.wisdom_mod) || 0,
-                charisma: parseInt(aa.charisma_mod) || 0,
-            }
-            this.statBonus = statBonus;
-
-            this.pb = parseInt(aa.pb) || 0;
-
-
-
-
-
-
-            ModelArray[token.id] = this;
-
         }
-
-
-
-
     }
 
 
@@ -1009,25 +1082,22 @@ log("pN: " + playerName)
         }
         weapon.info = "Weapon, " + magicInfo;
 
-        let adjacent = false;
-
-        let distance2 = Distance2(attacker,defender);
-        let distance = distance2.distance;
-        let squares = distance2.squares;
-log(distance2)
+        let inReach = false;
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
 
         if (squares === 1) {
-            adjacent = true;
+            inReach = true;
         }
         if (weapon.properties.includes("Reach") && squares <= 2) {
-            adjacent = true;
+            inReach = true;
         }
-        if (adjacent !== true && weapon.type.includes("Ranged") === false) {
+        if (inReach !== true && weapon.type.includes("Ranged") === false) {
             errorMsg.push("Target not in Reach");
         } 
 
         let statBonus = attacker.statBonus["strength"];
-        if (adjacent === false && weapon.properties.includes("Thrown") === false) {
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
             statBonus = attacker.statBonus["dexterity"];
         }
         if (weapon.properties.includes("Finesse")) {
@@ -1044,7 +1114,7 @@ log(distance2)
             weapon.base += "+" + statBonus;
         }
         //abilities
-        if (attacker.name === "Wirsten" && adjacent === true) {
+        if (attacker.name === "Wirsten" && inReach === true) {
             weapon.base += "+2"; //Duellist
         }
 
@@ -1059,14 +1129,7 @@ log(distance2)
                 attackBonus += magicBonus;
                 weapon.base += "+" + magicBonus;
             }
-
-
-
         }
-
-
-
-
 
         if (errorMsg.length > 0) {
             _.each(errorMsg,msg => {
@@ -1076,14 +1139,14 @@ log(distance2)
         }
 
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
-        if (adjacent === true && weapon.type.includes("Melee")) {
+        if (inReach === true && weapon.type.includes("Melee")) {
             outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
         }
-        if (adjacent === false && weapon.properties.includes("Thrown")) {
+        if (inReach === false && weapon.properties.includes("Thrown")) {
             outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
             weapon.sound = "Shuriken"
         }
-        if (adjacent === false && weapon.properties.includes("Thrown") === false) {
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
         }
 
@@ -1095,7 +1158,7 @@ log(distance2)
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
         //check if next to an enemy token if ranged attack, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
-        if (adjacent === true && weapon.type.includes("Melee") === false) {
+        if (inReach === true && weapon.type.includes("Melee") === false) {
             let ids = Object.keys(ModelArray);
             idLoop1:
             for (let i=0;i<ids.length;i++) {
@@ -1105,19 +1168,19 @@ log(distance2)
                 for (let j=0;j<ignore.length;j++) {
                     if (sm.includes(ignore[j])) {continue idLoop1};
                 }
-                let squares = Distance2(attacker,model2).squares;
+                let squares = attacker.Distance(model2);                
                 if (squares > 1) {
                     continue;
                 }
                 attAdvantage = -1;
             }
         }    
-        //prone if adjacent
-        if (adjacent === true && attMarkers.includes("Prone")) {
+        //prone if inReach
+        if (inReach === true && attMarkers.includes("Prone")) {
             attAdvantage = -1;
         }
         //ranged weapons
-        if (adjacent === false && distance > weapon.range[0]) {
+        if (inReach === false && distance > weapon.range[0]) {
             attAdvantage = -1;
         }
         for (let i=0;i<attPos.length;i++) {
@@ -1139,7 +1202,7 @@ log("Att Adv: " + attAdvantage)
         let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
         let defNeg = ["Invisible","Dodge"];
         if (defMarkers.includes("Prone")) {
-            if (adjacent === true) {
+            if (inReach === true) {
                 defAdvantage = 1;
             } else {
                 defAdvantage = -1;
@@ -1174,11 +1237,10 @@ log("Def Adv: " + defAdvantage)
 log("Final Adv: " + advantage)
 
         let result = ToHit(advantage);
-
         let total = result.roll + attackBonus;
         let tip;
         let crit = false;
-        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && adjacent === true) {
+        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && inReach === true) {
             crit = true;
         }
 
@@ -1206,7 +1268,11 @@ log(weapon)
             let totalDamage = damage.total;
             tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
             outputCard.body.push("Damage: " + tip);
-            spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
+            if (crit === true) {
+                spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
+            } else {
+                spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
+            }
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -1841,11 +1907,9 @@ log("Final Adv: " + advantage)
         let model = ModelArray[id];
         let token = model.token;
         SetupCard(model.name,"","NPC");
-        let pt1 = new Point(model.token.get("left"),model.token.get("top"));
-
-        outputCard.body.push(pt1.x + " / " + pt1.y)
+        let s = model.squares.length === 1 ? "":"s";
+        outputCard.body.push("Square" + s + ": " + model.squares.toString());
         outputCard.body.push("Size: " + model.size)
-
         PrintCard();
 
     }
@@ -1953,7 +2017,19 @@ log("Final Adv: " + advantage)
     }
 
 
-
+    const changeGraphic = (tok,prev) => {
+        let model = ModelArray[tok.id];
+        if (model) {
+            _.each(model.squares,square => {
+                let index = MapArray[square].tokenIDs.indexOf(tok.id);
+                if (index > -1) {
+                    MapArray[square].tokenIDs.splice(index,1);
+                }
+            })
+            model.squares = ModelSquares(model);
+            log(model.name + ' is moving');
+        }
+    }
 
 
 
@@ -1979,6 +2055,7 @@ log("Final Adv: " + advantage)
 
     const changePage = () => {
         LoadPage();
+        BuildMap();
         BuildArrays();
         sendChat("","Page Change");
     }
@@ -2039,6 +2116,7 @@ log("Final Adv: " + advantage)
         on('chat:message', handleInput);
         on('destroy:graphic',destroyGraphic);
         on('add:graphic',addGraphic);
+        on('change:graphic',changeGraphic);
         on('change:campaign:playerpageid',changePage);
 
 
@@ -2047,6 +2125,7 @@ log("Final Adv: " + advantage)
         log("===> CoS <===");
         log("===> Software Version: " + version + " <===");
         LoadPage();
+        BuildMap();
         BuildArrays();
         registerEventHandlers();
         sendChat("","API Ready")
