@@ -110,6 +110,55 @@ log(pt2)
         }
     }
 
+    const ModelInSquare = (model,corners) => {
+        //check centre points of squares covered by token
+        //start with centre of token, add in others if size > 1
+        let c = new Point(model.token.get("left"),model.token.get("top"))
+        let centrePts = [c];
+        if (model.size === 2 || model.size === 4) {
+            centrePts.push(new Point(c.x - 35,c.y - 35));
+            centrePts.push(new Point(c.x + 35,c.y - 35));
+            centrePts.push(new Point(c.x - 35,c.y + 35));
+            centrePts.push(new Point(c.x + 35,c.y + 35));
+        }
+        if (model.size === 3) {
+            centrePts.push(new Point(c.x - 70,c.y - 70));
+            centrePts.push(new Point(c.x,c.y - 70));
+            centrePts.push(new Point(c.x + 70,c.y - 70));
+            centrePts.push(new Point(c.x - 70,c.y));
+            centrePts.push(new Point(c.x,c.y));
+            centrePts.push(new Point(c.x + 70,c.y));
+            centrePts.push(new Point(c.x - 70,c.y + 70));
+            centrePts.push(new Point(c.x,c.y + 70));
+            centrePts.push(new Point(c.x + 70,c.y + 70));
+        }
+        if (model.size === 4) {
+            centrePts.push(new Point(c.x - 105,c.y - 105));
+            centrePts.push(new Point(c.x - 35,c.y - 105));
+            centrePts.push(new Point(c.x + 35,c.y - 105));
+            centrePts.push(new Point(c.x + 105,c.y - 105));
+            centrePts.push(new Point(c.x - 105,c.y - 35));
+            centrePts.push(new Point(c.x + 105,c.y - 35));
+            centrePts.push(new Point(c.x - 105,c.y + 35));
+            centrePts.push(new Point(c.x + 105,c.y + 35));
+            centrePts.push(new Point(c.x - 105,c.y + 105));
+            centrePts.push(new Point(c.x - 35,c.y + 105));
+            centrePts.push(new Point(c.x + 35,c.y + 105));
+            centrePts.push(new Point(c.x + 105,c.y + 105));
+        }
+
+        for (let i=0;i<centrePts.length;i++) {
+            let c = centrePts[i];
+            if (c.x >= corners[0].x && c.x <= corners[1].x && c.y >= corners[0].y && c.y <= corners[1].y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+
+
     const pointInPolygon = (point,vertices) => {
         //evaluate if point is in the polygon
         px = point.x
@@ -1379,25 +1428,17 @@ log(defender.vulnerabilities)
 
         if (spellName === "Sleep") {
             //create the sleep token, place on caster, with instructions
-            let target = SpellTarget(caster,"Sleep",level);
-            target.token.set({
-                aura1_radius: 20,
-                aura1_square: true,
-                aura1_color: "#cfe2f3",
-                showplayers_aura1: true,
-            });
+            let charID = "-OeJRVLCc-tJuxhw911C";
+            let img = getCleanImgSrc("https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066");
+            let target = SpellTarget(caster,"Sleep",level,charID,img,8);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
 
         if (spellName === "Entangle") {
-            let target = SpellTarget(caster,"Entangle",1);
-            target.token.set({
-                aura1_radius: 10,
-                aura1_square: true,
-                aura1_color: "#b6d7ab",
-                showplayers_aura1: true,
-            });
+            let charID = "-OeJFbyJkH36zRywNsEm";
+            let img = getCleanImgSrc("https://files.d20.io/images/464578901/D1EUYw27F9AmDgXE880VEQ/thumb.png?1763423726");
+            let target = SpellTarget(caster,"Entangle",level,charID,img,4);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1429,7 +1470,7 @@ log(defender.vulnerabilities)
 
         if (spellName === "Sleep") {
             //models within 20 ft of centre
-            let possibles = AOEArray(target,"Circle",20)
+            let possibles = AOEArray(target,"Square")
             possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
             let dice = 5 + ((level -1) * 2);
             //5d8 hp. +2d8 for spell level > 1
@@ -1468,8 +1509,8 @@ log(defender.vulnerabilities)
                     "status_KO::2006544": true,
                 })
             }
-            //target.token.remove();
-            //delete ModelArray[targetID];
+            target.token.remove();
+            delete ModelArray[targetID];
             PlaySound("Sleep");
 /*
 Move to a function
@@ -1492,7 +1533,7 @@ Move to a function
         }
 
         if (spellName === "Entangle") {
-            let possibles = AOEArray(target,"Square",10);
+            let possibles = AOEArray(target,"Square");
             _.each(possibles,model => {
                 let dc = caster.spellDC;
                 let tip;
@@ -1508,8 +1549,12 @@ Move to a function
                     outputCard.body.push(model.name + " " + tip + " and is free to act");                
                 }
             })
-            //remove target
-            //place difficult ground marker or repurpose the targettoken?
+            target.token.set("layer","map");
+            delete ModelArray[targetID];
+            outputCard.body.push("[hr]");
+            outputCard.body.push("The Area remains Difficult Ground for 1 min or until Concentration ends");
+
+
             PlaySound("Entangle");
         }
 
@@ -1817,50 +1862,60 @@ log("Final Adv: " + advantage)
         })
     }    
 
-    const AOEArray = (target,shape,distance) => {
+    const AOEArray = (target,shape,radius) => {
         //create an array of tokens under the token's area
         let possibles = [];
-        distance = distance / pageInfo.scaleNum;
-        if (shape === "Square" || shape === "Circle") {
+        let w = target.token.get("width");
+        let h = target.token.get("height");
+        let c = new Point(target.token.get("left"),target.token.get("top"));
+        if (shape === "Square") {
+            tL = new Point(c.x - w/2,c.y - h/2);
+            bR = new Point(c.x + w/2,c.y + h/2);
+            let corners = [tL,bR];
             _.each(ModelArray,model => {
                 if (model.id === target.id) {return}
-                let d = Distance2(target,model).squares;
-                if (d <= distance) {
+                let isInside = ModelInSquare(model,corners);
+                if (isInside === true) {
                     possibles.push(model);
                 }
             })
         }
+
         return possibles;
     }
         
 
 
-    const SpellTarget = (caster,spellName,level) => {
-        let char = getObj("character", "-Oe8qdnMHHQEe4fSqqhm");
-        let abilArray = findObjs({_type: "ability", _characterid: char.id});
+    const SpellTarget = (caster,spellName,level,charID,img,dim) => {
+        let abilArray = findObjs({_type: "ability", _characterid: charID});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
         let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility(spellName,action,"-Oe8qdnMHHQEe4fSqqhm")
+        AddAbility(spellName,action,charID);
 
-        let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
+        dim = (dim * 70);
+
         let newToken = createObj("graphic", {
             left: caster.token.get("left"),
             top: caster.token.get("top"),
             disableTokenMenu: true,
-            width: 70, 
-            height: 70,  
-            name: "Target",
+            width: dim, 
+            height: dim,  
+            name: spellName,
             pageid: caster.token.get("_pageid"),
             imgsrc: img,
             layer: "objects",
-            represents: "-Oe8qdnMHHQEe4fSqqhm",
+            represents: charID,
         })
         toFront(newToken);
-        let target = new Model(newToken);
-        return target;
+        if (newToken) {
+            let target = new Model(newToken);
+            return target;
+        } else {
+            sendChat("","Error in CreateObj")
+        }
     }
 
 
