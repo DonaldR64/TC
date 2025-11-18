@@ -924,6 +924,12 @@ log("pN: " + playerName)
             level: 1,
             range: 5,
         },
+        "Fog Cloud": {
+            level: 1,
+            range: 120,
+        },
+
+
 
     }
 
@@ -1435,7 +1441,7 @@ log(defender.vulnerabilities)
             //create the sleep token, place on caster, with instructions
             let charID = "-OeJRVLCc-tJuxhw911C";
             let img = getCleanImgSrc("https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066");
-            let target = SpellTarget(caster,"Sleep",level,charID,img,8);
+            let target = SpellTarget(caster,"Sleep",level,charID,img,40);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1443,7 +1449,7 @@ log(defender.vulnerabilities)
         if (spellName === "Entangle") {
             let charID = "-OeJFbyJkH36zRywNsEm";
             let img = getCleanImgSrc("https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837");
-            let target = SpellTarget(caster,"Entangle",level,charID,img,4);
+            let target = SpellTarget(caster,"Entangle",level,charID,img,20);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1451,7 +1457,7 @@ log(defender.vulnerabilities)
         if (spellName === "Faerie Fire") {
             let charID = "-OeJf7QNTBO0lqtOd6Ac";
             let img = getCleanImgSrc("https://files.d20.io/images/464592488/Ol6oEZ2kLqqfV-fEBHrq5Q/thumb.png");
-            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,4);
+            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,20);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1459,12 +1465,19 @@ log(defender.vulnerabilities)
         if (spellName === "Thunderwave") {
             let charID = "-OeJrE-MQDPwPo0KDLtq";
             let img = getCleanImgSrc("https://files.d20.io/images/464597646/OEF2m9OvLSy6J_WrL4Mh7Q/thumb.png?1763433964");
-            let target = SpellTarget(caster,"Thunderwave",level,charID,img,3);
+            let target = SpellTarget(caster,"Thunderwave",level,charID,img,15);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
 
-        
+        if (spellName === "Fog Cloud") {
+            let charID = "-OeJzgHWtgd8SummEE5T";
+            let img = getCleanImgSrc("https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289");
+            let dim = 40 + ((level - 1) * 40); //radius is 20 ft so diameter is 40
+            let target = SpellTarget(caster,"Fog Cloud",level,charID,img,dim);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
 
 
 
@@ -1637,6 +1650,17 @@ Move to a function
             delete ModelArray[targetID];
             PlaySound("Thunder");
         }
+
+        if (spellName === "Fog Cloud") {
+            target.token.set("layer","map");
+            delete ModelArray[targetID];
+            outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
+            outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
+            PlaySound("Scan");
+        }
+
+
+
 
 
 
@@ -1979,7 +2003,7 @@ log("Final Adv: " + advantage)
         let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
         AddAbility("Cast " + spellName,action,charID);
 
-        dim = (dim * 70);
+        dim = (dim * 70) / pageInfo.scaleNum;
 
         let newToken = createObj("graphic", {
             left: caster.token.get("left"),
