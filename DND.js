@@ -919,8 +919,11 @@ log("pN: " + playerName)
         "Faerie Fire": {
             level: 1,
             range: 60,
-        }
-
+        },
+        "Thunderwave": {
+            level: 1,
+            range: 5,
+        },
 
     }
 
@@ -1453,6 +1456,14 @@ log(defender.vulnerabilities)
             PrintCard();
         }
 
+        if (spellName === "Thunderwave") {
+            let charID = "-OeJrE-MQDPwPo0KDLtq";
+            let img = getCleanImgSrc("https://files.d20.io/images/464597646/OEF2m9OvLSy6J_WrL4Mh7Q/thumb.png?1763433964");
+            let target = SpellTarget(caster,"Thunderwave",level,charID,img,3);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
+
         
 
 
@@ -1590,12 +1601,41 @@ Move to a function
             delete ModelArray[targetID];
             outputCard.body.push("[hr]");
             outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
+            PlaySound("Scan");
+        }
 
+        if (spellName === "Thunderwave") {
+            let possibles = AOEArray(target,"Square");
+            let dice = 2 + (level -1);
+            let total = 0;
+            let rolls = [];
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                total += roll;
+            }
+            let line = dice + "d8 = [" + rolls.toString() + "]";
+            tip = '[' + total + '](#" class="showtip" title="' + line + ')';
 
-            PlaySound("Entangle");
+            outputCard.body.push("Spell Damage: " + tip);
+            outputCard.body.push("[hr]");
+            _.each(possibles,model => {
+                let dc = caster.spellDC;
+                let tip;
+                let result = Save(model,dc,"constitution");
+                if (result.save === false) {
+                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " - takes " + total + " Damage and is pushed 10ft back");
+//move token back 10ft, and stop if wall
 
-
-
+                } else if (result.save === true) {
+                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " - takes " + Math.round(total/2) + " Damage");                
+                }
+            })
+            target.token.remove();
+            delete ModelArray[targetID];
+            PlaySound("Thunder");
         }
 
 
@@ -1937,7 +1977,7 @@ log("Final Adv: " + advantage)
             abilArray[a].remove();
         } 
         let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility(spellName,action,charID);
+        AddAbility("Cast " + spellName,action,charID);
 
         dim = (dim * 70);
 
