@@ -984,15 +984,24 @@ log(outputCard.side)
         "Sleep": {
             level: 1,
             range: 90,
-            aoe: "Square, Target",
-            radius: 20,
         },
         "Entangle": {
             level: 1,
             range: 90,
-            aoe: "Square, Target",
-            radius: 10,
-        }
+        },
+        "Faerie Fire": {
+            level: 1,
+            range: 60,
+        },
+        "Thunderwave": {
+            level: 1,
+            range: 5,
+        },
+        "Fog Cloud": {
+            level: 1,
+            range: 120,
+        },
+
 
 
     }
@@ -1082,9 +1091,12 @@ log(outputCard.side)
         }
         weapon.info = "Weapon, " + magicInfo;
 
-        let inReach = false;
-        let squares = attacker.Distance(defender);
-        let distance = squares * pageInfo.scaleNum;
+        let adjacent = false;
+
+        let distance2 = Distance2(attacker,defender);
+        let distance = distance2.distance;
+        let squares = distance2.squares;
+log(distance2)
 
         if (squares === 1) {
             inReach = true;
@@ -1197,7 +1209,9 @@ log(outputCard.side)
         }
 log("Att Adv: " + attAdvantage)
 
-        let defAdvantage = 0;
+        let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
+
+        let defAdvantage = (fFire === true) ? 1:0;
         let defMarkers = Markers(defender.token.get("statusmarkers"));
         let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
         let defNeg = ["Invisible","Dodge"];
@@ -1216,6 +1230,7 @@ log("Att Adv: " + attAdvantage)
         }
         for (let i=0;i<defNeg.length;i++) {
             if (defMarkers.includes(defNeg[i])) {
+                if (defNeg[i] === "Invisible" && fFire === true) {continue};
                 defAdvantage = Math.max(defAdvantage -1,-1);
                 break;
             }
@@ -1482,35 +1497,73 @@ log(defender.vulnerabilities)
         let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
         
         SetupCard(caster.name,spellName,caster.displayScheme);
-//move this to function
-        if (level > 0) {
-            let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-            if (slots === 0) {
-                outputCard.body.push("No Available Spell Slots of level " + level);
-                PrintCard();
-                return;
-            } 
+        if (SpellSlots(caster,level) === false) {
+            outputCard.body.push("No Available Spell Slots of level " + level);
+            PrintCard();
+            return;
         }
 
         if (spellName === "Sleep") {
             //create the sleep token, place on caster, with instructions
             let charID = "-OeJRVLCc-tJuxhw911C";
             let img = getCleanImgSrc("https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066");
-            let target = SpellTarget(caster,"Sleep",level,charID,img,8);
+            let target = SpellTarget(caster,"Sleep",level,charID,img,40);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
 
         if (spellName === "Entangle") {
             let charID = "-OeJFbyJkH36zRywNsEm";
-            let img = getCleanImgSrc("https://files.d20.io/images/464578901/D1EUYw27F9AmDgXE880VEQ/thumb.png?1763423726");
-            let target = SpellTarget(caster,"Entangle",level,charID,img,4);
+            let img = getCleanImgSrc("https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837");
+            let target = SpellTarget(caster,"Entangle",level,charID,img,20);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
+        
+        if (spellName === "Faerie Fire") {
+            let charID = "-OeJf7QNTBO0lqtOd6Ac";
+            let img = getCleanImgSrc("https://files.d20.io/images/464592488/Ol6oEZ2kLqqfV-fEBHrq5Q/thumb.png");
+            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,20);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
 
+        if (spellName === "Thunderwave") {
+            let charID = "-OeJrE-MQDPwPo0KDLtq";
+            let img = getCleanImgSrc("https://files.d20.io/images/464597646/OEF2m9OvLSy6J_WrL4Mh7Q/thumb.png?1763433964");
+            let target = SpellTarget(caster,"Thunderwave",level,charID,img,15);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
 
-        
+        if (spellName === "Fog Cloud") {
+            let charID = "-OeJzgHWtgd8SummEE5T";
+            let img = getCleanImgSrc("https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289");
+            let dim = 40 + ((level - 1) * 40); //radius is 20 ft so diameter is 40
+            let target = SpellTarget(caster,"Fog Cloud",level,charID,img,dim);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
+
+        if (spellName === "Cure Wounds") {
+            let rolls = [];
+            let bonus = Math.max(0,(caster.spellDC - 10));
+            let total = bonus;
+            for (i=0;i<level;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                total += roll;
+            }
+            let tip = level + "d8 + " + bonus + " = [" + rolls.toString() + "] + " + bonus;
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
+            PlaySound("Angels");
+            UseSlot(caster,level);
+            PrintCard();
+        }
+
+
+
 
 
 
@@ -1578,19 +1631,6 @@ log(defender.vulnerabilities)
             target.token.remove();
             delete ModelArray[targetID];
             PlaySound("Sleep");
-/*
-Move to a function
-            if (level > 0) {
-                let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-                slots--;
-                outputCard.body.push(level + " Spell Slot Used");
-                if (slots === 0) {
-                    outputCard.body.push("No More of that Level");
-                }
-                AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
-            }
-*/
-
 
 
 
@@ -1624,13 +1664,97 @@ Move to a function
             PlaySound("Entangle");
         }
 
+        if (spellName === "Faerie Fire") {
+            let possibles = AOEArray(target,"Square");
+            _.each(possibles,model => {
+                let dc = caster.spellDC;
+                let tip;
+                let result = Save(model,dc,"dexterity");
+                if (result.save === false) {
+                    model.token.set({
+                        aura1_radius: 1,
+                        aura1_color: "#ff00ff",
+                        showplayers_aura1: true,
+                    })
+                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " and is outlined by Faerie Fire");
+                } else if (result.save === true) {
+                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip);                
+                }
+            })
+            target.token.remove();
+            delete ModelArray[targetID];
+            outputCard.body.push("[hr]");
+            outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
+            PlaySound("Scan");
+        }
 
+        if (spellName === "Thunderwave") {
+            let possibles = AOEArray(target,"Square");
+            let dice = 2 + (level -1);
+            let total = 0;
+            let rolls = [];
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                total += roll;
+            }
+            let line = dice + "d8 = [" + rolls.toString() + "]";
+            tip = '[' + total + '](#" class="showtip" title="' + line + ')';
 
+            outputCard.body.push("Spell Damage: " + tip);
+            outputCard.body.push("[hr]");
+            _.each(possibles,model => {
+                let dc = caster.spellDC;
+                let tip;
+                let result = Save(model,dc,"constitution");
+                if (result.save === false) {
+                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " - takes " + total + " Damage and is pushed 10ft back");
+//move token back 10ft, and stop if wall
 
+                } else if (result.save === true) {
+                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " - takes " + Math.round(total/2) + " Damage");                
+                }
+            })
+            target.token.remove();
+            delete ModelArray[targetID];
+            PlaySound("Thunder");
+        }
 
+        if (spellName === "Fog Cloud") {
+            target.token.set("layer","map");
+            delete ModelArray[targetID];
+            outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
+            outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
+            PlaySound("Scan");
+        }
 
+        UseSlot(caster,level);
         PrintCard();
     }
+
+    const SpellSlots = (caster,level) => {
+        if (level === 0) {return true};
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        if (slots === 0) {return false};
+    }
+
+    const UseSlot = (caster,level) => {
+        if (level === 0) {return};
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        slots = Math.max(0,slots - 1);
+        AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
+        outputCard.body.push("[hr]")
+        outputCard.body.push("Level " + level + " Spell Slot Used");
+        if (slots === 0) {
+            outputCard.body.push("No More of that Level");
+        }
+    }
+
+
 
 
 
@@ -1652,10 +1776,17 @@ Move to a function
             return;
         }
         let attID = Tag[2];
-        let level = Tag[3];
+        let level = parseInt(Tag[3]);
 
         let attacker = ModelArray[attID];
         let attPt = new Point(attacker.token.get("left"),attacker.token.get("top"));
+
+        SetupCard(attacker.name,spellName,attacker.displayScheme);
+        if (SpellSlots(attacker,level) === false) {
+            outputCard.body.push("No Available Spell Slots of level " + level);
+            PrintCard();
+            return;
+        }
 
 
         if (spellInfo.cLevel[attacker.casterLevel]) {
@@ -1668,10 +1799,12 @@ Move to a function
 
         let attAdvantage = 0;
 
+
         let attPos = ["Invisible"];
         let attNeg = ["Blind","Frightened","Poison","Restrained"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
+
         //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
         let ids = Object.keys(ModelArray);
         idLoop1:
@@ -1686,40 +1819,29 @@ Move to a function
             if (squares > 1) {
                 continue;
             }
-            attAdvantage = -1;
+            attAdvantage = Math.max(-1,attAdvantage -1);
         }
         for (let i=0;i<attPos.length;i++) {
             if (attMarkers.includes(attPos[i])) {
-                attAdvantage += 1;
+                attAdvantage = Math.min(1,attAdvantage + 1);
                 break;
             }
         }
         for (let i=0;i<attNeg.length;i++) {
             if (attMarkers.includes(attNeg[i])) {
-                attAdvantage -= 1;
+                attAdvantage = Math.max(-1,attAdvantage -1);
                 break;
             }
         }
+
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
-log("Att Adv: " + attAdvantage)
 
-        if (level > 0) {
-            let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
-            if (slots === 0) {
-                SetupCard(attacker.name,spellName,attacker.displayScheme);
-                outputCard.body.push("No Available Spell Slots of level " + level);
-                PrintCard();
-                return;
-            } else {
-                slots--;
-                if (slots === 0) {
-                    outputCard.body.push("No More Level " + level + " Spell Slots");
-                }
-                AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
-            }
-        }
 
-        SetupCard(attacker.name,spellName,attacker.displayScheme);
+
+
+
+
+
 
 
         if (spellInfo.toHit.includes("Direct")) {
@@ -1741,7 +1863,10 @@ log("Att Adv: " + attAdvantage)
                     continue;
                 }
 
-                let defAdvantage = 0;
+                let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
+
+
+                let defAdvantage = (fFire === true) ? 1:0;
                 let defMarkers = Markers(defender.token.get("statusmarkers"));
                 let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
                 let defNeg = ["Invisible","Dodge"];
@@ -1753,11 +1878,11 @@ log("Att Adv: " + attAdvantage)
                 }
                 for (let i=0;i<defNeg.length;i++) {
                     if (defMarkers.includes(defNeg[i])) {
+                        if (defNeg[i] === "Invisible" && fFire === true) {continue};
                         defAdvantage = Math.max(defAdvantage -1,-1);
                         break;
                     }
                 }
-                
                 if (defMarkers.includes("Prone")) {
                     if (distance <= 5) {
                         defAdvantage = Math.min(defAdvantage +1, 1);
@@ -1860,10 +1985,7 @@ log("Final Adv: " + advantage)
 
             }
 
-
-            if (level > 0) {            
-                outputCard.body.push("Level " + level + " Spell Slot Used");
-            }
+            UseSlot(attacker,level);
             PrintCard();
 
 
@@ -1873,27 +1995,6 @@ log("Final Adv: " + advantage)
 
 
         }
-
-
-        if (spellInfo.toHit = "Cone") {
-            let coneTarget = ModelArray[Tag[4]];
-            let distance = Distance2(attacker,coneTarget).distance;
-            if (distance > spellInfo.range) {
-                outputCard.body.push("Target is Out of Range");
-                outputCard.body.push("Distance to Target: " + distance);
-                outputCard.body.push("Spell Range: " + spellInfo.range);
-                PrintCard();
-                return;
-            }
-
-
-
-
-
-
-
-        }
-
 
 
 
@@ -1957,9 +2058,9 @@ log("Final Adv: " + advantage)
             abilArray[a].remove();
         } 
         let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility(spellName,action,charID);
+        AddAbility("Cast " + spellName,action,charID);
 
-        dim = (dim * 70);
+        dim = (dim * 70) / pageInfo.scaleNum;
 
         let newToken = createObj("graphic", {
             left: caster.token.get("left"),
