@@ -911,14 +911,14 @@ log("pN: " + playerName)
         "Sleep": {
             level: 1,
             range: 90,
-            aoe: "Square, Target",
-            radius: 20,
         },
         "Entangle": {
             level: 1,
             range: 90,
-            aoe: "Square, Target",
-            radius: 10,
+        },
+        "Faerie Fire": {
+            level: 1,
+            range: 60,
         }
 
 
@@ -1014,7 +1014,6 @@ log("pN: " + playerName)
         let distance2 = Distance2(attacker,defender);
         let distance = distance2.distance;
         let squares = distance2.squares;
-log(distance2)
 
         if (squares === 1) {
             adjacent = true;
@@ -1134,7 +1133,9 @@ log(distance2)
         }
 log("Att Adv: " + attAdvantage)
 
-        let defAdvantage = 0;
+        let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
+
+        let defAdvantage = (fFire === true) ? 1:0;
         let defMarkers = Markers(defender.token.get("statusmarkers"));
         let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
         let defNeg = ["Invisible","Dodge"];
@@ -1153,6 +1154,7 @@ log("Att Adv: " + attAdvantage)
         }
         for (let i=0;i<defNeg.length;i++) {
             if (defMarkers.includes(defNeg[i])) {
+                if (defNeg[i] === "Invisible" && fFire === true) {continue};
                 defAdvantage = Math.max(defAdvantage -1,-1);
                 break;
             }
@@ -1437,12 +1439,19 @@ log(defender.vulnerabilities)
 
         if (spellName === "Entangle") {
             let charID = "-OeJFbyJkH36zRywNsEm";
-            let img = getCleanImgSrc("https://files.d20.io/images/464578901/D1EUYw27F9AmDgXE880VEQ/thumb.png?1763423726");
+            let img = getCleanImgSrc("https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837");
             let target = SpellTarget(caster,"Entangle",level,charID,img,4);
             outputCard.body.push("Place Target and then Use Macro to Cast");
             PrintCard();
         }
-
+        
+        if (spellName === "Faerie Fire") {
+            let charID = "-OeJf7QNTBO0lqtOd6Ac";
+            let img = getCleanImgSrc("https://files.d20.io/images/464592488/Ol6oEZ2kLqqfV-fEBHrq5Q/thumb.png");
+            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,4);
+            outputCard.body.push("Place Target and then Use Macro to Cast");
+            PrintCard();
+        }
 
         
 
@@ -1558,6 +1567,36 @@ Move to a function
             PlaySound("Entangle");
         }
 
+        if (spellName === "Faerie Fire") {
+            let possibles = AOEArray(target,"Square");
+            _.each(possibles,model => {
+                let dc = caster.spellDC;
+                let tip;
+                let result = Save(model,dc,"dexterity");
+                if (result.save === false) {
+                    model.token.set({
+                        aura1_radius: 1,
+                        aura1_color: "#ff00ff",
+                        showplayers_aura1: true,
+                    })
+                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip + " and is outlined by Faerie Fire");
+                } else if (result.save === true) {
+                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
+                    outputCard.body.push(model.name + " " + tip);                
+                }
+            })
+            target.token.remove();
+            delete ModelArray[targetID];
+            outputCard.body.push("[hr]");
+            outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
+
+
+            PlaySound("Entangle");
+
+
+
+        }
 
 
 
@@ -1602,10 +1641,12 @@ Move to a function
 
         let attAdvantage = 0;
 
+
         let attPos = ["Invisible"];
         let attNeg = ["Blind","Frightened","Poison","Restrained"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
+
         //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
         let ids = Object.keys(ModelArray);
         idLoop1:
@@ -1620,22 +1661,22 @@ Move to a function
             if (squares > 1) {
                 continue;
             }
-            attAdvantage = -1;
+            attAdvantage = Math.max(-1,attAdvantage -1);
         }
         for (let i=0;i<attPos.length;i++) {
             if (attMarkers.includes(attPos[i])) {
-                attAdvantage += 1;
+                attAdvantage = Math.min(1,attAdvantage + 1);
                 break;
             }
         }
         for (let i=0;i<attNeg.length;i++) {
             if (attMarkers.includes(attNeg[i])) {
-                attAdvantage -= 1;
+                attAdvantage = Math.max(-1,attAdvantage -1);
                 break;
             }
         }
+
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
-log("Att Adv: " + attAdvantage)
 
         if (level > 0) {
             let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
@@ -1675,7 +1716,10 @@ log("Att Adv: " + attAdvantage)
                     continue;
                 }
 
-                let defAdvantage = 0;
+                let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
+
+
+                let defAdvantage = (fFire === true) ? 1:0;
                 let defMarkers = Markers(defender.token.get("statusmarkers"));
                 let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
                 let defNeg = ["Invisible","Dodge"];
@@ -1687,11 +1731,11 @@ log("Att Adv: " + attAdvantage)
                 }
                 for (let i=0;i<defNeg.length;i++) {
                     if (defMarkers.includes(defNeg[i])) {
+                        if (defNeg[i] === "Invisible" && fFire === true) {continue};
                         defAdvantage = Math.max(defAdvantage -1,-1);
                         break;
                     }
                 }
-                
                 if (defMarkers.includes("Prone")) {
                     if (distance <= 5) {
                         defAdvantage = Math.min(defAdvantage +1, 1);
