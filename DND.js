@@ -362,6 +362,7 @@ log(this.name)
 
             this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
 
+            this.class = (aa.class || " ").toLowerCase();
 
 
 
@@ -792,15 +793,13 @@ log(outputCard.side)
         let Tag = msg.content.split(";");
         let attID = Tag[1];
         let defID = Tag[2];
-        let level = parseInt(Tag[3]);
-        let critical = Tag[4];
+        let critical = parseInt(Tag[3]) === 1 ? true:false;
+        let level = parseInt(Tag[4]);
         let sub = (critical === "Yes") ? "Divine Smite Critical": "Divine Smite";
-        //!Smite;@{selected|token_id};@{target|token_id};?{Spell Level|1|2|3};?{Critical Hit|Yes|No}
 
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID]; 
 
-        let valid = false;
         let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
         if (slots === 0) {
             SetupCard(attacker.name,sub,attacker.displayScheme);
@@ -861,7 +860,7 @@ log(outputCard.side)
         if (slots === 0) {outputCard.body.push("[None Left]")};
 
         spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
-
+        PlaySound("Smite");
         PrintCard();
     }
 
@@ -1091,12 +1090,10 @@ log(outputCard.side)
         }
         weapon.info = "Weapon, " + magicInfo;
 
-        let adjacent = false;
+        let inReach = false;
 
-        let distance2 = Distance2(attacker,defender);
-        let distance = distance2.distance;
-        let squares = distance2.squares;
-log(distance2)
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
 
         if (squares === 1) {
             inReach = true;
@@ -1288,6 +1285,41 @@ log(weapon)
             } else {
                 spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
             }
+
+            if (attacker.class.includes("paladin") && inReach === true) {
+                //add option of smite if has spell slots
+                let c = (crit === true) ? 1:0
+                let line = "!Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
+                let levels = [];
+                for (let level = 1;level < 6;level++) {
+                    if (SpellSlots(attacker,level) === true) {
+                        levels.push(level);
+                    }
+                }
+            
+                if (levels.length === 1) {
+                    line += levels[0];
+                } else {
+                    line += "?{Level";
+                    _.each(levels,level => {
+                        line += "|" + level;
+                    });
+                    line += "}"
+                }
+                if (levels.length > 0) {
+                    ButtonInfo("Smite!",line);
+                }
+            }
+
+
+
+
+
+
+
+
+
+
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -1346,7 +1378,7 @@ log(weapon)
                 if (crit === true) {
                     dice *= 2;
                 }                
-                text.push(info.num + "d" + info.type);
+                text.push(dice + "d" + info.type);
                 for (let d=0;d<dice;d++) {
                     let roll = randomInteger(info.type);
                     rolls.push(roll);
@@ -1740,6 +1772,7 @@ log(defender.vulnerabilities)
         if (level === 0) {return true};
         let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
         if (slots === 0) {return false};
+        return true;
     }
 
     const UseSlot = (caster,level) => {
