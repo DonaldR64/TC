@@ -1025,6 +1025,10 @@ log(outputCard.side)
             level: 1,
             range: 120,
         },
+        "Burning Hands": {
+            level: 1,
+            range: 15,
+        },
 
 
 
@@ -1623,9 +1627,9 @@ log(defender.vulnerabilities)
         }
         
         if (spellName === "Burning Hands") {
-            let charID = '-OeO1brn6UTZcSKyZmKE';
-            let img = getCleanImgSrc("");
-            let target = SpellTarget(caster,"Burning Hands",1,charID,img,15);
+            let charID = '-Oe8qdnMHHQEe4fSqqhm';
+            let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
+            let target = SpellTarget(caster,"Burning Hands",1,charID,img,5);
             outputCard.body.push("Move Target and then Use Macro to Cast");
             PrintCard();
         }
@@ -1790,6 +1794,23 @@ log(defender.vulnerabilities)
             outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
             PlaySound("Scan");
         }
+
+        if (spellName === "Burning Hands") {
+            
+
+
+
+
+        }
+
+
+
+
+
+
+
+
+
 
         UseSlot(caster,level);
         PrintCard();
