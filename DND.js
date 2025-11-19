@@ -381,7 +381,6 @@ const Cone = (caster,target,length) => {
     })
 
     array = array.sort((a,b) => a.dist - b.dist);
-log(array)
     //thin to 1 at d 1, 2 at d2 etc
     //skip if no creature so maximize targets caught
 
@@ -1916,7 +1915,30 @@ log(defender.vulnerabilities)
         }
 
         if (spellName === "Burning Hands") {
+            let targetIndexes = Cone(caster,target,15);
+            let dice = 3 + (level -1);
+            let rolls = [];
+            let total = 0;
+            for (let i=0;i<dice;i++) {
+                let roll = randomInteger(6);
+                rolls.push(roll);
+                total += roll;
+            }
 
+
+            _.each(targetIndexes,index => {
+                let tokenIDs = MapArray[index].tokenIDs;
+                _.each(tokenIDs,tokenID => {
+                    let model = ModelArray[tokenID];
+                    
+
+
+                })
+
+
+
+
+            })
 
 
 
