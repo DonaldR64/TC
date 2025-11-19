@@ -367,7 +367,6 @@ log(this.name)
 
 
             let control = char.get("controlledby");
-log("C: " + control)
             let playerName;
             if (control) {
                 playerName = playerCodes[control.split(",")[0]];
@@ -379,7 +378,6 @@ if (this.name === "Eivirin" || this.name.includes("Ratatoskr")) {
 }
 
 
-log("pN: " + playerName)
             let dim = Math.max(token.get("width"),token.get("height"));
             dim = Math.round(dim/70);
             this.size = dim;
@@ -428,11 +426,9 @@ log("pN: " + playerName)
 
             this.squares = ModelSquares(this);
 
-
             _.each(this.squares,square => {
                 MapArray[square].tokenIDs.push(this.id);
             })
-
 
 
             ModelArray[token.id] = this;
@@ -449,10 +445,43 @@ log("pN: " + playerName)
             return dist;
         }
 
+        Destroy () {
+            let token = this.token;
+            _.each(this.squares, square => {
+                let index = MapArray[square].tokenIDs.indexOf(this.id);
+                if (index > -1) {
+                    MapArray[square].tokenIDs.splice(index,1);
+                }
+            })
+            if (token) {
+                token.remove();
+            }
+            delete ModelArray[this.id];
+        }
+
 
     }
 
+
     const ModelSquares = (model) => {
+        let indexes = [];
+        let c = new Point(model.token.get("left"),model.token.get("top"));
+        let w = model.token.get("width");
+        let h = model.token.get("height");
+        //define corners, pull in to be centres
+        let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
+        let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
+        for (let x = tL.x;x<= bR.x;x += 70) {
+            for (let y = tL.y;y <= bR.y; y += 70) {
+                let index = (new Point(x,y)).toIndex();
+                indexes.push(index);
+            }
+        }
+        return indexes;
+    }
+
+
+    const ModelSquares2 = (model) => {
         let c = new Point(model.token.get("left"),model.token.get("top"));
         let centrePts = [];
         let squares = [];
@@ -1615,7 +1644,9 @@ log(defender.vulnerabilities)
         let caster = ModelArray[casterID];
         SetupCard(caster.name,spellName,caster.displayScheme);
         let spellInfo = SpellInfo[spellName];
-        let spellDist = Distance2(caster,target).distance;
+        let squares = caster.Distance(target);
+        let spellDist = squares * pageInfo.scaleNum;
+
         if (spellDist > spellInfo.range) {
             outputCard.body.push("Out of Range of Spell");
             PrintCard();
@@ -1624,7 +1655,7 @@ log(defender.vulnerabilities)
 
         if (spellName === "Sleep") {
             //models within 20 ft of centre
-            let possibles = AOEArray(target,"Square")
+            let possibles = AOETargets(target);
             possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
             let dice = 5 + ((level -1) * 2);
             //5d8 hp. +2d8 for spell level > 1
@@ -1663,18 +1694,12 @@ log(defender.vulnerabilities)
                     "status_KO::2006544": true,
                 })
             }
-            target.token.remove();
-            delete ModelArray[targetID];
+            target.Destroy();
             PlaySound("Sleep");
-
-
-
-
-
         }
 
         if (spellName === "Entangle") {
-            let possibles = AOEArray(target,"Square");
+            let possibles = AOETargets(target);
             _.each(possibles,model => {
                 let dc = caster.spellDC;
                 let tip;
@@ -1691,16 +1716,14 @@ log(defender.vulnerabilities)
                 }
             })
             target.token.set("layer","map");
-            delete ModelArray[targetID];
+            delete ModelArray[targetID]; //leave target token as marks the ground
             outputCard.body.push("[hr]");
             outputCard.body.push("The Area remains Difficult Ground for 1 min or until Concentration ends");
-
-
             PlaySound("Entangle");
         }
 
         if (spellName === "Faerie Fire") {
-            let possibles = AOEArray(target,"Square");
+            let possibles = AOETargets(target);
             _.each(possibles,model => {
                 let dc = caster.spellDC;
                 let tip;
@@ -1718,15 +1741,14 @@ log(defender.vulnerabilities)
                     outputCard.body.push(model.name + " " + tip);                
                 }
             })
-            target.token.remove();
-            delete ModelArray[targetID];
+            target.Destroy();
             outputCard.body.push("[hr]");
             outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
             PlaySound("Scan");
         }
 
         if (spellName === "Thunderwave") {
-            let possibles = AOEArray(target,"Square");
+            let possibles = AOETargets(target);
             let dice = 2 + (level -1);
             let total = 0;
             let rolls = [];
@@ -1754,14 +1776,13 @@ log(defender.vulnerabilities)
                     outputCard.body.push(model.name + " " + tip + " - takes " + Math.round(total/2) + " Damage");                
                 }
             })
-            target.token.remove();
-            delete ModelArray[targetID];
+            target.Destroy();
             PlaySound("Thunder");
         }
 
         if (spellName === "Fog Cloud") {
             target.token.set("layer","map");
-            delete ModelArray[targetID];
+            delete ModelArray[targetID]; //leave token
             outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
             outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
             PlaySound("Scan");
@@ -2033,6 +2054,7 @@ log("Final Adv: " + advantage)
         let token = model.token;
         SetupCard(model.name,"","NPC");
         let s = model.squares.length === 1 ? "":"s";
+        log(model.squares)
         outputCard.body.push("Square" + s + ": " + model.squares.toString());
         outputCard.body.push("Size: " + model.size)
         PrintCard();
@@ -2050,6 +2072,46 @@ log("Final Adv: " + advantage)
             istokenaction: true,
         })
     }    
+
+    const AOETargets = (target) => {
+        let temp = [];
+        _.each(target.squares,square => {
+            let ids = MapArray[square].tokenIDs;
+            _.each(ids,id => {
+                if (id !== target.id) {
+                    temp.push(id);
+                }
+            })
+        })
+        temp = [...new Set(temp)];
+        let array = [];
+        _.each(temp,id => {
+            let model = ModelArray[id];
+log(model.name)
+            array.push(model);
+        })
+        return array;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     const AOEArray = (target,shape,radius) => {
         //create an array of tokens under the token's area
@@ -2173,8 +2235,9 @@ log("Final Adv: " + advantage)
 
     const destroyGraphic = (obj) => {
         log("Destroy " + obj.get("name"))
-        if (ModelArray[obj.get("id")]) {
-            delete ModelArray[obj.get("id")];
+        let model = ModelArray[obj.get("id")];
+        if (model) {
+            model.Destroy();
         }
     }
 
