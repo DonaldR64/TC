@@ -363,22 +363,42 @@ const Cone = (start,end,length) => {
         let line = Line(start,endLine[i]);
         for (j=0;j<line.length;j++) {
             let index = line[j];
-            let dist = MapArray[start].distance(MapArray[index]);
-            if (dist > sqL) {continue};
-            AI.push({
+            if (index !== start) {AI.push(index)};
+        }
+    }
+    AI = [...new Set(AI)]; //elim duplicates
+    let array = [];
+    _.each(AI,index => {
+        let dist = MapArray[start].distance(MapArray[index]);
+        if (dist <= sqL) {
+            array.push({
                 index: index,
                 dist: dist,
             })
         }
+    })
+
+    array = array.sort((a,b) => a.dist - b.dist);
+
+    //thin to 1 at d 1, 2 at d2 etc
+//in practice, when thinning, give preference to squares with creatures
+//so skip if no creature, 
+
+    thinnedArray = [];
+    loop1:
+    for (let i=1;i<= sqL; i++) {
+        let counter = 0;
+        for (let j=0;j<array.length;j++) {
+            let e = array[j];
+            if (e.dist === i) {
+                thinnedArray.push(e.index);
+                counter++;
+                if (counter >= i) {continue loop1};
+            };
+        }
     }
-    AI.sort((a,b) => a - b); //sort farthest to closest
 
-    
-
-
-
-    
-    return AI;
+    return thinnedArray;
 }
 
 const TestCone = (msg) => {
@@ -390,8 +410,7 @@ const TestCone = (msg) => {
     let index1 = model1.squares[0];
     let index2 = model2.squares[0];
     let cone = Cone(index1,index2,15);
-    let i1 = cone.indexOf(index1);
-    cone.splice(i1,1);
+
     SetupCard("Test Cone","","NPC");
     _.each(cone,index => {
         let pt = MapArray[index].centre;
