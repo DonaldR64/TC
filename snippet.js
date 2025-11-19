@@ -1,55 +1,128 @@
-const EndLine = (start,end,length) => {
-    //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
-    let distance = ((length/2) / pageInfo.scaleNum) * 70;
-    let p0 = MapArray[start].centre;
-    let p1 = MapArray[end].centre;
-    //for cones, width = length
-    let m0 = (p1.y - p0.y)/(p1.x - p0.x);
-    let p2,p3;
+const RollDamage = (damageInfo,crit) => {
+        //spellinfo if a spell, weaponinfo if a weapon
+        //eg 1d8+1d6+3 or even 3
+        let base = damageInfo.base.split("+");
+        let comp = [];
+        _.each(base,e => {
+            e = e.split("d");
+            n = parseInt(e[0]) || 1;
+            if (e[1]) {
+                t = parseInt(e[1]);
+            } else {
+                t = 0;
+            }
+            info = {
+                num: n,
+                type: t,
+            }
+            comp.push(info);
+        })
 
+        let rolls = [];
+        let bonus = 0;
+        let total = 0;
+        let text = [];
 
-    if (m0 === 0) {
-        //line is horizontal, so perp is vertical
-        p2 = new Point(p0.x,p0.y + distance);
-        p3 = new Point(p0.x,p0.y - distance);
-    } else {
-        let m1 = -1/m0;
-        let b1 = p1.y - (m1 * p1.x);
-        p2 = findPointOnLine(p1,m1,b1,distance,1);
-        p3 = findPointOnLine(p1,m1,b1,distance,-1);
-    }
-
-    let index2 = p2.toIndex();
-    let index3 = p3.toIndex();
-
-    let line = Line(index2,index3);
-
-    return line;
-}
-
-const findPointOnLine = (point,m,b,distance,direction) => {
-    let magnitude = Math.sqrt(1+m*m);
-    let deltaX = direction * (distance / magnitude);
-    let deltaY = direction * (m * distance / magnitude);
-    let pt = new Point(point.x + deltaX,point.y + deltaY);
-    return pt;
-}
-
-const Cone = (start,end,length) => {
-    //length is in feet
-    let sqL = length / pageInfo.scaleNum;
-    let endLine = EndLine(start,end,length);
-    let areaIndexes = [];
-    for (let i=0;i<endLine.length;i++) {
-        let line = Line(start,endLine(i));
-        for (j=0;j<line.length;j++) {
-            let index = line[j];
-            let dist = MapArray[start].distance(MapArray[index]);
-            if (dist <= sqL) {
-                areaIndexes.push(index);
+        for (let i=0;i<comp.length;i++) {
+            let info = comp[i];
+            if (info.type === 0) {
+                bonus += info.num;
+            } else {
+                let dice = info.num;
+                if (crit === true) {
+                    dice *= 2;
+                }                
+                text.push(dice + "d" + info.type);
+                for (let d=0;d<dice;d++) {
+                    let roll = randomInteger(info.type);
+                    rolls.push(roll);
+                    total += roll;
+                }
             }
         }
-    }
-    areaIndexes = [...new Set(areaIndexes)];
-    return areaIndexes;
+
+
+        total += bonus;
+        let result = {
+            rolls: rolls,
+            bonus: bonus,
+            diceText: text,
+            total: total,
+        }
+
+//? just return the output with tip ?
+
+        return result;
 }
+
+const ApplyDamage = (damageInfo,defender,damage) => {
+        let immune = false, vulnerable = false, resistant = false;
+        if (defender.immunities.includes(damageInfo.damageType)) {
+            if (damageInfo.info.includes("Weapon")) {
+                immune = true;
+                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                    immune = false;
+                }
+                if (defender.immunities.includes("silver") && damageInfo.info.includes("Silver")) {
+                    immune = false;
+                }
+            }
+            if (damageInfo.info.includes("Spell")) {
+                immune = true;
+            }
+        }
+        if (defender.resistances.includes(damageInfo.damageType)) {
+            if (damageInfo.info.includes("Weapon")) {
+                resistant = true;
+                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                    resistant = false;
+                }
+                if (defender.resistances.includes("silver") && damageInfo.info.includes("Silver")) {
+                    resistant = false;
+                }
+            }
+            if (damageInfo.info.includes("Spell")) {
+                resistant = true;
+            }
+        }
+        if (defender.vulnerabilities.includes(damageInfo.damageType)) {
+            vulnerable = true;
+        }
+
+        if (immune === true) {
+            total = 0;
+            note = "Immune to " + damageInfo.damageType;
+        } else if (resistant === true) {
+            total = Math.round(total/2);
+            note = "Resistant to " + damageInfo.damageType + " = Half";
+        } else if (vulnerable === true) {
+            total *= 2;
+            note = "Vulnerable to " +  damageInfo.damageType + " = Double";
+        }
+
+        text = text.toString();
+        text = text.replace(","," + ");
+        text += " + " + bonus;
+
+
+//move saves into here also
+
+//? just return the output with tip ?
+
+
+
+
+        let result = {
+            rolls: rolls,
+            bonus: bonus,
+            total: total,
+            text: text,
+            note: note,
+        }
+        return result;
+
+
+
+
+
+} 

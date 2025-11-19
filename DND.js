@@ -359,6 +359,7 @@ const Cone = (caster,target,length) => {
     let end = target.squares[0];
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
+    let midLine = Line(start,end);
     let endLine = EndLine(start,end,length);
     let AI = [];
     for (let i=0;i<endLine.length;i++) {
@@ -369,54 +370,49 @@ const Cone = (caster,target,length) => {
         }
     }
     AI = [...new Set(AI)]; //elim duplicates
-    let array = [];
+    let array = {};
     _.each(AI,index => {
-        let dist = MapArray[start].distance(MapArray[index]);
-        if (dist <= sqL) {
-            array.push({
+        let dist1 = parseInt(MapArray[start].distance(MapArray[index]));
+        if (dist1 <= sqL) {
+            let dist2 = MapArray[midLine[dist1 - 1]];
+            let info = {
                 index: index,
-                dist: dist,
-            })
+                midDist: dist2,
+            }
+            if (array[dist1]) {
+                array[dist1].push(info);
+            } else {
+                array[dist1] = [info];
+            }
         }
     })
-
-    array = array.sort((a,b) => a.dist - b.dist);
-    //thin to 1 at d 1, 2 at d2 etc
+    _.each(array,line => {
+        line.sort((a,b) => a.midDist - b.midDist);
+    })
+    //will be an array of objects based on distance from caster 1st and distance from midline 2nd
+    //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
     //skip if no creature so maximize targets caught
-
-    thinnedArray = [];
+    targetArray = [];
     loop1:
     for (let i=1;i <= sqL; i++) {
         let counter = 0;
-        for (let j=0;j<array.length;j++) {
-            let e = array[j];
-            let tIDs = MapArray[e.index].tokenIDs;
-            if (e.dist === i && tIDs.length > 0) {
-                if (tIDs.length === 1 && tIDs[0] === target.id) {continue};
-                thinnedArray.push(e.index);
-                counter++;
+        let line = array[i];
+        for (let j=0;j<line.length;j++) {
+            let square = MapArray[line[j].index];
+            if (square.tokenIDs.length === 0) {continue};
+            if (square.tokenIDs.length === 1 && square.tokenIDs[0] === target.id) {continue};
+            for (let k=0;k<square.tokenIDs.length;k++) {
+                let model = ModelArray[square.tokenIDs[k]];
+                if (model) {
+                    counter ++;
+                    targetArray.push(model);
+                }
                 if (counter >= i) {continue loop1};
-            };
+            }
         }
     }
 
-    return thinnedArray;
-}
-
-const TestCone = (msg) => {
-    let Tag = msg.content.split(";");
-    let id1 = Tag[1];
-    let id2 = Tag[2];
-    let model1 = ModelArray[id1];
-    let model2 = ModelArray[id2];
-    let cone = Cone(model1,model2,15);
-
-    SetupCard("Test Cone","","NPC");
-    _.each(cone,index => {
-        let pt = MapArray[index].centre;
-        spawnFx(pt.x,pt.y, "burn-fire",model1.token.get("_pageid"));
-    })
-    PrintCard();
+    return targetArray;
 }
 
     class Point {
@@ -1100,9 +1096,6 @@ log(outputCard.side)
         "Burning Hands": {
             level: 1,
             range: 15,
-            base: '3d6',
-            cLevel: {},
-            sLevel: ['4d6','5d6','6d6','7d6'],
             damageType: "fire",
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
@@ -1143,10 +1136,6 @@ log(outputCard.side)
         "Fog Cloud": {
             level: 1,
             range: 120,
-        },
-        "Burning Hands": {
-            level: 1,
-            range: 15,
         },
 
 
@@ -1915,32 +1904,21 @@ log(defender.vulnerabilities)
         }
 
         if (spellName === "Burning Hands") {
-            let targetIndexes = Cone(caster,target,15);
-            let dice = 3 + (level -1);
-            let rolls = [];
-            let total = 0;
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(6);
-                rolls.push(roll);
-                total += roll;
-            }
+            let targets = Cone(caster,target,15);
+            //Roll Damage Routine here
 
+            spawnFxBetweenPoints(new Point(caster.token.get("left"),caster.token.get("top")), new Point(target.token.get("left"),target.token.get("top")), "breath-fire");
 
-            _.each(targetIndexes,index => {
-                let tokenIDs = MapArray[index].tokenIDs;
-                _.each(tokenIDs,tokenID => {
-                    let model = ModelArray[tokenID];
-                    
-
-
-                })
-
-
+            _.each(targets, model => {
+                //damage routine
+    log(model.name)
+    model.token.set("status_red",true);
 
 
             })
 
-
+            target.Destroy();
+            PlaySound("Inferno")
 
 
         }
@@ -1954,7 +1932,7 @@ log(defender.vulnerabilities)
 
 
 
-        UseSlot(caster,level);
+        //UseSlot(caster,level);
         PrintCard();
     }
 
@@ -2520,9 +2498,7 @@ log(model.name)
             case '!TokenInfo':
                 TokenInfo(msg);
                 break;
-            case '!TestCone':
-                TestCone(msg);
-                break;
+
 
 //Saves
 
