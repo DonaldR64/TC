@@ -295,7 +295,7 @@ const Line = (index1,index2) => {
 const diagonal_distance = (p0,p1) => {
     let dx = p1.x - p0.x, dy = p1.y - p0.y;
     let dist = Math.max(Math.abs(dx), Math.abs(dy));
-    return Math.round(dist/35);
+    return Math.round(dist/70);
 }
 
 const round_point = (p) => {
@@ -315,7 +315,7 @@ const lerp = (start, end, t) => {
 const EndLine = (start,end,length) => {
     //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
     let sqL = Math.round(((length/pageInfo.scaleNum) - 1)/2);
-    let distance = sqL * 70;
+    let distance = sqL * 100; //larger than 70 to account for odd behaviour of 5e on angles
     let p0 = MapArray[start].centre;
     let p1 = MapArray[end].centre;
     let index2,index3;
@@ -359,7 +359,7 @@ const Cone = (caster,target,length) => {
     let end = target.squares[0];
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
-    let midLine = Line(start,end);
+    let midLine = Line(start,end)
     let endLine = EndLine(start,end,length);
     let AI = [];
     for (let i=0;i<endLine.length;i++) {
@@ -374,7 +374,7 @@ const Cone = (caster,target,length) => {
     _.each(AI,index => {
         let dist1 = parseInt(MapArray[start].distance(MapArray[index]));
         if (dist1 <= sqL) {
-            let dist2 = MapArray[midLine[dist1 - 1]];
+            let dist2 = parseInt(MapArray[midLine[dist1]].distance(MapArray[index]));
             let info = {
                 index: index,
                 midDist: dist2,
@@ -389,6 +389,9 @@ const Cone = (caster,target,length) => {
     _.each(array,line => {
         line.sort((a,b) => a.midDist - b.midDist);
     })
+log(midLine)
+log(array)
+
     //will be an array of objects based on distance from caster 1st and distance from midline 2nd
     //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
     //skip if no creature so maximize targets caught
@@ -398,11 +401,13 @@ const Cone = (caster,target,length) => {
         let counter = 0;
         let line = array[i];
         for (let j=0;j<line.length;j++) {
-            let square = MapArray[line[j].index];
-            if (square.tokenIDs.length === 0) {continue};
-            if (square.tokenIDs.length === 1 && square.tokenIDs[0] === target.id) {continue};
-            for (let k=0;k<square.tokenIDs.length;k++) {
-                let model = ModelArray[square.tokenIDs[k]];
+            let ids = DeepCopy(MapArray[line[j].index].tokenIDs);
+log(line[j].index)
+log(ids)
+            if (ids.length === 0) {continue};
+            if (ids.length === 1 && ids[0] === target.id) {continue};
+            for (let k=0;k<ids.length;k++) {
+                let model = ModelArray[ids[k]];
                 if (model) {
                     counter ++;
                     targetArray.push(model);
@@ -1738,7 +1743,7 @@ log(defender.vulnerabilities)
             let charID = '-Oe8qdnMHHQEe4fSqqhm';
             let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
             let target = SpellTarget(caster,"Burning Hands",1,charID,img,5);
-            outputCard.body.push("Move Target and then Use Macro to Cast");
+            outputCard.body.push("Move Target to 15ft and Centre of Cone, and then Use Macro to Cast");
             PrintCard();
         }
 
@@ -2412,7 +2417,7 @@ log(model.name)
 
     const changeGraphic = (tok,prev) => {
         let model = ModelArray[tok.id];
-        if (model) {
+        if (model && (tok.get("left") !== prev.left || tok.get("top") !== prev.top)) {
             _.each(model.squares,square => {
                 let index = MapArray[square].tokenIDs.indexOf(tok.id);
                 if (index > -1) {
