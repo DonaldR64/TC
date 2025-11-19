@@ -2188,13 +2188,36 @@ log(model.name)
         let saved = false;
         let bonus = model.saveBonus[stat];
         let saveRoll = randomInteger(20);
+        let saveRoll1,saveRoll2;
+        let sm = Markers(model.token.get("statusmarkers"));
+        let inc = ["Paralyzed","Stunned","Unconscious"];
+
+        if (stat === "strength" || stat === "dexterity") {
+            _.each(inc,c => {
+                if (sm.includes(c)) {
+                    saveRoll === 1;
+                    extra = " [" + c + "]";
+                }
+            })
+        }
+
+
+
+        if (sm.includes("Restrained") && stat === "dexterity") {
+            saveRoll2 = randomInteger(20);
+            saveRoll1 = saveRoll;
+            saveRoll = Math.min(saveRoll1,saveRoll2);
+            extra = " [Restrained - " + saveRoll1 + "/" + saveRoll2 + "]"
+        }
+
+
         let saveTotal = Math.max(saveRoll + bonus,1);
         if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
             saved = true;
         } 
 
         let saveTip = "Save: " + saveTotal + " vs. DC " + dc;
-        saveTip += "<br>Roll: " + saveRoll + " + " + bonus;
+        saveTip += "<br>Roll: " + saveRoll + " + " + bonus + extra;
         
         let result = {
             save: saved,
