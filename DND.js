@@ -255,13 +255,13 @@ const Strahd = (() => {
         let rollText,bonusText,roll;
         if (advantage > 0) {
             roll = Math.max(roll1,roll2);
-            rollText = roll1 + " / " + roll2 + " [Advantage]";
+            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Advantage]";
         } else if (advantage < 0) {
             roll = Math.min(roll1,roll2);
-            rollText = roll1 + " / " + roll2 + " [Disadvantage]";
+            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Disadvantage]";
         } else {
             roll = roll1;
-            rollText = roll;
+            rollText ="Roll: " + roll;
         }
         let result = {
             roll: roll,
@@ -1072,52 +1072,59 @@ log(outputCard.side)
     const SpellInfo = {
 
         "Ray of Frost": {
+            cat: "Spell",
             level: 0,
             range: 60,
+            auto: false,
             base: '1d8',
             cLevel: {5: '2d8', 11: '3d8'},
             sLevel: 0,
             damageType: "cold",
             savingThrow: "No",
             saveEffect: "",
-            toHit: "Direct",
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
             fx: "missile-frost",
         },
         "Acid Splash": {
+            cat: "Spell",
             level: 0,
             range: 60,
+            auto: false,
             base: '1d6',
             cLevel: {5: '2d6', 11: '3d6'},
             sLevel: 0,
             damageType: "acid",
             savingThrow: "dexterity",
             saveEffect: "No Damage",
-            toHit: "Direct",
             note: "",
             sound: "",
         },
         "Burning Hands": {
+            cat: "Spell",
             level: 1,
             range: 15,
+            auto: true,
+            base: '3d6',
+            cLevel: {},
+            sLevel: ['3d6',"4d6","5d6","6d6","7d6","8d6"],
             damageType: "fire",
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
-            toHit: "Cone",
             note: "",
             sound: "Inferno",
         },
         "Magic Missile": {
+            cat: "Spell",
             level: 1,
             range: 120,
+            auto: true,
             base: '1d4+1',
             cLevel: {},
             sLevel: 0,
             damageType: "force",
             savingThrow: "No",
             saveEffect: "",
-            toHit: "Direct Auto",
             note: "",
             sound: "Splinter2",
             fx: "missile-magic",
@@ -1150,6 +1157,7 @@ log(outputCard.side)
 
     const WeaponInfo = {
         Longsword: {
+            cat: "Weapon",
             base: '1d8',
             properties: "Versatile",
             damageType: "slashing",
@@ -1159,6 +1167,7 @@ log(outputCard.side)
             sound: "Sword",
         },
         Dagger: {
+            cat: "Weapon",
             base: '1d4',
             properties: "Finesse, Thrown",
             damageType: "slashing",
@@ -1168,6 +1177,7 @@ log(outputCard.side)
             sound: "Club",
         },
         Acornbringer: {
+            cat: "Weapon",
             base: '1d1',
             properties: "Finesse",
             damageType: "piercing",
@@ -1177,6 +1187,7 @@ log(outputCard.side)
             sound: "Sword",
         },
         'Quarterstaff (2H)': {
+            cat: "Weapon",
             base: '1d8',
             properties: "",
             damageType: "bludgeoning",
@@ -1186,6 +1197,7 @@ log(outputCard.side)
             sound: "Staff",
         },
         'Scimitar': {
+            cat: "Weapon",
             base: "1d6",
             properties: "Finesse",
             damageType: "slashing",
@@ -1230,7 +1242,7 @@ log(outputCard.side)
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
-        weapon.info = "Weapon, " + magicInfo;
+        weapon.magicInfo = magicInfo;
 
         let inReach = false;
 
@@ -1399,7 +1411,7 @@ log("Final Adv: " + advantage)
             crit = true;
         }
 
-        tip = "1d20 + " + attackBonus + " = " + result.rollText + " + " + attackBonus;
+        tip = result.rollText + " + " + attackBonus;
         tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
         if (result.roll >= weapon.critOn) {
             crit = true;
@@ -1412,16 +1424,20 @@ log("Final Adv: " + advantage)
         if ((total >= defender.ac && result.roll !== 1) || crit === true) {
             outputCard.body.push("[B]Hit![/b]")
 log(weapon)
-            let damage = Damage(weapon,crit,defender);
-            tip = damage.text + " = [" + damage.rolls.toString() + "]"
-            if (damage.bonus !== 0) {
-                tip += " + " + damage.bonus;
+            let rollResults = RollDamage(weapon,crit,attacker);
+            let damageResults = ApplyDamage(weapon,attacker,defender,rollResults);
+            let add = "";
+            if (rollResults.bonus > 0) {
+                add = "+" + rollResults.bonus;
             }
-            if (damage.note !== "") {
-                tip += "<br>" + damage.note;
+            if (rollResults.bonus < 0) {
+                add = rollResults.bonus;
             }
-            let totalDamage = damage.total;
-            tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
+            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
+            if (damageResults.note !== "") {
+                tip += "<br>" + damageResults.note;
+            }
+            tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
             outputCard.body.push("Damage: " + tip);
             if (crit === true) {
                 spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
@@ -1483,13 +1499,24 @@ log(weapon)
 
     }
 
-
-
-    const Damage = (damageInfo,crit,defender) => {
+    const RollDamage = (damageInfo,crit,attacker,level) => {
         //spellinfo if a spell, weaponinfo if a weapon
-        //1d8+1d6+3
-        //3
-        let base = damageInfo.base.split("+");
+        //eg 1d8+1d6+3 or even 3
+        let base = damageInfo.base;
+        if (damageInfo.cat === "Spell") {
+            //some spells do higher damage based on caster level or on spell level
+            if (damageInfo.cLevel[attacker.casterLevel]) {
+                base = damageInfo.cLevel[attacker.casterLevel];
+            }
+            if (level > damageInfo.level) {
+                base = damageInfo.sLevel[level];
+            }
+        }
+
+
+
+
+        base = base.split("+");
         let comp = [];
         _.each(base,e => {
             e = e.split("d");
@@ -1509,7 +1536,6 @@ log(weapon)
         let rolls = [];
         let bonus = 0;
         let total = 0;
-        let note = "";
         let text = [];
 
         for (let i=0;i<comp.length;i++) {
@@ -1529,72 +1555,99 @@ log(weapon)
                 }
             }
         }
-log(damageInfo.info)
-log(defender.immunities)
-log(defender.resistances)
-log(defender.vulnerabilities)
 
 
         total += bonus;
-        let immune = false, vulnerable = false, resistant = false;
-
-        if (defender.immunities.includes(damageInfo.damageType)) {
-            if (damageInfo.info.includes("Weapon")) {
-                immune = true;
-                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
-                    immune = false;
-                }
-                if (defender.immunities.includes("silver") && damageInfo.info.includes("Silver")) {
-                    immune = false;
-                }
-            }
-            if (damageInfo.info.includes("Spell")) {
-                immune = true;
-            }
-        }
-        if (defender.resistances.includes(damageInfo.damageType)) {
-            if (damageInfo.info.includes("Weapon")) {
-                resistant = true;
-                if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
-                    resistant = false;
-                }
-                if (defender.resistances.includes("silver") && damageInfo.info.includes("Silver")) {
-                    resistant = false;
-                }
-            }
-            if (damageInfo.info.includes("Spell")) {
-                resistant = true;
-            }
-        }
-        if (defender.vulnerabilities.includes(damageInfo.damageType)) {
-            vulnerable = true;
-        }
-
-        if (immune === true) {
-            total = 0;
-            note = "Immune to " + damageInfo.damageType;
-        } else if (resistant === true) {
-            total = Math.round(total/2);
-            note = "Resistant to " + damageInfo.damageType + " = Half";
-        } else if (vulnerable === true) {
-            total *= 2;
-            note = "Vulnerable to " +  damageInfo.damageType + " = Double";
-        }
-
-        text = text.toString();
-        text = text.replace(","," + ");
-        text += " + " + bonus;
-
         let result = {
             rolls: rolls,
             bonus: bonus,
+            diceText: text,
             total: total,
-            text: text,
-            note: note,
         }
+
         return result;
     }
 
+    const ApplyDamage = (damageInfo,attacker,defender,damageRolls) => {
+            //as for area damage, damage starts same but then applied to individuals
+            let total = parseInt(damageRolls.total);
+            let note = "";
+            let immune = false, vulnerable = false, resistant = false;
+            if (defender.immunities.includes(damageInfo.damageType)) {
+                if (damageInfo.cat === "Weapon") {
+                    immune = true;
+                    if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                        immune = false;
+                    }
+                    if (defender.immunities.includes("silver") && damageInfo.info.includes("Silver")) {
+                        immune = false;
+                    }
+                }
+                if (damageInfo.cat === "Spell") {
+                    immune = true;
+                }
+            }
+            if (defender.resistances.includes(damageInfo.damageType)) {
+                if (damageInfo.cat === "Weapon") {
+                    resistant = true;
+                    if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
+                        resistant = false;
+                    }
+                    if (defender.resistances.includes("silver") && damageInfo.info.includes("Silver")) {
+                        resistant = false;
+                    }
+                }
+                if (damageInfo.cat === "Spell") {
+                    resistant = true;
+                }
+            }
+            if (defender.vulnerabilities.includes(damageInfo.damageType)) {
+                vulnerable = true;
+            }
+
+    //add in any other damage reductions here
+
+            //Immunities, Resistances, Vulnerabilities
+            if (immune === true) {
+                total = 0;
+                note = "Immune to " + damageInfo.damageType;
+            } else if (resistant === true) {
+                total = Math.round(total/2);
+                note = "Resistant to " + damageInfo.damageType + " = Half";
+            } else if (vulnerable === true) {
+                total *= 2;
+                note = "Vulnerable to " +  damageInfo.damageType + " = Double";
+            }
+
+            if (damageInfo.savingThrow && damageInfo.savingThrow !== "No") {
+                let dc = 10;
+                if (damageInfo.cat === "Spell") {
+                    dc = attacker.spellDC;
+                }
+                let result= Save(defender,dc,damageInfo.savingThrow);
+                if (result.save === true) {
+                    tip = tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
+                    if (damageInfo.saveEffect === "No Damage") {
+                        tip += " and takes No Damage";
+                        total = 0;
+                    }
+                    if (damageInfo.saveEffect === "Half Damage") {
+                        tip += " and takes 1/2 Damage";
+                        total = Math.round(total/2);
+                    }
+                } else {
+                    tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
+                }
+                outputCard.body.push(defender.name + " " + tip);
+            }
+
+            let result = {
+                total: total,
+                note: note,
+            }
+
+            return result;
+    } 
 
     const SetCondition = (msg) => {
         let Tag = msg.content.split(";");
@@ -1763,7 +1816,7 @@ log(defender.vulnerabilities)
         let level = parseInt(Tag[3]);
         let caster = ModelArray[casterID];
         SetupCard(caster.name,spellName,caster.displayScheme);
-        let spellInfo = SpellInfo[spellName];
+        let spellInfo = DeepCopy(SpellInfo[spellName]);
         let squares = caster.Distance(target);
         let spellDist = squares * pageInfo.scaleNum;
 
@@ -1821,6 +1874,10 @@ log(defender.vulnerabilities)
         if (spellName === "Entangle") {
             let possibles = AOETargets(target);
             _.each(possibles,model => {
+                if (model.conditionImmunities.includes("restrained")) {
+                    outputCard.body.push(model.name + " is Immune");
+                    return;
+                };
                 let dc = caster.spellDC;
                 let tip;
                 let result = Save(model,dc,"strength");
@@ -1911,19 +1968,32 @@ log(defender.vulnerabilities)
         if (spellName === "Burning Hands") {
             let targets = Cone(caster,target,15);
             //Roll Damage Routine here
-
             spawnFxBetweenPoints(new Point(caster.token.get("left"),caster.token.get("top")), new Point(target.token.get("left"),target.token.get("top")), "breath-fire");
+            //Damage for group
+            let rollResults = RollDamage(spellInfo,false,caster,level);
+            let add = "";
+            if (rollResults.bonus > 0) {add = "+" + rollResults.bonus};
+            if (rollResults.bonus < 0) {add = rollResults.bonus}
 
-            _.each(targets, model => {
-                //damage routine
-    log(model.name)
-    model.token.set("status_red",true);
+            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
+            tip = "[" + rollResults.total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Group Damage: " + tip);
+            if (spellInfo.note !== "") {
+                outputCard.body.push(spellInfo.note);
+            }
+            outputCard.body.push("[hr]");
 
 
+            _.each(targets, defender => {
+                outputCard.body.push("[B]" + defender.name + "[/b]");
+                let damageResults = ApplyDamage(spellInfo,caster,defender,rollResults);
+                let tip = damageResults.note;
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                outputCard.body.push("Damage: " + tip);
             })
 
             target.Destroy();
-            PlaySound("Inferno")
+            PlaySound("FireBlast")
 
 
         }
@@ -1937,7 +2007,7 @@ log(defender.vulnerabilities)
 
 
 
-        //UseSlot(caster,level);
+        UseSlot(caster,level);
         PrintCard();
     }
 
@@ -1949,6 +2019,7 @@ log(defender.vulnerabilities)
     }
 
     const UseSlot = (caster,level) => {
+return;
         if (level === 0) {return};
         let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
         slots = Math.max(0,slots - 1);
@@ -1994,14 +2065,6 @@ log(defender.vulnerabilities)
         }
 
 
-        if (spellInfo.cLevel[caster.casterLevel]) {
-            spellInfo.base = spellInfo.cLevel[caster.casterLevel];
-        }
-        if (level > spellInfo.level) {
-            let delta = level - spellInfo.level - 1;
-            spellInfo.base = spellInfo.sLevel[delta];
-        }
-
         let attAdvantage = 0;
 
 
@@ -2040,155 +2103,129 @@ log(defender.vulnerabilities)
 
         attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
 
-        if (spellInfo.toHit.includes("Direct")) {
-            let defenders = [];
-            for (let i=4;i<(Tag.length + 1);i++) {
-                let defender = ModelArray[Tag[i]];
-                if (!defender) {continue};
-                defenders.push(defender);
-            }    
-            for (let i=0;i<defenders.length;i++) {
-                let defender = defenders[i];
-                let defPt = new Point(defender.token.get('left'),defender.token.get('top'));
-                outputCard.body.push("[B]" + defender.name + "[/b]");
-                let distance = caster.Distance(defender) * pageInfo.scaleNum;
-                if (distance > spellInfo.range) {
-                    outputCard.body.push("Target is Out of Range");
-                    outputCard.body.push("Distance to Target: " + distance);
-                    outputCard.body.push("Spell Range: " + spellInfo.range);
-                    continue;
-                }
-
-                let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
-
-                let defAdvantage = (fFire === true) ? 1:0;
-                let defMarkers = Markers(defender.token.get("statusmarkers"));
-                let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
-                let defNeg = ["Invisible","Dodge","Advantage"];
-                for (let i=0;i<defPos.length;i++) {
-                    if (defMarkers.includes(defPos[i])) {
-                        defAdvantage = Math.min(defAdvantage +1, 1);
-                        break;
-                    }
-                }
-                for (let i=0;i<defNeg.length;i++) {
-                    if (defMarkers.includes(defNeg[i])) {
-                        if (defNeg[i] === "Invisible" && fFire === true) {continue};
-                        defAdvantage = Math.max(defAdvantage -1,-1);
-                        break;
-                    }
-                }
-                if (defMarkers.includes("Prone")) {
-                    if (distance <= 5) {
-                        defAdvantage = Math.min(defAdvantage +1, 1);
-                    } else {
-                        defAdvantage = Math.max(defAdvantage -1,-1);
-                    }
-                }
-
-                creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
-                if (defMarkers.includes("Protection") && creatTypes.includes(caster.type)) {
-                    defAdvantage = Math.max(defAdvantage -1,-1);
-                }
-
-                defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
-log("Def Adv: " + defAdvantage)
-
-                let advantage = attAdvantage + defAdvantage;
-                advantage = Math.min(Math.max(-1,advantage),1);
-log("Final Adv: " + advantage)
-
-                let result = ToHit(advantage);
-                let total = result.roll + caster.spellAttack;
-                let tip;
-                let crit = false;
-                if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
-                    crit = true;
-                }
-                if (spellInfo.toHit.includes("Auto")) {
-                    result.roll = 21;
-                } else {
-                    tip = "1d20 + " + caster.spellAttack + " = " + result.rollText + " + " + caster.spellAttack;
-                    tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-                    line = "Attack: " + tip + " vs. AC " + defender.ac;
-                    if (result.roll === 20) {
-                        crit = true;
-                    }
-                    outputCard.body.push(line);
-                }
-
-                if ((total >= defender.ac || spellInfo.toHit.includes("Auto") || crit === true) && result.roll !== 1) {
-                    if (crit === true) {
-                        outputCard.body.push("[#ff0000]Crit![/#]");
-                    }   
-                    let saved = false;
-                    if (spellInfo.savingThrow !== "No") {
-                        let result = Save(defender,caster.spellDC,spellInfo.savingThrow);
-                        if (result.save === true) {
-                            saved = true;
-                            tip = tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
-                            if (spellInfo.saveEffect === "No Damage") {
-                                tip += " and takes No Damage";
-                            }
-                            if (spellInfo.saveEffect === "Half Damage") {
-                                tip += " and takes 1/2 Damage";
-                            }
-                        } else {
-                            tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')';
-                            tip += " the Save"
-                        }
-                        outputCard.body.push(defender.name + " " + tip);
-                    }
-
-                    let damage = Damage(spellInfo,crit,defender);
-                    tip = damage.text + " = [" + damage.rolls.toString() + "]";
-                    if (damage.bonus !== 0) {
-                        tip += " + " + damage.bonus;
-                    }
-                    if (damage.note !== "") {
-                        tip += "<br>" + damage.note;
-                    }
-
-                    let totalDamage = damage.total;
-                    if (saved === true) {
-                        if (spellInfo.saveEffect === "No Damage") {
-                            totalDamage = 0;
-                        }
-                        if (spellInfo.saveEffect === "Half Damage") {
-                            totalDamage = Math.round(totalDamage/2);
-                        }
-                    }
-                    tip = '[' + totalDamage + '](#" class="showtip" title="' + tip + ')';
-
-                    outputCard.body.push("Damage: " + tip);
-                    if (spellInfo.note !== "") {
-                        outputCard.body.push(spellInfo.note);
-                    }
-                } else {
-                    outputCard.body.push("[B]Miss[/b]");
-                }
-                if (defenders.length > 1) {
-                    outputCard.body.push("[hr]");
-                }
-
-                if (i===0) {
-                    PlaySound(spellInfo.sound);
-                }
-
-        
-
+        let defenders = [];
+        for (let i=4;i<(Tag.length + 1);i++) {
+            let defender = ModelArray[Tag[i]];
+            if (!defender) {continue};
+            defenders.push(defender);
+        }    
+        for (let i=0;i<defenders.length;i++) {
+            let defender = defenders[i];
+            let defPt = new Point(defender.token.get('left'),defender.token.get('top'));
+            outputCard.body.push("[B]" + defender.name + "[/b]");
+            let distance = caster.Distance(defender) * pageInfo.scaleNum;
+            if (distance > spellInfo.range) {
+                outputCard.body.push("Target is Out of Range");
+                outputCard.body.push("Distance to Target: " + distance);
+                outputCard.body.push("Spell Range: " + spellInfo.range);
+                continue;
             }
 
-            UseSlot(caster,level);
-            PrintCard();
+            let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
 
+            let defAdvantage = (fFire === true) ? 1:0;
+            let defMarkers = Markers(defender.token.get("statusmarkers"));
+            let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
+            let defNeg = ["Invisible","Dodge","Advantage"];
+            for (let i=0;i<defPos.length;i++) {
+                if (defMarkers.includes(defPos[i])) {
+                    defAdvantage = Math.min(defAdvantage +1, 1);
+                    break;
+                }
+            }
+            for (let i=0;i<defNeg.length;i++) {
+                if (defMarkers.includes(defNeg[i])) {
+                    if (defNeg[i] === "Invisible" && fFire === true) {continue};
+                    defAdvantage = Math.max(defAdvantage -1,-1);
+                    break;
+                }
+            }
+            if (defMarkers.includes("Prone")) {
+                if (distance <= 5) {
+                    defAdvantage = Math.min(defAdvantage +1, 1);
+                } else {
+                    defAdvantage = Math.max(defAdvantage -1,-1);
+                }
+            }
 
+            creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
+            if (defMarkers.includes("Protection") && creatTypes.includes(caster.type)) {
+                defAdvantage = Math.max(defAdvantage -1,-1);
+            }
 
+            defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
+log("Def Adv: " + defAdvantage)
 
+            let advantage = attAdvantage + defAdvantage;
+            advantage = Math.min(Math.max(-1,advantage),1);
+log("Final Adv: " + advantage)
 
+            let result = ToHit(advantage);
+            let total = result.roll + caster.spellAttack;
+            let tip;
+            let crit = false;
+            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
+                crit = true;
+            }
+            if (spellInfo.auto === true) {
+                result.roll = 21;
+            } else {
+                tip = result.rollText + " + " + caster.spellAttack;
+                tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+                line = "Attack: " + tip + " vs. AC " + defender.ac;
+                if (result.roll === 20) {
+                    crit = true;
+                }
+                outputCard.body.push(line);
+            }
 
+            if ((total >= defender.ac || spellInfo.auto === true || crit === true) && result.roll !== 1) {
+                if (crit === true) {
+                    outputCard.body.push("[#ff0000]Crit![/#]");
+                }   
+                let rollResults = RollDamage(spellInfo,crit,caster,level);
+                let damageResults = ApplyDamage(spellInfo,caster,defender,rollResults);
+                let add = "";
+                if (rollResults.bonus > 0) {
+                    add = "+" + rollResults.bonus;
+                }
+                if (rollResults.bonus < 0) {
+                    add = rollResults.bonus;
+                }
+                let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
+                if (damageResults.note !== "") {
+                    tip += "<br>" + damageResults.note;
+                }
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                outputCard.body.push("Damage: " + tip);
+                if (spellInfo.note !== "") {
+                    outputCard.body.push(spellInfo.note);
+                }
+            } else {
+                outputCard.body.push("[B]Miss[/b]");
+            }
+            if (defenders.length > 1) {
+                outputCard.body.push("[hr]");
+            }
+
+            if (i===0) {
+                PlaySound(spellInfo.sound);
+            }
+
+    
 
         }
+
+        UseSlot(caster,level);
+        PrintCard();
+
+
+
+
+
+
+
+        
 
 
 
@@ -2426,6 +2463,12 @@ log(model.name)
             })
             model.squares = ModelSquares(model);
             log(model.name + ' is moving');
+        }
+        if (!model) {
+            let char = getObj("character", token.get("represents")); 
+            if (char) {
+                addGraphic(tok);
+            }
         }
     }
 
