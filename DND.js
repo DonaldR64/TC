@@ -354,7 +354,9 @@ const findPointOnLine = (point,m,b,distance,direction) => {
     return pt;
 }
 
-const Cone = (start,end,length) => {
+const Cone = (caster,target,length) => {
+    let start = caster.squares[0];
+    let end = target.squares[0];
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
     let endLine = EndLine(start,end,length);
@@ -379,18 +381,19 @@ const Cone = (start,end,length) => {
     })
 
     array = array.sort((a,b) => a.dist - b.dist);
-
+log(array)
     //thin to 1 at d 1, 2 at d2 etc
-//in practice, when thinning, give preference to squares with creatures
-//so skip if no creature, 
+    //skip if no creature so maximize targets caught
 
     thinnedArray = [];
     loop1:
-    for (let i=1;i<= sqL; i++) {
+    for (let i=1;i <= sqL; i++) {
         let counter = 0;
         for (let j=0;j<array.length;j++) {
             let e = array[j];
-            if (e.dist === i) {
+            let tIDs = MapArray[e.index].tokenIDs;
+            if (e.dist === i && tIDs.length > 0) {
+                if (tIDs.length === 1 && tIDs[0] === target.id) {continue};
                 thinnedArray.push(e.index);
                 counter++;
                 if (counter >= i) {continue loop1};
@@ -407,9 +410,7 @@ const TestCone = (msg) => {
     let id2 = Tag[2];
     let model1 = ModelArray[id1];
     let model2 = ModelArray[id2];
-    let index1 = model1.squares[0];
-    let index2 = model2.squares[0];
-    let cone = Cone(index1,index2,15);
+    let cone = Cone(model1,model2,15);
 
     SetupCard("Test Cone","","NPC");
     _.each(cone,index => {
