@@ -2282,7 +2282,20 @@ log(model.name)
 
 
 
+    const SavingThrow = (msg) => {
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
+        let stat = Tag[2].toLowerCase();
 
+        log(advantage)
+        log(stat)
+        log(model.saveBonus[stat])
+
+
+
+    }
 
 
 
@@ -2546,7 +2559,9 @@ log(model.name)
             case '!TokenInfo':
                 TokenInfo(msg);
                 break;
-
+            case '!SavingThrow':
+                SavingThrow(msg);
+                break;
 
 //Saves
 
