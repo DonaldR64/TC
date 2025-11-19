@@ -314,27 +314,32 @@ const lerp = (start, end, t) => {
 
 const EndLine = (start,end,length) => {
     //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
-    let distance = ((length/2) / pageInfo.scaleNum) * 70;
+    let sqL = Math.round(((length/pageInfo.scaleNum) - 1)/2);
+    let distance = sqL * 70;
     let p0 = MapArray[start].centre;
     let p1 = MapArray[end].centre;
-    //for cones, width = length
-    let m0 = (p1.y - p0.y)/(p1.x - p0.x);
-    let p2,p3;
-
-
-    if (m0 === 0) {
-        //line is horizontal, so perp is vertical
-        p2 = new Point(p0.x,p0.y + distance);
-        p3 = new Point(p0.x,p0.y - distance);
+    let index2,index3;
+    let w = end.split("/");
+    w = w.map((e) => parseInt(e));
+    if ((p1.x - p0.x) === 0) {  
+        //line 2 is horizontal
+        index2 = (w[0] - sqL) + "/" + w[1];
+        index3 = (w[0] + sqL) + "/" + w[1];
+    } else if ((p1.y - p0.y) === 0) {
+        //line2 is vertical
+        index2 = w[0] + "/" + (w[1] - sqL);
+        index3 = w[0] + "/" +(w[1] + sqL);
     } else {
+        let m0 = (p1.y - p0.y)/(p1.x - p0.x);
         let m1 = -1/m0;
         let b1 = p1.y - (m1 * p1.x);
         p2 = findPointOnLine(p1,m1,b1,distance,1);
         p3 = findPointOnLine(p1,m1,b1,distance,-1);
+        index2 = p2.toIndex();
+        index3 = p3.toIndex();
     }
 
-    let index2 = p2.toIndex();
-    let index3 = p3.toIndex();
+
 
     let line = Line(index2,index3);
 
@@ -353,19 +358,27 @@ const Cone = (start,end,length) => {
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
     let endLine = EndLine(start,end,length);
-    let areaIndexes = [];
+    let AI = [];
     for (let i=0;i<endLine.length;i++) {
-        let line = Line(start,endLine(i));
+        let line = Line(start,endLine[i]);
         for (j=0;j<line.length;j++) {
             let index = line[j];
             let dist = MapArray[start].distance(MapArray[index]);
-            if (dist <= sqL) {
-                areaIndexes.push(index);
-            }
+            if (dist > sqL) {continue};
+            AI.push({
+                index: index,
+                dist: dist,
+            })
         }
     }
-    areaIndexes = [...new Set(areaIndexes)];
-    return areaIndexes;
+    AI.sort((a,b) => a - b); //sort farthest to closest
+
+    
+
+
+
+    
+    return AI;
 }
 
 const TestCone = (msg) => {
@@ -377,9 +390,12 @@ const TestCone = (msg) => {
     let index1 = model1.squares[0];
     let index2 = model2.squares[0];
     let cone = Cone(index1,index2,15);
+    let i1 = cone.indexOf(index1);
+    cone.splice(i1,1);
     SetupCard("Test Cone","","NPC");
-    _.each(cone,pt => {
-        outputCard.body.push(pt);
+    _.each(cone,index => {
+        let pt = MapArray[index].centre;
+        spawnFx(pt.x,pt.y, "burn-fire",model1.token.get("_pageid"));
     })
     PrintCard();
 }
