@@ -271,34 +271,61 @@ const Strahd = (() => {
     }
 
 
-
-
-
-const Distance2 = (model1,model2) => {
-    let pt1 = new Point(model1.token.get("left"),model1.token.get("top"));
-    let pt2 = new Point(model2.token.get("left"),model2.token.get("top"));
-    let x = Math.round(Math.abs(pt1.x - pt2.x) / 70);
-    let y = Math.round(Math.abs(pt1.y - pt2.y) / 70);
-    let sizeMod = Math.max(0,(model1.size - 1)) + Math.max(0,(model2.size - 1));
-    x -= sizeMod;
-    y -= sizeMod;
-
-log(model1.name)
-log(pt1)
-log(model2.name)
-log(pt2)
-log("X: " + x + " / " + "Y: " + y)
-    let squares = Math.max(x,y);   
-    let distance = squares * pageInfo.scaleNum;
-    let result = {
-        squares: squares,
-        distance: distance,
+const Line = (index1,index2) => {
+    //return points between map indexes 1 and 2, incl 1 and 2
+    let p0 = MapArray[index1].centre;
+    let p1 = MapArray[index2].centre;
+    let points = [];
+    let N = diagonal_distance(p0,p1);
+    for (let step = 0; step <= N; step++) {
+        let t = (N=== 0) ? 0.0 : (step/N);
+        points.push(round_point(lerp_point(p0,p1,t)));
     }
-log(result)
-    return result
 
+    //translate pts to square indexes
+    let indexes = [];
+    _.each(points,p => {
+        let index = p.toIndex();
+        indexes.push(index);
+    })
+    indexes = [...new Set(indexes)];
+    return indexes;
 }
 
+const diagonal_distance = (p0,p1) => {
+    let dx = p1.x - p0.x, dy = p1.y - p0.y;
+    let dist = Math.max(Math.abs(dx), Math.abs(dy));
+    return Math.round(dist/35);
+}
+
+const round_point = (p) => {
+    return new Point(Math.round(p.x), Math.round(p.y));
+}
+
+const lerp_point = (p0,p1,t) => {
+    return new Point(lerp(p0.x, p1.x, t),
+                     lerp(p0.y, p1.y, t));
+}
+
+const lerp = (start, end, t) => {
+    return start * (1.0 - t) + t * end;
+}
+
+const TestLine = (msg) => {
+    let Tag = msg.content.split(";");
+    let id1 = Tag[1];
+    let id2 = Tag[2];
+    let model1 = ModelArray[id1];
+    let model2 = ModelArray[id2];
+    let index1 = model1.squares[0];
+    let index2 = model2.squares[0];
+    let line = Line(index1,index2);
+    SetupCard("Test Line","","NPC");
+    _.each(line,pt => {
+        outputCard.body.push(pt);
+    })
+    PrintCard();
+}
 
     class Point {
         constructor(x,y) {
@@ -1796,7 +1823,7 @@ log(defender.vulnerabilities)
         }
 
         if (spellName === "Burning Hands") {
-            
+
 
 
 
@@ -2377,6 +2404,9 @@ log(model.name)
                 break;
             case '!TokenInfo':
                 TokenInfo(msg);
+                break;
+            case '!TestLine':
+                TestLine(msg);
                 break;
 
 //Saves
