@@ -1185,12 +1185,13 @@ log(outputCard.side)
         }
 
         //Advantage/Disadvantage checking
-        let attAdvantage = 0;
 
-        let attPos = ["Invisible"];
-        let attNeg = ["Blind","Frightened","Poison","Restrained"];
+        let attPos = ["Invisible","Advantage"];
+        let attNeg = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        let attAdvantage = 0;
+
         //check if next to an enemy token if ranged attack, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
         if (inReach === true && weapon.type.includes("Melee") === false) {
             let ids = Object.keys(ModelArray);
@@ -1235,8 +1236,8 @@ log("Att Adv: " + attAdvantage)
 
         let defAdvantage = (fFire === true) ? 1:0;
         let defMarkers = Markers(defender.token.get("statusmarkers"));
-        let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
-        let defNeg = ["Invisible","Dodge"];
+        let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
+        let defNeg = ["Invisible","Dodge","Advantage"];
         if (defMarkers.includes("Prone")) {
             if (inReach === true) {
                 defAdvantage = 1;
@@ -1527,6 +1528,8 @@ log(defender.vulnerabilities)
         "Unconscious": "KO::2006544",
         "Dodge": "half-haze",
         "Protection": "Shield::2006495",
+        "Disadvantage": "Minus::2006420",
+        "Advantage": "Plus::2006398",
     }
 
     const Markers = (initial) => {
@@ -1856,8 +1859,8 @@ log(defender.vulnerabilities)
         let attAdvantage = 0;
 
 
-        let attPos = ["Invisible"];
-        let attNeg = ["Blind","Frightened","Poison","Restrained"];
+        let attPos = ["Invisible","Advantage"];
+        let attNeg = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
         let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
         let attMarkers = Markers(caster.token.get("statusmarkers"));
 
@@ -1914,8 +1917,8 @@ log(defender.vulnerabilities)
 
                 let defAdvantage = (fFire === true) ? 1:0;
                 let defMarkers = Markers(defender.token.get("statusmarkers"));
-                let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious"];
-                let defNeg = ["Invisible","Dodge"];
+                let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
+                let defNeg = ["Invisible","Dodge","Advantage"];
                 for (let i=0;i<defPos.length;i++) {
                     if (defMarkers.includes(defPos[i])) {
                         defAdvantage = Math.min(defAdvantage +1, 1);
@@ -2184,41 +2187,80 @@ log(model.name)
     }
 
 
-    const Save = (model,dc,stat) => {
+    const Save = (model,dc,stat,adv) => {
         let saved = false;
+        if (!adv) {adv = 0;}
+        let fail = false;
+        let advReasons = [];
+        let disAdvReasons = [];
+        let failReason = "";
         let bonus = model.saveBonus[stat];
-        let saveRoll = randomInteger(20);
-        let saveRoll1,saveRoll2;
+        let saveRoll1 = randomInteger(20);
+        let saveRoll2 = randomInteger(20);
         let sm = Markers(model.token.get("statusmarkers"));
         let inc = ["Paralyzed","Stunned","Unconscious"];
-
         if (stat === "strength" || stat === "dexterity") {
             _.each(inc,c => {
                 if (sm.includes(c)) {
-                    saveRoll === 1;
-                    extra = " [" + c + "]";
+                    fail = true;
+                    failReason = c;
                 }
             })
         }
 
-
-
-        if (sm.includes("Restrained") && stat === "dexterity") {
-            saveRoll2 = randomInteger(20);
-            saveRoll1 = saveRoll;
-            saveRoll = Math.min(saveRoll1,saveRoll2);
-            extra = " [Restrained - " + saveRoll1 + "/" + saveRoll2 + "]"
+        if (sm.includes("Advantage")) {
+            adv = Math.min(adv + 1,1);
+            advReasons.push("Advantage");
+        }
+        if (sm.includes("Disadvantage")) {
+            adv = Math.max(adv - 1, -1);
+            advReasons.push("Disadvantage");
         }
 
+        if (sm.includes("Dodge") && stat === "dexterity") {
+            adv = Math.min(adv + 1,1);
+            advReasons.push("Dodge");
+        }
 
+        if (sm.includes("Restrained") && stat === "dexterity") {
+            adv = Math.max(adv - 1, -1);
+            disAdvReasons.push("Restrained");
+        }
+
+        saveRoll = saveRoll1;
+        if (adv === 1) {
+            saveRoll = Math.max(saveRoll1,saveRoll2);
+        }
+        if (adv === -1) {
+            saveRoll = Math.min(saveRoll1,saveRoll2);
+        }
         let saveTotal = Math.max(saveRoll + bonus,1);
+
         if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
             saved = true;
         } 
 
         let saveTip = "Save: " + saveTotal + " vs. DC " + dc;
-        saveTip += "<br>Roll: " + saveRoll + " + " + bonus + extra;
-        
+        saveTip += "<br>Roll: " + saveRoll + " + " + bonus;
+
+        if (adv === 1) {
+            saveTip += "<br>Advantage: " + saveRoll1 + "/" + saveRoll2;
+        }
+        if (adv === -1) {
+            saveTip += "<br>Disadvantage: " + saveRoll1 + "/" + saveRoll2;
+        }
+        if (advReasons.length > 0) {
+            saveTip += "<br>" + advReasons.toString();
+        }
+        if (disAdvReasons.length > 0) {
+            saveTip += "<br>" + disAdvReasons.toString();
+        }
+
+        if (fail === true) {
+            save = false,
+            saveTip = "Automatically Failed Save due to " + failReason;
+        }
+
         let result = {
             save: saved,
             tip: saveTip,
