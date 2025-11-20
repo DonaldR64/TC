@@ -1870,7 +1870,7 @@ log(weapon)
                 })
             }
             target.Destroy();
-            PlaySound("Sleep");
+            PlaySound("FFire");
         }
 
         if (spellName === "Entangle") {
@@ -1923,7 +1923,7 @@ log(weapon)
             target.Destroy();
             outputCard.body.push("[hr]");
             outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
-            PlaySound("Scan");
+            PlaySound("FFire");
         }
 
         if (spellName === "Thunderwave") {
@@ -1964,7 +1964,7 @@ log(weapon)
             delete ModelArray[targetID]; //leave token
             outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
             outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
-            PlaySound("Scan");
+            PlaySound("Woosh");
         }
 
         if (spellName === "Burning Hands") {
@@ -1995,7 +1995,7 @@ log(weapon)
             })
 
             target.Destroy();
-            PlaySound("FireBlast")
+            PlaySound("Flames")
 
 
         }
