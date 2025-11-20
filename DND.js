@@ -2573,15 +2573,6 @@ log(model.name)
             })
         }
 
-        if (sm.includes("Advantage")) {
-            adv = Math.min(adv + 1,1);
-            advReasons.push("Advantage");
-        }
-        if (sm.includes("Disadvantage")) {
-            adv = Math.max(adv - 1, -1);
-            advReasons.push("Disadvantage");
-        }
-
         if (sm.includes("Dodge") && stat === "dexterity") {
             adv = Math.min(adv + 1,1);
             advReasons.push("Dodge");
