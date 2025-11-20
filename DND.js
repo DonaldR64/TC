@@ -2295,8 +2295,37 @@ log(model.name)
         SetupCard(model.name,stat,model.displayScheme);
 
         let result = Save(model,false,statTLC,advantage);
-        let tip = '[' + result.saveTotal + '](#" class="showtip" title="' + result.tip + ')';
-        outputCard.body.push("Save Result: " + tip);
+  
+        outputCard.body.push("[B]Result: " + result.saveTotal + "[/b]");
+        outputCard.body.push("[hr]");
+
+        let line = "Roll: " + result.saveRoll;
+        if (result.finalAdv !== 0) {
+            line += "/[" + result.altRoll + "]";
+        }
+
+        line += " Bonus: ";
+        if (result.bonus >= 0) {
+            line += "+" + result.bonus;
+        } else {
+            line += result.bonus;
+        }
+
+        outputCard.body.push(line);
+        if (result.finalAdv === 1) {
+            line = "[Advantage";
+            if (result.advReasons !== "") {
+                line + ": " + result.advReasons + "]";
+            }
+            outputCard.body.push(line);
+        }
+        if (result.finalAdv === -1) {
+            line = "[Disadvantage";
+            if (result.disAdvReasons !== "") {
+                line + ": " + result.disAdvReasons + "]";
+            }
+            outputCard.body.push(line);
+        }
 
         let inc = ["Paralyzed","Stunned","Unconscious"];            
 
@@ -2310,7 +2339,8 @@ log(model.name)
                 }
             })
             if (skip === false) {
-                outputCard.body.push("Shield Master: You can add 2 to your Save if the Spell/Harmful Effect targets only you");
+                outputCard.body.push("[hr]");
+                outputCard.body.push("Shield Master: You can add 2 to your Result if the Spell/Harmful Effect targets only you");
                 outputCard.body.push("If you save and would take 1/2 Damage, you can use your Reaction to take No Damage, interposing your Shield");
             }
         }
@@ -2379,42 +2409,43 @@ log(model.name)
 
         let roll1 = randomInteger(20);
         let roll2 = randomInteger(20);
+        let altRoll;
 
         let roll = roll1;
         if (advantage === 1) {
             roll = Math.max(roll1,roll2);
+            altRoll = Math.min(roll1,roll2);
         }
         if (advantage === -1) {
             roll = Math.min(roll1,roll2);
+            altRoll = Math.max(roll1,roll2);
         }
         let rollTotal = Math.max(roll + bonus,1);
-        let add = ""
 
-        if (bonus > 0) {
-            add = "+" + bonus;
-        } 
-        if (bonus < 0) {
-            add = bonus;
+        outputCard.body.push("[B]Result: " + rollTotal + "[/b]");
+        outputCard.body.push("[hr]");
+
+        let line = "Roll: " + roll;
+        if (advantage !== 0) {
+            line += "/[" + altRoll + "]";
         }
 
-        let rollTip = "<br>Roll: " + roll + add
+        line += " Bonus: ";
+        if (bonus >= 0) {
+            line += "+" + bonus;
+        } else {
+            line += bonus;
+        }
+        outputCard.body.push(line);
 
         if (advantage === 1) {
-            rollTip += "<br>Advantage: " + roll1 + "/" + roll2;
+            outputCard.body.push("[Advantage]");
         }
         if (advantage === -1) {
-            rollTip += "<br>Disadvantage: " + roll1 + "/" + roll2;
+            outputCard.body.push("[Disadvantage]");
         }
 
-        let tip = '[' + rollTotal + '](#" class="showtip" title="' + rollTip + ')';
-
-        outputCard.body.push("Test Result: " + tip);
-        
-
-
-
-
-
+    
 
         PrintCard();
 
@@ -2536,11 +2567,14 @@ log(model.name)
         }
 
         let saveRoll = saveRoll1;
+        let altRoll;
         if (adv === 1) {
             saveRoll = Math.max(saveRoll1,saveRoll2);
+            altRoll = Math.min(saveRoll1,saveRoll2);
         }
         if (adv === -1) {
             saveRoll = Math.min(saveRoll1,saveRoll2);
+            altRoll = Math.max(saveRoll1,saveRoll2);
         }
         let saveTotal = Math.max(saveRoll + bonus,1);
 
@@ -2573,8 +2607,16 @@ log(model.name)
 
         let result = {
             save: saved,
+            saveRoll: saveRoll,
+            altRoll: altRoll,
+            bonus: bonus,
             saveTotal:saveTotal,
+            advReasons: advReasons,
+            disAdvReasons: disAdvReasons,
             tip: saveTip,
+            fail: fail,
+            failReason: failReason,
+            finalAdv: adv,
         }
         return result;
     }
