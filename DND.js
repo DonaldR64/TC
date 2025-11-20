@@ -391,6 +391,19 @@ const Cone = (caster,target,length) => {
     })
 log(midLine)
 log(array)
+    //temp fix
+    //redo MapArray TokenIndexes
+    _.each(ModelArray,model => {
+        let squares = ModelSquares(model) || [];
+        _.each(squares, square => {
+            if (MapArray[squares].tokenIDs.includes(model.id) === false) {
+                MapArray[squares].tokenIDs.push(model.id);
+            }
+        })
+    })
+
+
+
 
     //will be an array of objects based on distance from caster 1st and distance from midline 2nd
     //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
@@ -408,6 +421,7 @@ log(ids)
             if (ids.length === 1 && ids[0] === target.id) {continue};
             for (let k=0;k<ids.length;k++) {
                 let model = ModelArray[ids[k]];
+                if (model.id === target.id) {continue};
                 if (model) {
                     counter ++;
                     targetArray.push(model);
@@ -546,7 +560,7 @@ log(this.name)
                 this.pb = parseInt(aa.npc_pb) || 0;
             }
 
-            this.squares = ModelSquares(this);
+            this.squares = ModelSquares(this) || [];
 
             _.each(this.squares,square => {
                 if (MapArray[square].tokenIDs) {
@@ -2411,6 +2425,22 @@ log("Final Adv: " + advantage)
 
     const AOETargets = (target) => {
         let temp = [];
+        let targetSquares = target.squares;
+log(targetSquares)
+        _.each(ModelArray,model => {
+            if (model.id === target.id) {return}
+            let modelSquares = ModelSquares(model) || [];
+            for (let i=0;i<targetSquares.length;i++) {
+                let targetSquare = targetSquares[i];
+                if (modelSquares.includes(targetSquare)) {
+                    temp.push(model.id);
+                    return;
+                }
+            }
+        })
+
+/*
+
         _.each(target.squares,square => {
             let ids = MapArray[square].tokenIDs;
             _.each(ids,id => {
@@ -2419,6 +2449,7 @@ log("Final Adv: " + advantage)
                 }
             })
         })
+*/
         temp = [...new Set(temp)];
         let array = [];
         _.each(temp,id => {
@@ -2497,6 +2528,7 @@ log(model.name)
             }
         }
 
+        PlaySound("Dice");
 
         PrintCard();
 
@@ -2533,6 +2565,7 @@ log(model.name)
         });
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
+        PlaySound("Dice")
     }
 
 
@@ -2597,7 +2630,7 @@ log(model.name)
             outputCard.body.push("[Disadvantage]");
         }
 
-    
+        PlaySound("Dice")
 
         PrintCard();
 
@@ -2607,27 +2640,7 @@ log(model.name)
 
 
 
-    const AOEArray = (target,shape,radius) => {
-        //create an array of tokens under the token's area
-        let possibles = [];
-        let w = target.token.get("width");
-        let h = target.token.get("height");
-        let c = new Point(target.token.get("left"),target.token.get("top"));
-        if (shape === "Square") {
-            tL = new Point(c.x - w/2,c.y - h/2);
-            bR = new Point(c.x + w/2,c.y + h/2);
-            let corners = [tL,bR];
-            _.each(ModelArray,model => {
-                if (model.id === target.id) {return}
-                let isInside = ModelInSquare(model,corners);
-                if (isInside === true) {
-                    possibles.push(model);
-                }
-            })
-        }
 
-        return possibles;
-    }
         
 
 
@@ -2920,7 +2933,7 @@ log(model.name)
                     MapArray[square].tokenIDs.splice(index,1);
                 }
             })
-            model.squares = ModelSquares(model);
+            model.squares = ModelSquares(model) || [];
             log(model.name + ' is moving');
         }
         if (!model) {
