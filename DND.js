@@ -33,13 +33,13 @@ const Strahd = (() => {
         "-OdzmtPMDNNfcmdvIN5m": "Ted",
         "all": "Allied",
         "-OdyHPJkwRBH1F9Zn5AU": "Ian",
-        "A": "Vic",
+        "-OeTGX5FY4C70LTFBna4": "Vic",
     }
 
     const playerColours = {
         "-OdzmtPMDNNfcmdvIN5m": "#ffd700",
         "-OdyHPJkwRBH1F9Zn5AU": "#228C22",
-        "A": "#0000ff",
+        "-OeTGX5FY4C70LTFBna4": "#0000ff",
     }
 
 
@@ -487,15 +487,10 @@ log(this.name)
 
 
             let control = char.get("controlledby");
-            let playerName;
             if (control) {
-                playerName = playerCodes[control.split(",")[0]];
-                this.displayScheme = playerName;
+                this.displayScheme = playerCodes[control.split(",")[0]];;
                 this.npc = false;
             }
-if (this.name === "Eivirin" || this.name.includes("Ratatoskr")) {
-    this.displayScheme = "Vic";
-}
 
 
             let dim = Math.max(token.get("width"),token.get("height"));
@@ -2295,6 +2290,11 @@ log(model.name)
 
 
 
+
+
+
+
+
     }
 
 
@@ -2422,6 +2422,10 @@ log(model.name)
             adv = Math.max(adv - 1, -1);
             disAdvReasons.push("Restrained");
         }
+
+
+
+
 
         saveRoll = saveRoll1;
         if (adv === 1) {
