@@ -478,6 +478,7 @@ log(this.name)
             this.vulnerabilities = (aa.npc_vulnerabilities || " ").toLowerCase();
 
             this.npc = (aa.charactersheet_type === "npc") ? true:false;
+            this.sheetType = "NPC";
             this.displayScheme = "NPC";
 
             this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
@@ -541,6 +542,9 @@ log(this.name)
             this.statBonus = statBonus;
 
             this.pb = parseInt(aa.pb) || 0;
+            if (this.sheetType === "NPC") {
+                this.pb = parseInt(aa.npc_pb) || 0;
+            }
 
             this.squares = ModelSquares(this);
 
@@ -551,6 +555,9 @@ log(this.name)
                     log("tokenIDs with " + square)
                 }
             })
+
+            this.special = aa.special || " ";
+            this.party = (this.npc === false || this.special.includes("Party")) ? true:false;
 
 
             ModelArray[token.id] = this;
@@ -1167,6 +1174,10 @@ log(outputCard.side)
             level: 1,
             range: 120,
         },
+        "Shield of Faith": {
+            level: 1,
+            range: 60,
+        }
 
 
 
@@ -1224,7 +1235,41 @@ log(outputCard.side)
             critOn: 20,
             sound: "Sword",
         },
-       
+        'Dire Wolf Bite': {
+            cat: "Weapon",
+            base: "2d6",
+            properties: "",
+            damageType: "piercing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Beast",
+            special: "If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
+        },
+        "Bear Bite": {
+            cat: "Weapon",
+            base: "1d8",
+            properties: "",
+            damageType: "piercing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Beast",
+            special: "",
+        },
+        "Bear Claws": {
+            cat: "Weapon",
+            base: "2d6",
+            properties: "",
+            damageType: "slashing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Beast",
+            special: "If the target is a Large or smaller creature, it has the Prone condition",
+        }
+
+
 
 
 
@@ -1298,7 +1343,9 @@ log(outputCard.side)
         if (attacker.name === "Wirsten" && inReach === true) {
             weapon.base += "+2"; //Duellist
         }
-
+        if (attacker.token.get("status_yellow") === true) {
+            weapon.base += "+1d4R"; //Divine Favor
+        }
 
         //attack bonuses - later check has proficiency?
         attackBonus = statBonus + attacker.pb;
@@ -1377,6 +1424,28 @@ log(outputCard.side)
                 break;
             }
         }
+
+        if (attacker.special.includes("Pack Tactics")) {
+log("Pack Tactics!")
+            //check if a friendly is next to target
+            let adj = false;
+            let keys = Object.keys(ModelArray);
+            for (let i=0;i<keys.length;i++) {
+                let model2 = ModelArray[keys[i]];
+                if (model2.id === attacker.id || model2.id === defender.id) {continue}
+log(model2.name + ": " + model2.party)
+                if (model2.party === false) {continue};
+                let dist = model2.Distance(defender);
+                if (dist <= 1) {
+                    adj = true;
+                    break;
+                }
+            }
+            if (adj === true) {
+                attAdvantage = Math.min(attAdvantage +1,1);
+            }
+        }
+
 log("Att Adv: " + attAdvantage)
 
         let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
@@ -1491,7 +1560,10 @@ log(weapon)
 
 
 
-
+            if (weapon.special) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(weapon.special);
+            }
 
 
 
@@ -1538,15 +1610,19 @@ log(weapon)
         let comp = [];
         _.each(base,e => {
             e = e.split("d");
-            n = parseInt(e[0]) || 1;
+            let n = parseInt(e[0]) || 1;
+            let t; //dice type eg. d8 -> 8
+            let dtype = "N";
             if (e[1]) {
                 t = parseInt(e[1]);
+                dtype = e[1].replace(/[^a-zA-Z]+/g, '');
             } else {
                 t = 0;
             }
             info = {
                 num: n,
                 type: t,
+                dtype: dtype,
             }
             comp.push(info);
         })
@@ -1818,8 +1894,12 @@ log(weapon)
             PrintCard();
         }
 
-
-
+        if (spellName === "Divine Favour") {
+            outputCard.body.push("Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.");
+            outputCard.body.push("Lasts 1 minute or Concentration");
+            caster.token.set("status_yellow",true);
+            PrintCard();
+        }
 
 
     }
@@ -2051,7 +2131,55 @@ return;
 
 
 
+    const CastSpell2 = (msg) =>{
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        let spellInfo = SpellInfo[spellName];
+        if (spellInfo) {
+            spellInfo = DeepCopy(SpellInfo[spellName]);
+            spellInfo.info = "Spell";
+        } else {
+            sendChat("","Need Spell Info");
+            return;
+        }
+        let attID = Tag[2];
+        let level = parseInt(Tag[3]);
 
+        let caster = ModelArray[attID];
+
+        let targetID = Tag[4];
+        let target = ModelArray[targetID];
+
+        SetupCard(caster.name,spellName,caster.displayScheme);
+        if (SpellSlots(caster,level) === false) {
+            outputCard.body.push("No Available Spell Slots of level " + level);
+            PrintCard();
+            return;
+        }
+
+        let squares = caster.Distance(target);
+        let spellDist = squares * pageInfo.scaleNum;
+        if (spellDist > spellInfo.range) {
+            outputCard.body.push("Out of Range of Spell");
+            PrintCard();
+            return;
+        }
+
+
+        if (spellName === "Shield of Faith") {
+            outputCard.body.push("A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.");
+            outputCard.body.push("Lasts 10 minutes or Concentration");
+            target.token.set({
+                aura1_radius: 1,
+                aura1_color: "#ffd700",
+                showplayers_aura1: true,
+            })
+            PrintCard();
+            PlaySound("Angels")
+        }
+
+
+    }
 
 
 
@@ -2895,7 +3023,9 @@ log(model.name)
             case '!ClearState':
                 ClearState();
                 break;
-
+            case '!CastSpell2':
+                CastSpell2(msg);
+                break;
 
 
 
