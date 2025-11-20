@@ -2337,7 +2337,7 @@ log(model.name)
         tip = '[' + result + '](#" class="showtip" title="' + tip + ')';
         outputCard.body.push("Initiative Result: " + tip);
         PrintCard();
-        
+
         if (Campaign().get("turnorder") == "") {
             turnorder = [];
         } else {
@@ -2354,7 +2354,71 @@ log(model.name)
     }
 
 
+    const Check = (msg) => {
+        if (!msg.selected) {
+            sendChat("","Select a Token");
+            return;
+        };
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
+        let text = Tag[2];
+        let skill = text.toLowerCase();
+        skill = skill.replace(" ","_");
+        SetupCard(model.name,text,model.displayScheme);
 
+        let stats = ["strength","dexterity","constitution","intelligence","wisdom","charisma"];
+
+        let bonus;
+        if (stats.includes(skill)) {
+            bonus = model.statBonus[skill];
+        } else {
+            bonus = model.skills[skill];
+        }
+
+        let roll1 = randomInteger(20);
+        let roll2 = randomInteger(20);
+
+        let roll = roll1;
+        if (adv === 1) {
+            roll = Math.max(roll1,roll2);
+        }
+        if (adv === -1) {
+            roll = Math.min(roll1,roll2);
+        }
+        let rollTotal = Math.max(roll + bonus,1);
+        let add = ""
+
+        if (bonus > 0) {
+            add = "+" + bonus;
+        } 
+        if (bonus < 0) {
+            add = bonus;
+        }
+
+        let rollTip = "<br>Roll: " + roll + add
+
+        if (adv === 1) {
+            rollTip += "<br>Advantage: " + roll1 + "/" + roll2;
+        }
+        if (adv === -1) {
+            rollTip += "<br>Disadvantage: " + roll1 + "/" + roll2;
+        }
+
+        let tip = '[' + rollTotal + '](#" class="showtip" title="' + rollTip + ')';
+
+        outputCard.body.push("Test Result: " + tip);
+        
+
+
+
+
+
+
+        PrintCard();
+
+    }
 
 
 
@@ -2616,7 +2680,9 @@ log(model.name)
             case '!Initiative':
                 Initiative(msg);
                 break;
-
+            case '!Check':
+                Check(msg);
+                break;
 
 
 
