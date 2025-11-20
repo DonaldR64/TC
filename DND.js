@@ -611,13 +611,17 @@ log(this.name)
         let c = new Point(model.token.get("left"),model.token.get("top"));
         let w = model.token.get("width");
         let h = model.token.get("height");
-        //define corners, pull in to be centres
-        let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
-        let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
-        for (let x = tL.x;x<= bR.x;x += 70) {
-            for (let y = tL.y;y <= bR.y; y += 70) {
-                let index = (new Point(x,y)).toIndex();
-                indexes.push(index);
+        if (w === 70 && h === 70) {
+            indexes = [c.toIndex()];
+        } else {
+            //define corners, pull in to be centres
+            let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
+            let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
+            for (let x = tL.x;x<= bR.x;x += 70) {
+                for (let y = tL.y;y <= bR.y; y += 70) {
+                    let index = (new Point(x,y)).toIndex();
+                    indexes.push(index);
+                }
             }
         }
         return indexes;
@@ -2696,8 +2700,8 @@ log(model.name)
         let model = ModelArray[id];
         let tokenSize = model.token.get("width");
         dis = false;
-        if (tokenSize > 100) {
-            tokenSize = 100;
+        if (tokenSize > 70) {
+            tokenSize = 70;
             dis = true;
         } else {
             tokenSize = 140;
@@ -2815,7 +2819,9 @@ log(model.name)
             bar1_value: hp,
             bar1_max: hpMax,
         })
-
+        if (model.token.get("status_Minus::2006420") === true && shape === "Human") {
+            newToken.set("status_Minus::2006420",false);
+        }
 
         toFront(newToken);
         if (newToken) {
