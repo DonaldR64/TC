@@ -545,7 +545,11 @@ log(this.name)
             this.squares = ModelSquares(this);
 
             _.each(this.squares,square => {
-                MapArray[square].tokenIDs.push(this.id);
+                if (MapArray[square].tokenIDs) {
+                    MapArray[square].tokenIDs.push(this.id);
+                } else {
+                    log("tokenIDs with " + square)
+                }
             })
 
 
@@ -2525,6 +2529,28 @@ log(model.name)
 
     }
 
+    const Compress = (msg) => {
+        if (!msg.selected) {return};
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let tokenSize = model.token.get("width");
+        dis = false;
+        if (tokenSize > 100) {
+            tokenSize = 100;
+            dis = true;
+        } else {
+            tokenSize = 140;
+        }
+        model.token.set({
+            width: tokenSize,
+            height: tokenSize,
+        });
+        model.token.set("status_Minus::2006420",dis);
+    }
+
+
+
+
 
     const Save = (model,dc,stat,adv) => {
         let saved = false;
@@ -2725,10 +2751,9 @@ log(model.name)
             case '!Check':
                 Check(msg);
                 break;
-
-
-
-//Skill Tests
+            case '!Compress':
+                Compress(msg);
+                break;
 
 
 
