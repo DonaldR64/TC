@@ -2635,7 +2635,7 @@ log(model.name)
             log(model.name + ' is moving');
         }
         if (!model) {
-            let char = getObj("character", token.get("represents")); 
+            let char = getObj("character", tok.get("represents")); 
             if (char) {
                 addGraphic(tok);
             }
