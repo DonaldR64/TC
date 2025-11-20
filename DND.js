@@ -2381,10 +2381,10 @@ log(model.name)
         let roll2 = randomInteger(20);
 
         let roll = roll1;
-        if (adv === 1) {
+        if (advantage === 1) {
             roll = Math.max(roll1,roll2);
         }
-        if (adv === -1) {
+        if (advantage === -1) {
             roll = Math.min(roll1,roll2);
         }
         let rollTotal = Math.max(roll + bonus,1);
@@ -2399,10 +2399,10 @@ log(model.name)
 
         let rollTip = "<br>Roll: " + roll + add
 
-        if (adv === 1) {
+        if (advantage === 1) {
             rollTip += "<br>Advantage: " + roll1 + "/" + roll2;
         }
-        if (adv === -1) {
+        if (advantage === -1) {
             rollTip += "<br>Disadvantage: " + roll1 + "/" + roll2;
         }
 
