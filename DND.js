@@ -483,7 +483,7 @@ log(this.name)
             this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
 
             this.class = (aa.class || " ").toLowerCase();
-
+            this.race = (aa.race || " ").toLowerCase();
 
 
             let control = char.get("controlledby");
@@ -938,6 +938,22 @@ log(outputCard.side)
             }
         }
     }
+
+    const ClearState = () => {
+        state.Strahd = {
+            wildshape: {},
+
+
+        }
+    }
+
+
+
+
+
+
+
+
 
 
     const Smite = (msg) => {
@@ -2245,6 +2261,10 @@ log("Final Adv: " + advantage)
         log(model.squares)
         outputCard.body.push("Square" + s + ": " + model.squares.toString());
         outputCard.body.push("Size: " + model.size)
+        let link = model.token.get("bar1_link");
+        outputCard.body.push(link)
+
+
         PrintCard();
 
     }
@@ -2548,7 +2568,131 @@ log(model.name)
         model.token.set("status_Minus::2006420",dis);
     }
 
+    const WildShape = (msg) => {
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let cName = Tag[1];
+        let shape = Tag[2];
+        let shapes = {
+        "Haevan": 
+            {
+                "Human": {
+                    cID: "-Ody8dmoHKTxM6niN9LG",
+                    img: "https://files.d20.io/images/463992132/4sKX1Ac0NcxdpxAX9018ng/thumb.png?1763068152",
+                    bar1: "-OdyYc7uqKpGg597yvCO",
+                    size: 1,
+                },
+                "Brown Bear": {
+                    cID: "-Odyv5HzmAOpBiY_xqLO",
+                    img: "https://files.d20.io/images/463990089/Iqk-2aGyGG0vePsk4grc3w/thumb.png?1763066944",
+                    bar1: "-OdyvFotPve1EeYo5MkH",
+                    size: 2,
+                    hp: 34,
+                },
+                "Dire Wolf": {
+                    cID: "-OdyaMtaDE-mfvTYRU-r",
+                    img: "https://files.d20.io/images/464891291/fS-Ml9i2lwAka5on3lcqZQ/thumb.png?1763664881", 
+                    bar1: "-OdyaNgSlFfkYRS5u2_4",
+                    size: 2,     
+                    hp: 37,     
+                }
+            },
+        
 
+        }
+
+        SetupCard(model.name,"Wild Shape",model.displayScheme);
+        if (!shapes[cName][shape]) {
+            outputCard.body.push("Shape not yet in Array");
+            PrintCard();
+            return;
+        }
+        if (model.race.includes(shape.toLowerCase())) {
+            outputCard.body.push("Already in that Form");
+            PrintCard();
+            return;
+        }
+
+
+        let cID = shapes[cName][shape].cID;
+        let img = getCleanImgSrc(shapes[cName][shape].img);
+        let size = shapes[cName][shape].size;
+        let bar1Link = shapes[cName][shape].bar1;
+
+        if (shape !== "Human") {
+            let resource = parseInt(Attribute(cID,"class_resource"));
+            if (resource <= 0) {
+                outputCard.body.push("Unable to Wild Shape");
+                PrintCard();
+                return;
+            }
+        }
+
+        let newChar = getObj("character", cID);
+        if (!newChar)  {
+            sendChat("","No Char")
+            return;
+        }
+
+        let hp,hpMax,ac;
+        if (shape === "Human") {
+            ac = Attribute(cID,"ac");
+            hp = parseInt(state.Strahd.wildshape[cName]["hp"]);
+            hpMax = parseInt(state.Strahd.wildshape[cName]["hpMax"]);
+        } else {
+            state.Strahd.wildshape[cName] = {
+                hp: model.token.get("bar1_value"),
+                hpMax: model.token.get("bar1_max"),
+            }
+            hp = shapes[cName][shape].hp;
+            hpMax = hp;
+            ac = Attribute(cID,"npc_ac");
+        }
+
+        //create token and link
+
+        let newToken = createObj("graphic", {
+            left: model.token.get("left"),
+            top: model.token.get("top"),
+            width: size * 70, 
+            height: size * 70,  
+            name: newChar.get("name"),
+            showname: true,
+            showplayers_name: true,
+            showplayers_bar1: true,
+            pageid: model.token.get("_pageid"),
+            imgsrc: img,
+            layer: "objects",
+            represents: cID,
+            bar1_link: bar1Link,
+            bar2_value: ac,
+            statusmarkers: model.token.get("statusmarkers"),
+        });
+
+        newToken.set({
+            bar1_value: hp,
+            bar1_max: hpMax,
+        })
+
+
+        toFront(newToken);
+        if (newToken) {
+            let newModel = new Model(newToken);
+        } else {
+            sendChat("","Error in CreateObj")
+        }
+
+        //remove old token/model
+        model.Destroy();
+
+        PlaySound("Roar");
+        outputCard.body.push("Wild Shape to " + shape);
+        PrintCard();
+
+        //use resource
+
+    }
 
 
 
@@ -2745,7 +2889,12 @@ log(model.name)
             case '!Compress':
                 Compress(msg);
                 break;
-
+            case '!WildShape':
+                WildShape(msg);
+                break;
+            case '!ClearState':
+                ClearState();
+                break;
 
 
 
