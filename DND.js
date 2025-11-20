@@ -492,6 +492,9 @@ log(this.name)
                 this.npc = false;
             }
 
+            this.initBonus = parseInt(aa.initiative_bonus) || 0;
+
+
 
             let dim = Math.max(token.get("width"),token.get("height"));
             dim = Math.round(dim/70);
@@ -2278,32 +2281,77 @@ log(model.name)
 
 
     const SavingThrow = (msg) => {
+        if (!msg.selected) {
+            sendChat("","Select a Token");
+            return;
+        };
         let id = msg.selected[0]._id;
         let model = ModelArray[id];
         let Tag = msg.content.split(";");
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
-        let stat = Tag[2].toLowerCase();
+        let stat = Tag[2];
+        let statTLC = stat.toLowerCase();
 
-        log(advantage)
-        log(stat)
-        log(model.saveBonus[stat])
+        SetupCard(model.name,stat,model.displayScheme);
+
+        let result = Save(model,false,statTLC,advantage);
+        let tip = '[' + result.saveTotal + '](#" class="showtip" title="' + result.tip + ')';
+        outputCard.body.push("Save Result: " + tip);
+
+        let inc = ["Paralyzed","Stunned","Unconscious"];            
+
+        if (model.name.includes("Wirsten") && statTLC === "dexterity") {
+            let sm = model.token.get("statusmarkers");
+            //incapacitated - means skip
+            let skip = false;
+            _.each(inc,c => {
+                if (sm.includes(c)) {
+                    skip = true;
+                }
+            })
+            if (skip === false) {
+                outputCard.body.push("Shield Master: You can add 2 to your Save if the Spell/Harmful Effect targets only you");
+                outputCard.body.push("If you save and would take 1/2 Damage, you can use your Reaction to take No Damage, interposing your Shield");
+            }
+        }
 
 
-
-
-
-
-
+        PrintCard();
 
     }
 
 
+    const Initiative = (msg) => {
+        if (!msg.selected) {
+            sendChat("","Select a Token");
+            return;
+        };
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
 
-
-
-
-
-
+        SetupCard(model.name,"Initiative",model.displayScheme);
+        let bonus = model.initBonus;
+        let roll = randomInteger(20);
+        let result = roll + bonus;
+        let tip = "Roll: " + roll + " + " + bonus;
+        tip = '[' + result + '](#" class="showtip" title="' + tip + ')';
+        outputCard.body.push("Initiative Result: " + tip);
+        PrintCard();
+        
+        if (Campaign().get("turnorder") == "") {
+            turnorder = [];
+        } else {
+            turnorder = JSON.parse(Campaign().get("turnorder"));
+        }
+        turnorder.push({
+            _pageid:    model.token.get("_pageid"),
+            id:         id,
+            pr:         result,
+            formula:    "-1"
+        });
+        turnorder.sort((a,b) => b.pr - a.pr);
+        Campaign().set("turnorder", JSON.stringify(turnorder));
+    }
 
 
 
@@ -2423,11 +2471,7 @@ log(model.name)
             disAdvReasons.push("Restrained");
         }
 
-
-
-
-
-        saveRoll = saveRoll1;
+        let saveRoll = saveRoll1;
         if (adv === 1) {
             saveRoll = Math.max(saveRoll1,saveRoll2);
         }
@@ -2436,12 +2480,7 @@ log(model.name)
         }
         let saveTotal = Math.max(saveRoll + bonus,1);
 
-        if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
-            saved = true;
-        } 
-
-        let saveTip = "Save: " + saveTotal + " vs. DC " + dc;
-        saveTip += "<br>Roll: " + saveRoll + " + " + bonus;
+        let saveTip = "<br>Roll: " + saveRoll + " + " + bonus;
 
         if (adv === 1) {
             saveTip += "<br>Advantage: " + saveRoll1 + "/" + saveRoll2;
@@ -2456,13 +2495,21 @@ log(model.name)
             saveTip += "<br>" + disAdvReasons.toString();
         }
 
-        if (fail === true) {
-            save = false,
-            saveTip = "Automatically Failed Save due to " + failReason;
-        }
+        if (dc !== false) {
+            if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
+                saved = true;
+            } 
+            saveTip = "Save: " + saveTotal + " vs. DC " + dc + saveTip;
+            if (fail === true) {
+                save = false,
+                saveTip = "Automatically Failed Save due to " + failReason;
+            }
+
+        } 
 
         let result = {
             save: saved,
+            saveTotal:saveTotal,
             tip: saveTip,
         }
         return result;
@@ -2566,8 +2613,12 @@ log(model.name)
             case '!SavingThrow':
                 SavingThrow(msg);
                 break;
+            case '!Initiative':
+                Initiative(msg);
+                break;
 
-//Saves
+
+
 
 //Skill Tests
 
