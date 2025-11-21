@@ -519,7 +519,8 @@ log(this.name)
             dim = Math.round(dim/70);
             this.size = dim;
 
-            let skillNames = ["acrobatics","athletics"];
+            let skillNames = ["acrobatics","athletics","animal handling","deception","history","insight","intimidation","investigation","medicine","nature","perception","performance","persuasion","religion","sleight of hand","stealth","survival"];
+
             let skills = {};
 
             for (let i=0;i<skillNames.length;i++) {
@@ -2427,11 +2428,20 @@ log(model.name)
         SetupCard(model.name,stat,model.displayScheme);
 
         let result = Save(model,false,statTLC,advantage);
+        let c1 = "",c2 = "";
+        if (result.saveRoll === 20) {
+            c1 = "[#008000]";
+            c2 = "[/#]";
+        }
+        if (result.saveRoll === 1) {
+            c1 = "[#ff0000]";
+            c2 = "[/#]";
+        }
   
         outputCard.body.push("[B]Result: " + result.saveTotal + "[/b]");
         outputCard.body.push("[hr]");
 
-        let line = "Roll: " + result.saveRoll;
+        let line = "Roll: " + c1 + result.saveRoll + c2;
         if (result.finalAdv !== 0) {
             line += "/[" + result.altRoll + "]";
         }
@@ -2555,11 +2565,20 @@ log(model.name)
             altRoll = Math.max(roll1,roll2);
         }
         let rollTotal = Math.max(roll + bonus,1);
+        let c1 = "",c2 = "";
+        if (roll === 20) {
+            c1 = "[#008000]";
+            c2 = "[/#]";
+        }
+        if (roll === 1) {
+            c1 = "[#ff0000]";
+            c2 = "[/#]";
+        }
 
-        outputCard.body.push("[B]Result: " + rollTotal + "[/b]");
+        outputCard.body.push("[B]" + c1 + "Result: " + rollTotal + "[/b]" + c2);
         outputCard.body.push("[hr]");
 
-        let line = "Roll: " + roll;
+        let line = "Roll: " + c1 + roll + c2;
         if (advantage !== 0) {
             line += "/[" + altRoll + "]";
         }
