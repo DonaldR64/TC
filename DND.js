@@ -1070,6 +1070,7 @@ log(outputCard.side)
             saveEffect: "",
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
+            emote: "A frigid beam of blue-white light streaks toward the target",
             fx: "missile-frost",
         },
         "Acid Splash": {
@@ -1098,6 +1099,7 @@ log(outputCard.side)
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
             note: "",
+            emote: "A thin sheet of flame shoots forth from %%C%%'s fingertips",
             sound: "Inferno",
         },
         "Magic Missile": {
@@ -1105,17 +1107,19 @@ log(outputCard.side)
             level: 1,
             range: 120,
             auto: true,
-            base: '1d4+1',
+            base: '3d4+3',
             cLevel: {},
-            sLevel: 0,
+            sLevel: ['3d4+4','4d4+4','5d4+5','6d4+6','7d4+7'],
             damageType: "force",
             savingThrow: "No",
             saveEffect: "",
             note: "",
+            emote: "%%C%% creates glowing darts of magical force which strike the target",
             sound: "Splinter2",
             fx: "missile-magic",
         },
         "Sleep": {
+            emote: "Using a pinch of fine sand, %%C%% sends creatures into a magical slumber",
             level: 1,
             range: 90,
         },
@@ -1138,8 +1142,23 @@ log(outputCard.side)
         "Shield of Faith": {
             level: 1,
             range: 60,
-        }
-
+        },
+        "Produce Flame": {
+            cat: "Spell",
+            level: 0,
+            range: 30,
+            auto: false,
+            base: '1d8',
+            cLevel: {5: '2d8', 11: '3d8'},
+            sLevel: 0,
+            damageType: "fire",
+            savingThrow: "No",
+            saveEffect: "",
+            note: "",
+            sound: "Plasma",
+            emote: "%%C%% hurls a ball of flame at the target",
+            fx: "missile-frost",
+        },
 
 
     }
@@ -1228,6 +1247,17 @@ log(outputCard.side)
             critOn: 20,
             sound: "Beast",
             special: "If the target is a Large or smaller creature, it has the Prone condition",
+        },
+        "Hand Crossbow": {
+            cat: "Weapon",
+            base: "1d6",
+            properties: "",
+            damageType: "piercing",
+            type: "Ranged",
+            range: [30,120],
+            critOn: 20,
+            sound: "Arrow",
+            special: "",
         }
 
 
@@ -1241,7 +1271,7 @@ log(outputCard.side)
         let attID = Tag[1];
         let defID = Tag[2];
         let weaponName = Tag[3];
-        let magicInfo = Tag[4] || "Non-Magic"
+        let magicInfo = Tag[4] || "Non-Magic";
 
 
         //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info or Silver or similar goes here
@@ -1266,7 +1296,7 @@ log(outputCard.side)
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
-        weapon.magicInfo = magicInfo;
+        weapon.info = magicInfo;
 
         let inReach = false;
 
@@ -1312,7 +1342,7 @@ log(outputCard.side)
         attackBonus = statBonus + attacker.pb;
 
         //Magic Items
-        if (magicInfo) {
+        if (magicInfo !== "Non-Magic" && magicInfo !== "No") {
             if (magicInfo.includes("+")) {
                 magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
                 attackBonus += magicBonus;
@@ -1627,52 +1657,61 @@ log(weapon)
             //as for area damage, damage starts same but then applied to individuals
             let total = parseInt(damageRolls.total);
             let note = "";
-            let immune = false, vulnerable = false, resistant = false;
+            let immune = false, resistant = false;
+            //Immunities, Resistances, Vulnerabilities
             if (defender.immunities.includes(damageInfo.damageType)) {
                 if (damageInfo.cat === "Weapon") {
-                    immune = true;
-                    if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
-                        immune = false;
+                    if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
+                        immune = true;
+                        note = "Immune to " + damageInfo.damageType + " from Non-magical Weapons";
                     }
-                    if (defender.immunities.includes("silver") && damageInfo.info.includes("Silver")) {
-                        immune = false;
+                    if (defender.immunities.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
+                        immune = true;
+                        note = "Immune to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
+                    }
+                    if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
+                        immune = true;
+                        note = "Immune to " + damageInfo.damageType + " Weapons";
                     }
                 }
                 if (damageInfo.cat === "Spell") {
                     immune = true;
+                    note = "Immune to " + damageInfo.damageType + " Damage";
+                }
+                if (immune === true) {
+                    total = 0;
                 }
             }
-            if (defender.resistances.includes(damageInfo.damageType)) {
+            if (immune === false && defender.resistances.includes(damageInfo.damageType)) {
                 if (damageInfo.cat === "Weapon") {
-                    resistant = true;
-                    if (defender.immunities.includes("nonmagical") && (damageInfo.info.includes("+") || damageInfo.info.includes("Magic"))) {
-                        resistant = false;
+                    if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
+                        resistant = true;
+                        note = "Resistant to " + damageInfo.damageType + " from Non-magical Weapons";
                     }
-                    if (defender.resistances.includes("silver") && damageInfo.info.includes("Silver")) {
-                        resistant = false;
+                    if (defender.resistances.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
+                        resistant = true;
+                        note = "Resistant to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
+                    }
+                    if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
+                        resistant = true;
+                        note = "Resistant to " + damageInfo.damageType + " Weapons";
                     }
                 }
                 if (damageInfo.cat === "Spell") {
                     resistant = true;
+                    note = "Resistant to " + damageInfo.damageType + " Damage";
+                }
+                if (resistant === true) {
+                    total = Math.round(total/2);
                 }
             }
-            if (defender.vulnerabilities.includes(damageInfo.damageType)) {
-                vulnerable = true;
+            if (immune === false && resistant === false && defender.vulnerabilities.includes(damageInfo.damageType)) {
+                total *= 2;
+                note = "Vulnerable to " +  damageInfo.damageType + " = Double";
             }
 
     //add in any other damage reductions here
 
-            //Immunities, Resistances, Vulnerabilities
-            if (immune === true) {
-                total = 0;
-                note = "Immune to " + damageInfo.damageType;
-            } else if (resistant === true) {
-                total = Math.round(total/2);
-                note = "Resistant to " + damageInfo.damageType + " = Half";
-            } else if (vulnerable === true) {
-                total *= 2;
-                note = "Vulnerable to " +  damageInfo.damageType + " = Double";
-            }
 
             if (damageInfo.savingThrow && damageInfo.savingThrow !== "No") {
                 let dc = 10;
@@ -2171,6 +2210,9 @@ return;
             return;
         }
 
+        let emote = spellInfo.emote;
+        emote = emote.replace("%%C%%",caster.name);
+        outputCard.body.push(emote);
 
         let attAdvantage = 0;
 
@@ -2896,16 +2938,6 @@ log(model.name)
 
     const changeGraphic = (tok,prev) => {
         let model = ModelArray[tok.id];
-        if (model && (tok.get("left") !== prev.left || tok.get("top") !== prev.top)) {
-            _.each(model.squares,square => {
-                let index = MapArray[square].tokenIDs.indexOf(tok.id);
-                if (index > -1) {
-                    MapArray[square].tokenIDs.splice(index,1);
-                }
-            })
-            model.squares = ModelSquares(model) || [];
-            log(model.name + ' is moving');
-        }
         if (!model) {
             let char = getObj("character", tok.get("represents")); 
             if (char) {
@@ -2975,9 +3007,6 @@ log(model.name)
                 break;
             case '!SetCondition':
                 SetCondition(msg);
-                break;
-            case '!PlaceTarget':
-                PlaceTarget(msg);
                 break;
             case '!Spell':
                 Spell(msg);
