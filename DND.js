@@ -6,12 +6,12 @@ const Strahd = (() => {
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
     let ModelArray = {};
-    let MapArray = {};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
     const LoadPage = () => {
         //build Page Info
+        pageInfo.id = Campaign().get('playerpageid');
         pageInfo.page = getObj('page', Campaign().get("playerpageid"));
         pageInfo.name = pageInfo.page.get("name");
         pageInfo.scale = pageInfo.page.get("snapping_increment");
@@ -442,14 +442,15 @@ log(ids)
         distance(b) {
             return Math.sqrt(((this.x - b.x) * (this.x - b.x)) + ((this.y - b.y) * (this.y - b.y)));
         }
-        toIndex() {
-            let s = this.toSq();
+        toLabel() {
+            let s = this.toSquare();
             return (s.x + "/" + s.y);
         }
-        toSq() {
+        toSquare() {
             let x = Math.round((this.x - 35)/70);
-            let y = Math.round((this.y - 35)/70);        
-            return {x:x, y:y};
+            let y = Math.round((this.y - 35)/70);  
+            let sq = new Square(x,y);      
+            return sq;
         }
     }
 
@@ -457,14 +458,14 @@ log(ids)
         constructor(x,y) {
             this.x = x;
             this.y = y;
-            this.centre = new Point(x*70 + 35, y*70 + 35);
-            this.index = x + "/" + y;
-            this.tokenIDs = [];
         };
         toPoint() {
             let x = this.x * 70 + 35;
             let y = this.y * 70 + 35;
             return new Point(x,y);
+        }
+        toLabel() {
+            return (x + "/" + y);
         }
         distance(b) {
             let dX = Math.abs(b.x - this.x);
@@ -472,6 +473,9 @@ log(ids)
             return Math.max(dX,dY);
         }
     }
+
+
+
 
 
     class Model {
@@ -560,19 +564,16 @@ log(this.name)
                 this.pb = parseInt(aa.npc_pb) || 0;
             }
 
-            this.squares = ModelSquares(this) || [];
-
-            _.each(this.squares,square => {
-                if (MapArray[square].tokenIDs) {
-                    MapArray[square].tokenIDs.push(this.id);
-                } else {
-                    log("tokenIDs with " + square)
-                }
-            })
-
             this.special = aa.special || " ";
             this.party = (this.npc === false || this.special.includes("Party")) ? true:false;
 
+            this.token.set({
+                showname: true,
+                showplayers_name: true,
+                showplayers_bar1:true,
+                showplayers_aura1: true,
+                playersedit_bar1: true,
+            })
 
             ModelArray[token.id] = this;
 
@@ -580,9 +581,11 @@ log(this.name)
 
         Distance (model2) {
             let dist = Infinity;
-            _.each(this.squares,square => {
-                _.each(model2.squares, square2 => {
-                    dist = Math.min(MapArray[square].distance(MapArray[square2]),dist);
+            let squares1 = ModelSquares(this);
+            let squares2 = ModelSquares(model2);
+            _.each(squares1,square1 => {
+                _.each(squares2, square2 => {
+                    dist = Math.min(square1.distance(square2),dist);
                 })
             })
             return dist;
@@ -590,12 +593,6 @@ log(this.name)
 
         Destroy () {
             let token = this.token;
-            _.each(this.squares, square => {
-                let index = MapArray[square].tokenIDs.indexOf(this.id);
-                if (index > -1) {
-                    MapArray[square].tokenIDs.splice(index,1);
-                }
-            })
             if (token) {
                 token.remove();
             }
@@ -607,71 +604,25 @@ log(this.name)
 
 
     const ModelSquares = (model) => {
-        let indexes = [];
+        let squares = [];
         let c = new Point(model.token.get("left"),model.token.get("top"));
         let w = model.token.get("width");
         let h = model.token.get("height");
+        
         if (w === 70 && h === 70) {
-            indexes = [c.toIndex()];
+            squares = [c.toSquare()];
         } else {
             //define corners, pull in to be centres
             let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
             let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
             for (let x = tL.x;x<= bR.x;x += 70) {
                 for (let y = tL.y;y <= bR.y; y += 70) {
-                    let index = (new Point(x,y)).toIndex();
-                    indexes.push(index);
+                    let pt = new Point(x,y);
+                    let sq = pt.toSquare();
+                    squares.push(sq);
                 }
             }
         }
-        return indexes;
-    }
-
-
-    const ModelSquares2 = (model) => {
-        let c = new Point(model.token.get("left"),model.token.get("top"));
-        let centrePts = [];
-        let squares = [];
-
-
-        if (model.size === 1 || model.size === 3) {
-            centrePts.push(c);
-        }
-        if (model.size === 2 || model.size === 4) {
-            centrePts.push(new Point(c.x - 35,c.y - 35));
-            centrePts.push(new Point(c.x + 35,c.y - 35));
-            centrePts.push(new Point(c.x - 35,c.y + 35));
-            centrePts.push(new Point(c.x + 35,c.y + 35));
-        }
-        if (model.size === 3) {
-            centrePts.push(new Point(c.x - 70,c.y - 70));
-            centrePts.push(new Point(c.x,c.y - 70));
-            centrePts.push(new Point(c.x + 70,c.y - 70));
-            centrePts.push(new Point(c.x - 70,c.y));
-            centrePts.push(new Point(c.x,c.y));
-            centrePts.push(new Point(c.x + 70,c.y));
-            centrePts.push(new Point(c.x - 70,c.y + 70));
-            centrePts.push(new Point(c.x,c.y + 70));
-            centrePts.push(new Point(c.x + 70,c.y + 70));
-        }
-        if (model.size === 4) {
-            centrePts.push(new Point(c.x - 105,c.y - 105));
-            centrePts.push(new Point(c.x - 35,c.y - 105));
-            centrePts.push(new Point(c.x + 35,c.y - 105));
-            centrePts.push(new Point(c.x + 105,c.y - 105));
-            centrePts.push(new Point(c.x - 105,c.y - 35));
-            centrePts.push(new Point(c.x + 105,c.y - 35));
-            centrePts.push(new Point(c.x - 105,c.y + 35));
-            centrePts.push(new Point(c.x + 105,c.y + 35));
-            centrePts.push(new Point(c.x - 105,c.y + 105));
-            centrePts.push(new Point(c.x - 35,c.y + 105));
-            centrePts.push(new Point(c.x + 35,c.y + 105));
-            centrePts.push(new Point(c.x + 105,c.y + 105));
-        }
-        _.each(centrePts,c => {
-            let index = c.toIndex();
-            squares.push(index);
-        })
         return squares;
     }
 
@@ -954,15 +905,6 @@ log(outputCard.side)
 
     }
 
-    const BuildMap = () => {
-        MapArray = {};
-        for (let x=0;x<= pageInfo.width;x++) {
-            for (let y=0;y<= pageInfo.height;y++) {
-                let index = x +"/" + y;
-                MapArray[index] = new Square(x,y);
-            }
-        }
-    }
 
     const ClearState = () => {
         state.Strahd = {
@@ -2365,6 +2307,8 @@ log("Final Adv: " + advantage)
                 if (spellInfo.note !== "") {
                     outputCard.body.push(spellInfo.note);
                 }
+
+
             } else {
                 outputCard.body.push("[B]Miss[/b]");
             }
@@ -2376,7 +2320,8 @@ log("Final Adv: " + advantage)
                 PlaySound(spellInfo.sound);
             }
 
-    
+
+
 
         }
 
@@ -2955,14 +2900,16 @@ log(model.name)
 
     const addGraphic = (obj) => {
         log("Add")
-        if (!obj.get("name")) {
-            let char = getObj("character", obj.get("represents")); 
-            if (!char) {return};
-            obj.set({
-                name: char.get("name")
-            })
+        if (obj.get(["pageid"]) === pageInfo.id) {
+            if (!obj.get("name")) {
+                let char = getObj("character", obj.get("represents")); 
+                if (!char) {return};
+                obj.set({
+                    name: char.get("name")
+                })
+            }
+            let model = new Model(obj);
         }
-        let model = new Model(obj);
     }
 
     const destroyGraphic = (obj) => {
@@ -2975,7 +2922,6 @@ log(model.name)
 
     const changePage = () => {
         LoadPage();
-        BuildMap();
         BuildArrays();
         sendChat("","Page Change");
     }
@@ -2996,6 +2942,8 @@ log(model.name)
                     names.push(model.name)
                 })
                 log(names);
+
+
                 break;
             case '!Smite':
                 Smite(msg);
@@ -3068,7 +3016,6 @@ log(model.name)
         log("===> CoS <===");
         log("===> Software Version: " + version + " <===");
         LoadPage();
-        BuildMap();
         BuildArrays();
         registerEventHandlers();
         sendChat("","API Ready")
