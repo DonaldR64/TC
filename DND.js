@@ -478,9 +478,11 @@ log(array)
             this.id = token.get("id");
             this.name = token.get("name");
             let aa = AttributeArray(char.id);
+    
             this.charID = char.id;
 
 log(this.name)
+log(aa)
             this.type = (aa.npc_type || " ").toLowerCase();
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
@@ -1333,6 +1335,7 @@ log(outputCard.side)
         //attack bonuses - later check has proficiency?
         attackBonus = statBonus + attacker.pb;
 
+
         //Magic Items
         if (magicInfo !== "Non-Magic" && magicInfo !== "No") {
             if (magicInfo.includes("+")) {
@@ -1341,6 +1344,11 @@ log(outputCard.side)
                 weapon.base += "+" + magicBonus;
             }
         }
+
+
+
+
+
 
         if (errorMsg.length > 0) {
             _.each(errorMsg,msg => {
@@ -1473,15 +1481,35 @@ log("Def Adv: " + defAdvantage)
         advantage = Math.min(Math.max(-1,advantage),1);
 log("Final Adv: " + advantage)
 
+
+        //other mods
+        let blessText = "";
+        let bless = 0;
+        if (attMarkers.includes("Bless")) {
+            bless = randomInteger(4);
+            blessText += " +" + bless + " [Bless]";
+        }
+
+
+
+
+
+
+
+
+
+
+
+
         let result = ToHit(advantage);
-        let total = result.roll + attackBonus;
+        let total = result.roll + attackBonus + bless;
         let tip;
         let crit = false;
         if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && inReach === true) {
             crit = true;
         }
 
-        tip = result.rollText + " + " + attackBonus;
+        tip = result.rollText + " + " + attackBonus + blessText;
         tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
         if (result.roll >= weapon.critOn) {
             crit = true;
@@ -1786,6 +1814,7 @@ log(weapon)
         "Protection": "Shield::2006495",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
+        "Bless": "Plus-1d4::2006401",
     }
 
     const Markers = (initial) => {
@@ -2393,6 +2422,8 @@ log("Final Adv: " + advantage)
         _.each(squares,square => {
             outputCard.body.push("Square: " + square.x + "/" + square.y)
         })
+        let char = getObj("character", token.get("represents"));    
+
         
         PrintCard();
 
@@ -2849,6 +2880,44 @@ log(model.name)
     }
 
 
+    const UseItem = (msg) => {
+        if (!msg.selected) {return};
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let itemName = Tag[1];
+
+        SetupCard(model.name,itemName,model.displayScheme);
+
+        if (itemName === "Potion of Healing") {
+            let total = 0;
+            let rolls = [];
+            for (let i=0;i<2;i++) {
+                roll = randomInteger(4);
+                rolls.push(roll);
+                total += roll;
+            }
+            total += 2;
+            let tip = "Rolls: " + rolls.toString() + " + 2";
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+
+            outputCard.body.push("[B]" + tip + "[/b]" + " HP are restored")
+        }
+
+
+
+
+
+
+
+            PrintCard();
+
+    }
+
+
+
+
+
 
     const Save = (model,dc,stat,adv) => {
         let saved = false;
@@ -2950,6 +3019,9 @@ log(model.name)
 
 
 
+
+
+
     const addGraphic = (obj) => {
         log("Add")
         if (obj.get(["pageid"]) === pageInfo.id) {
@@ -3045,7 +3117,9 @@ log(model.name)
             case '!ReloadTokens':
                 ReloadTokens(msg);
                 break;
-
+            case '!UseItem':
+                UseItem(msg);
+                break;
 
 
         }
