@@ -271,20 +271,24 @@ const Strahd = (() => {
     }
 
 
-const Line = (index1,index2) => {
+const Line = (start,end) => {
     //return points between map indexes 1 and 2, incl 1 and 2
     //translate points to squares
-    let p0 = MapArray[index1].centre;
-    let p1 = MapArray[index2].centre;
+    let p0 = start;
+    let p1 = end;
     let squares = [];
+    let labels = [];
     let N = diagonal_distance(p0,p1);
     for (let step = 0; step <= N; step++) {
         let t = (N=== 0) ? 0.0 : (step/N);
         let pt = round_point(lerp_point(p0,p1,t));
-        let square = pt.toSquare;
+        let square = pt.toSquare();
+        let label = square.toLabel();
+        if (labels.includes(label)) {continue};
+        labels.push(label);
         squares.push(square);
     }
-    squares = [... new Set(squares)];
+    squares = [...new Set(squares)];
     return squares;
 }
 
@@ -308,37 +312,29 @@ const lerp = (start, end, t) => {
 }
 
 
-const EndLine = (start,end,length) => {
+const EndLine = (p0,p1,length) => {
     //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
     let sqL = Math.round(((length/pageInfo.scaleNum) - 1)/2);
-    let distance = sqL * 100; //larger than 70 to account for odd behaviour of 5e on angles
-    let p0 = MapArray[start].centre;
-    let p1 = MapArray[end].centre;
-    let index2,index3;
-    let w = end.split("/");
-    w = w.map((e) => parseInt(e));
+    let raDist = sqL * 70;
+    let angDist = sqL * 100; //larger than 70 to account for odd behaviour of 5e on angles
+    let p2,p3;
     if ((p1.x - p0.x) === 0) {  
         //line 2 is horizontal
-        index2 = (w[0] - sqL) + "/" + w[1];
-        index3 = (w[0] + sqL) + "/" + w[1];
+        p2 = new Point(p1.x - raDist,p1.y);
+        p3 = new Point(p1.x + raDist,p1.y);
     } else if ((p1.y - p0.y) === 0) {
         //line2 is vertical
-        index2 = w[0] + "/" + (w[1] - sqL);
-        index3 = w[0] + "/" +(w[1] + sqL);
+        p2 = new Point(p1.x,p1.y - raDist);
+        p3 = new Point(p1.x,p1.y + raDist);
     } else {
         let m0 = (p1.y - p0.y)/(p1.x - p0.x);
         let m1 = -1/m0;
         let b1 = p1.y - (m1 * p1.x);
-        p2 = findPointOnLine(p1,m1,b1,distance,1);
-        p3 = findPointOnLine(p1,m1,b1,distance,-1);
-        index2 = p2.toIndex();
-        index3 = p3.toIndex();
+        p2 = findPointOnLine(p1,m1,b1,angDist,1);
+        p3 = findPointOnLine(p1,m1,b1,angDist,-1);
     }
 
-
-
-    let line = Line(index2,index3);
-
+    let line = Line(p2,p3);
     return line;
 }
 
@@ -351,12 +347,17 @@ const findPointOnLine = (point,m,b,distance,direction) => {
 }
 
 const Cone = (caster,target,length) => {
-    let start = caster.squares[0];
-    let end = target.squares[0];
+    let start = caster.Point();
+    let end = target.Point();
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
     let midLine = Line(start,end)
     let endLine = EndLine(start,end,length);
+
+log(midLine)
+log(endLine)
+return []
+
     let AI = [];
     for (let i=0;i<endLine.length;i++) {
         let line = Line(start,endLine[i]);
@@ -596,6 +597,31 @@ log(this.name)
             delete ModelArray[this.id];
         }
 
+        Point () {
+            let pt = new Point(this.token.get("left"),this.token.get("top"))
+            return pt;
+        }
+        Squares() {
+            let squares = [];
+            let pt = this.Point();
+            let w = this.token.get("width");
+            let h = this.token.get("height");
+            if (w === 70 && h === 70) {
+                squares.push(pt.toSquare());
+            } else {
+                //define corners, pull in to be centres
+                let tL = new Point(pt.x - w/2 + 35,pt.y - h/2 + 35);
+                let bR = new Point(pt.x + w/2 - 35,pt.y + h/2 - 35);
+                for (let x = tL.x;x<= bR.x;x += 70) {
+                    for (let y = tL.y;y <= bR.y; y += 70) {
+                        let pt2 = new Point(x,y);
+                        let sq = pt2.toSquare();
+                        squares.push(sq);
+                    }
+                }
+            }
+            return squares;
+        }
 
     }
 
@@ -2388,11 +2414,15 @@ log("Final Adv: " + advantage)
     const TokenInfo = (msg) => {
         let id = msg.selected[0]._id;
         let model = ModelArray[id];
+        if (!id || !model) {return}
         let token = model.token;
         SetupCard(model.name,"","NPC");
-        let char = getObj("character", token.get("represents")); 
-        let attributes = findObjs({_type:'attribute',_characterid: char.id});
-        log(attributes)
+        let pt = new Point(token.get("left"),token.get("left"));
+        let squares = model.Squares();
+        outputCard.body.push("Point: " + pt.x + "/" + pt.y)
+        _.each(squares,square => {
+            outputCard.body.push("Square: " + square.x + "/" + square.y)
+        })
         
         PrintCard();
 
