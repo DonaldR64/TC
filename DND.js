@@ -575,8 +575,8 @@ log(this.name)
 
         Distance (model2) {
             let dist = Infinity;
-            let squares1 = ModelSquares(this);
-            let squares2 = ModelSquares(model2);
+            let squares1 = this.Squares();
+            let squares2 = model2.Squares();
             _.each(squares1,square1 => {
                 _.each(squares2, square2 => {
                     dist = Math.min(square1.distance(square2),dist);
@@ -620,32 +620,6 @@ log(this.name)
         }
 
     }
-
-
-    const ModelSquares = (model) => {
-        let squares = [];
-        let c = new Point(model.token.get("left"),model.token.get("top"));
-        let w = model.token.get("width");
-        let h = model.token.get("height");
-        
-        if (w === 70 && h === 70) {
-            squares = [c.toSquare()];
-        } else {
-            //define corners, pull in to be centres
-            let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
-            let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
-            for (let x = tL.x;x<= bR.x;x += 70) {
-                for (let y = tL.y;y <= bR.y; y += 70) {
-                    let pt = new Point(x,y);
-                    let sq = pt.toSquare();
-                    squares.push(sq);
-                }
-            }
-        }
-        return squares;
-    }
-
-
 
     const Angle = (theta) => {
         while (theta < 0) {
@@ -2438,11 +2412,9 @@ log("Final Adv: " + advantage)
 
     const AOETargets = (target) => {
         let temp = [];
-        let targetSquares = ModelSquares(target);
         _.each(ModelArray,model => {
             if (model.id === target.id) {return}
-            let modelSquares = ModelSquares(model) || [];
-            if (Venn(targetSquares,modelSquares) === true) {
+            if (Venn(target.Squares(),model.Squares()) === true) {
                 temp.push(model.id);
             }
         })
