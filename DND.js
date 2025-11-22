@@ -354,9 +354,8 @@ const Cone = (caster,target,length) => {
     let midLine = Line(start,end)
     let endLine = EndLine(start,end,length);
 
-log(midLine)
-log(endLine)
 return []
+
 
     let AI = [];
     for (let i=0;i<endLine.length;i++) {
