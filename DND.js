@@ -273,23 +273,19 @@ const Strahd = (() => {
 
 const Line = (index1,index2) => {
     //return points between map indexes 1 and 2, incl 1 and 2
+    //translate points to squares
     let p0 = MapArray[index1].centre;
     let p1 = MapArray[index2].centre;
-    let points = [];
+    let squares = [];
     let N = diagonal_distance(p0,p1);
     for (let step = 0; step <= N; step++) {
         let t = (N=== 0) ? 0.0 : (step/N);
-        points.push(round_point(lerp_point(p0,p1,t)));
+        let pt = round_point(lerp_point(p0,p1,t));
+        let square = pt.toSquare;
+        squares.push(square);
     }
-
-    //translate pts to square indexes
-    let indexes = [];
-    _.each(points,p => {
-        let index = p.toIndex();
-        indexes.push(index);
-    })
-    indexes = [...new Set(indexes)];
-    return indexes;
+    squares = [... new Set(squares)];
+    return squares;
 }
 
 const diagonal_distance = (p0,p1) => {
@@ -465,7 +461,7 @@ log(ids)
             return new Point(x,y);
         }
         toLabel() {
-            return (x + "/" + y);
+            return (this.x + "/" + this.y);
         }
         distance(b) {
             let dX = Math.abs(b.x - this.x);
@@ -1958,7 +1954,10 @@ log(weapon)
                 };
 
                 let phb = parseInt(possibles[i].token.get("bar1_value"));
-                if (phb > hp) {break}
+                if (phb > hp) {
+                    outputCard.body.push("[" + possible.name + " HP exceeds remaining]" )
+                    break
+                };
                 hp -= phb;
                 outputCard.body.push(possible.name + " Falls Asleep");
                 possible.token.set({
@@ -2413,31 +2412,15 @@ log("Final Adv: " + advantage)
 
     const AOETargets = (target) => {
         let temp = [];
-        let targetSquares = target.squares;
-log(targetSquares)
+        let targetSquares = ModelSquares(target);
         _.each(ModelArray,model => {
             if (model.id === target.id) {return}
             let modelSquares = ModelSquares(model) || [];
-            for (let i=0;i<targetSquares.length;i++) {
-                let targetSquare = targetSquares[i];
-                if (modelSquares.includes(targetSquare)) {
-                    temp.push(model.id);
-                    return;
-                }
+            if (Venn(targetSquares,modelSquares) === true) {
+                temp.push(model.id);
             }
         })
 
-/*
-
-        _.each(target.squares,square => {
-            let ids = MapArray[square].tokenIDs;
-            _.each(ids,id => {
-                if (id !== target.id) {
-                    temp.push(id);
-                }
-            })
-        })
-*/
         temp = [...new Set(temp)];
         let array = [];
         _.each(temp,id => {
@@ -2447,6 +2430,17 @@ log(model.name)
         })
         return array;
     }
+
+    const Venn = (array1,array2) => {
+        //for comparing arrays of squares
+        //true if any of array2 are in array
+        let a1 = array1.map((e) => e.toLabel());
+        let a2 = array2.map((e) => e.toLabel());
+        let venn = a2.some(r=> a1.includes(r))
+        return venn;
+    }
+
+
 
 
 
