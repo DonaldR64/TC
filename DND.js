@@ -284,18 +284,17 @@ const Line = (start,end) => {
         let pt = round_point(lerp_point(p0,p1,t));
         let square = pt.toSquare();
         let label = square.toLabel();
-        if (labels.includes(label)) {continue};
+        if (labels.includes(label)) {continue};//stop duplicates
         labels.push(label);
         squares.push(square);
     }
-    squares = [...new Set(squares)];
     return squares;
 }
 
 const diagonal_distance = (p0,p1) => {
     let dx = p1.x - p0.x, dy = p1.y - p0.y;
     let dist = Math.max(Math.abs(dx), Math.abs(dy));
-    return Math.round(dist/70);
+    return Math.round(dist/35);
 }
 
 const round_point = (p) => {
@@ -347,32 +346,31 @@ const findPointOnLine = (point,m,b,distance,direction) => {
 }
 
 const Cone = (caster,target,length) => {
+    let startTime = Date.now();
+
     let start = caster.Point();
+    let startSquare = start.toSquare();
     let end = target.Point();
     //length is in feet
     let sqL = length / pageInfo.scaleNum;
     let midLine = Line(start,end)
     let endLine = EndLine(start,end,length);
-
-return []
-
-
-    let AI = [];
-    for (let i=0;i<endLine.length;i++) {
-        let line = Line(start,endLine[i]);
-        for (j=0;j<line.length;j++) {
-            let index = line[j];
-            if (index !== start) {AI.push(index)};
-        }
-    }
-    AI = [...new Set(AI)]; //elim duplicates
+log(endLine)
+    //from start, draw lines to each point on endLine and add in the squares
     let array = {};
-    _.each(AI,index => {
-        let dist1 = parseInt(MapArray[start].distance(MapArray[index]));
-        if (dist1 <= sqL) {
-            let dist2 = parseInt(MapArray[midLine[dist1]].distance(MapArray[index]));
+    let labels = [];
+    for (let i=0;i<endLine.length;i++) {
+        let line = Line(start,endLine[i].toPoint());
+        for (j=0;j<line.length;j++) {
+            let square = line[j];
+            let label = square.toLabel();
+            if (labels.includes(label)) {continue}
+            if (square.x === startSquare.x && square.y === startSquare.y) {continue};
+            let dist1 = startSquare.distance(square);
+            if (dist1 > sqL) {continue};
+            let dist2 = square.distance(midLine[dist1]);
             let info = {
-                index: index,
+                square: square,
                 midDist: dist2,
             }
             if (array[dist1]) {
@@ -380,54 +378,53 @@ return []
             } else {
                 array[dist1] = [info];
             }
+            labels.push(label); //prevent duplicates    
         }
-    })
+    }
+
     _.each(array,line => {
         line.sort((a,b) => a.midDist - b.midDist);
     })
-log(midLine)
 log(array)
-    //temp fix
-    //redo MapArray TokenIndexes
-    _.each(ModelArray,model => {
-        let squares = ModelSquares(model) || [];
-        _.each(squares, square => {
-            if (MapArray[squares].tokenIDs.includes(model.id) === false) {
-                MapArray[squares].tokenIDs.push(model.id);
-            }
-        })
-    })
-
-
 
 
     //will be an array of objects based on distance from caster 1st and distance from midline 2nd
     //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
     //skip if no creature so maximize targets caught
-    targetArray = [];
+    //minimize ModelArray based on distance from caster
+    let possibles = [];
+    _.each(ModelArray,model => {
+        if (model.id === caster.id || model.id === target.id) {return}
+        if (model.Distance(caster) > sqL) {return}
+        possibles.push(model)
+    })
+
+    let finalArray = [];
+    let ids = [];
+    let keys = Object.keys(array);
     loop1:
-    for (let i=1;i <= sqL; i++) {
+    for (let i=0;i<keys.length;i++) {
+        let line = array[keys[i]];    
         let counter = 0;
-        let line = array[i];
         for (let j=0;j<line.length;j++) {
-            let ids = DeepCopy(MapArray[line[j].index].tokenIDs);
-log(line[j].index)
-log(ids)
-            if (ids.length === 0) {continue};
-            if (ids.length === 1 && ids[0] === target.id) {continue};
-            for (let k=0;k<ids.length;k++) {
-                let model = ModelArray[ids[k]];
-                if (model.id === target.id) {continue};
-                if (model) {
-                    counter ++;
-                    targetArray.push(model);
+            let square = line[j].square;
+            for (let k=0;k<possibles.length;k++) {
+                let model = possibles[k];
+                if (ids.includes(model.id)) {continue};
+                let squares = model.Squares();
+                if (Venn(squares,[square])) {
+                    finalArray.push(model);
+                    counter++;
+                    ids.push(model.id); //each model 'caught' hit once
+                    if (counter > i) {
+                        continue loop1; //1 at distance 1, 2 at 2, etc
+                    }
+                    break;
                 }
-                if (counter >= i) {continue loop1};
             }
         }
     }
-
-    return targetArray;
+    return finalArray;
 }
 
     class Point {
@@ -2677,6 +2674,7 @@ log(model.name)
                 let m = new Model(token);
             }
         })
+        sendChat("","/w GM Reloaded")
     }
 
 
