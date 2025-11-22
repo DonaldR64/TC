@@ -2349,14 +2349,10 @@ log("Final Adv: " + advantage)
         let model = ModelArray[id];
         let token = model.token;
         SetupCard(model.name,"","NPC");
-        let s = model.squares.length === 1 ? "":"s";
-        log(model.squares)
-        outputCard.body.push("Square" + s + ": " + model.squares.toString());
-        outputCard.body.push("Size: " + model.size)
-        let link = model.token.get("bar1_link");
-        outputCard.body.push(link)
-
-
+        let char = getObj("character", token.get("represents")); 
+        let attributes = findObjs({_type:'attribute',_characterid: char.id});
+        log(attributes)
+        
         PrintCard();
 
     }
@@ -2604,7 +2600,19 @@ log(model.name)
 
     }
 
-
+    
+    const ReloadTokens = (msg) => {
+        let ids = [];
+        _.each(msg.selected,s => {
+            ids.push(s._id);
+        })
+        _.each(ids,id => {
+            let token = findObjs({_type:"graphic", id: id})[0];
+            if (token) {
+                let m = new Model(token);
+            }
+        })
+    }
 
 
 
@@ -2871,7 +2879,7 @@ log(model.name)
             } 
             saveTip = "Save: " + saveTotal + " vs. DC " + dc + saveTip;
             if (fail === true) {
-                save = false,
+                saved = false,
                 saveTip = "Automatically Failed Save due to " + failReason;
             }
 
@@ -3012,7 +3020,9 @@ log(model.name)
             case '!CastSpell2':
                 CastSpell2(msg);
                 break;
-
+            case '!ReloadTokens':
+                ReloadTokens(msg);
+                break;
 
 
 
