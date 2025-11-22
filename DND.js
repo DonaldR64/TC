@@ -2513,6 +2513,7 @@ log(model.name)
         } else {
             line += result.bonus;
         }
+        line += result.otherBonusText;
 
         outputCard.body.push(line);
         if (result.finalAdv === 1) {
@@ -2940,6 +2941,17 @@ log(model.name)
             })
         }
 
+        let modelMarkers = Markers(model.token.get("statusmarkers"));
+        let otherBonusText = "";
+        let otherBonus = 0;
+        if (modelMarkers.includes("Bless")) {
+            otherBonus = randomInteger(4);
+            otherBonusText += " +" + otherBonus + " [Bless d4]";
+        }
+        bonus += otherBonus;
+
+
+
         if (sm.includes("Dodge") && stat === "dexterity") {
             adv = Math.min(adv + 1,1);
             advReasons.push("Dodge");
@@ -2994,6 +3006,7 @@ log(model.name)
             saveRoll: saveRoll,
             altRoll: altRoll,
             bonus: bonus,
+            otherBonusText: otherBonusText,
             saveTotal:saveTotal,
             advReasons: advReasons,
             disAdvReasons: disAdvReasons,
