@@ -1,38 +1,5 @@
 
 
-
-
-
-
-
-
-
-
-
-    let ToHit = (advantage) => {
-        let roll1 = randomInteger(20);
-        let roll2 = randomInteger(20);
-        let rollText,bonusText,roll;
-        if (advantage > 0) {
-            roll = Math.max(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Advantage]";
-        } else if (advantage < 0) {
-            roll = Math.min(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Disadvantage]";
-        } else {
-            roll = roll1;
-            rollText ="Roll: " + roll;
-        }
-        let result = {
-            roll: roll,
-            rollText: rollText,
-        }
-        return result;
-    }
-
-
-
-
     const Smite = (msg) => {
         let Tag = msg.content.split(";");
         let attID = Tag[1];
