@@ -1252,9 +1252,38 @@ log(outputCard.side)
             critOn: 20,
             sound: "Arrow",
             special: "",
-        }
-
-
+        },
+        "Light Crossbow": {
+            cat: "Weapon",
+            base: "1d8",
+            properties: "",
+            damageType: "piercing",
+            type: "Ranged",
+            range: [80,320],
+            critOn: 20,
+            sound: "Arrow",
+            special: "",
+        },
+        'Spear (2H)': {
+            cat: "Weapon",
+            base: "1d8",
+            properties: "",
+            damageType: "piercing",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Sword",
+        },
+        'Mace': {
+            cat: "Weapon",
+            base: "1d6",
+            properties: "",
+            damageType: "bludgeoning",
+            type: "Melee",
+            range: [0,0],
+            critOn: 20,
+            sound: "Staff",
+        },
 
 
 
