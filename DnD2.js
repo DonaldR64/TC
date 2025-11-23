@@ -1024,73 +1024,69 @@ const DnD = (() => {
     const Save = (model,dc,stat,adv) => {
         let saved = false;
         if (!adv) {adv = 0;}
-        let fail = false;
+        let fail = false; //auto fail
         let advReasons = [];
         let disAdvReasons = [];
         let failReason = "";
         let bonus = model.saveBonus[stat];
-        let saveRoll1 = randomInteger(20);
-        let saveRoll2 = randomInteger(20);
+        let otherBonus = 0;
+        let saveTotal,saveTip,bonusText, otherBonusText;
+
         let sm = Markers(model.token.get("statusmarkers"));
-        let inc = ["Paralyzed","Stunned","Unconscious"];
+        let inc = ["Paralyzed","Stunned","Unconscious","incapacitated"];
         if (stat === "strength" || stat === "dexterity") {
             _.each(inc,c => {
                 if (sm.includes(c)) {
                     fail = true;
                     failReason = c;
+                    return;
                 }
             })
         }
 
-        let modelMarkers = Markers(model.token.get("statusmarkers"));
-        let otherBonusText = "";
-        let otherBonus = 0;
-        if (modelMarkers.includes("Bless")) {
+        if (sm.includes("Bless")) {
             otherBonus = randomInteger(4);
-            otherBonusText += " +" + otherBonus + " [Bless d4]";
+            otherBonusText = "Including " + otherBonus + " [Bless d4]";
         }
         bonus += otherBonus;
-
-
 
         if (sm.includes("Dodge") && stat === "dexterity") {
             adv = Math.min(adv + 1,1);
             advReasons.push("Dodge");
         }
-
         if (sm.includes("Restrained") && stat === "dexterity") {
             adv = Math.max(adv - 1, -1);
             disAdvReasons.push("Restrained");
         }
-
-        let saveRoll = saveRoll1;
-        let altRoll;
-        if (adv === 1) {
-            saveRoll = Math.max(saveRoll1,saveRoll2);
-            altRoll = Math.min(saveRoll1,saveRoll2);
-        }
-        if (adv === -1) {
-            saveRoll = Math.min(saveRoll1,saveRoll2);
-            altRoll = Math.max(saveRoll1,saveRoll2);
-        }
-        let saveTotal = Math.max(saveRoll + bonus,1);
-
-        let saveTip = "<br>Roll: " + saveRoll + " + " + bonus;
-
-        if (adv === 1) {
-            saveTip += "<br>Advantage: " + saveRoll1 + "/" + saveRoll2;
-        }
-        if (adv === -1) {
-            saveTip += "<br>Disadvantage: " + saveRoll1 + "/" + saveRoll2;
-        }
-        if (advReasons.length > 0) {
-            saveTip += "<br>" + advReasons.toString();
-        }
-        if (disAdvReasons.length > 0) {
-            saveTip += "<br>" + disAdvReasons.toString();
-        }
-
-        if (dc !== false) {
+        let saveRollResult = D20(adv);
+        
+        if (dc === false) {
+            //display result in chat immediately
+            if (fail === true) {
+                outputCard.body.push("[#ff0000]Automatic Failure[/#]");
+                outputCard.body.push("Due to being " + failReason);
+            } else {
+                OutputRoll(saveRollResult,bonus);
+                outputCard.body.push(otherBonusText);
+                if (advReasons.length > 0) {
+                    outputCard.body.push("[" + advReasons.toString() + "]");
+                }
+                if (disAdvReasons.length > 0) {
+                    outputCard.body.push("[" + disAdvReasons.toString() + "]");
+                }
+            }
+        } else {
+            if (bonus >= 0) {bonusText = " + " + bonus + " Bonus"} else {bonusText = " - " + Math.abs(bonus) + " Bonus"};
+            saveTotal = saveRollResult.roll + bonus;
+            saveTip = "<br>Roll: " + saveRollResult.roll + bonusText;
+            saveTip += "<br>" + saveRollResult.rollText
+            if (otherBonusText) {saveTip += "<br>" + otherBonusText};
+            if (advReasons.length > 0) {
+                saveTip += "<br>" + advReasons.toString();
+            }
+            if (disAdvReasons.length > 0) {
+                saveTip += "<br>" + disAdvReasons.toString();
+            }
             if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
                 saved = true;
             } 
@@ -1099,22 +1095,12 @@ const DnD = (() => {
                 saved = false,
                 saveTip = "Automatically Failed Save due to " + failReason;
             }
-
-        } 
+        }
 
         let result = {
             save: saved,
-            saveRoll: saveRoll,
-            altRoll: altRoll,
-            bonus: bonus,
-            otherBonusText: otherBonusText,
             saveTotal:saveTotal,
-            advReasons: advReasons,
-            disAdvReasons: disAdvReasons,
             tip: saveTip,
-            fail: fail,
-            failReason: failReason,
-            finalAdv: adv,
         }
         return result;
     }
@@ -1133,51 +1119,9 @@ const DnD = (() => {
 
         SetupCard(model.name,stat,model.displayScheme);
 
-        let result = Save(model,false,statTLC,advantage);
-        let c1 = "",c2 = "";
-        if (result.saveRoll === 20) {
-            c1 = "[#008000]";
-            c2 = "[/#]";
-        }
-        if (result.saveRoll === 1) {
-            c1 = "[#ff0000]";
-            c2 = "[/#]";
-        }
-  
-        outputCard.body.push("[B]Result: " + result.saveTotal + "[/b]");
-        outputCard.body.push("[hr]");
-
-        let line = "Roll: " + c1 + result.saveRoll + c2;
-        if (result.finalAdv !== 0) {
-            line += "/[" + result.altRoll + "]";
-        }
-
-        line += " Bonus: ";
-        if (result.bonus >= 0) {
-            line += "+" + result.bonus;
-        } else {
-            line += result.bonus;
-        }
-        line += result.otherBonusText;
-
-        outputCard.body.push(line);
-        if (result.finalAdv === 1) {
-            line = "[Advantage";
-            if (result.advReasons !== "") {
-                line + ": " + result.advReasons + "]";
-            }
-            outputCard.body.push(line);
-        }
-        if (result.finalAdv === -1) {
-            line = "[Disadvantage";
-            if (result.disAdvReasons !== "") {
-                line + ": " + result.disAdvReasons + "]";
-            }
-            outputCard.body.push(line);
-        }
+        Save(model,false,statTLC,advantage);
 
         let inc = ["Paralyzed","Stunned","Unconscious"];            
-
         if (model.name.includes("Wirsten") && statTLC === "dexterity") {
             let sm = model.token.get("statusmarkers");
             //incapacitated - means skip
@@ -1212,11 +1156,9 @@ const DnD = (() => {
         let bonus = model.initBonus;
 //later add in advantage/disadvantage for initiative here
         let advantage = 0;
-        let initRoll = D20(advantage);
-        let result = initRoll.roll + bonus;
-        let tip = initRoll.rollText + " + " + bonus;
-        tip = '[' + result + '](#" class="showtip" title="' + tip + ')';
-        outputCard.body.push("Initiative Result: " + tip);
+        let roll = D20(advantage);
+        let total = OutputRoll(roll,bonus);
+
         PrintCard();
 
         if (Campaign().get("turnorder") == "") {
@@ -1228,7 +1170,7 @@ const DnD = (() => {
         let flag = false;
         _.each(turnorder,item => {
             if (item.id === id) {
-                item.pr = result;
+                item.pr = total;
                 flag = true;
                 return;
             }
@@ -1237,7 +1179,7 @@ const DnD = (() => {
             turnorder.push({
                 _pageid:    model.token.get("_pageid"),
                 id:         id,
-                pr:         result,
+                pr:         total,
                 formula:    "-1"
             });
         }
@@ -1260,62 +1202,15 @@ const DnD = (() => {
         let skill = text.toLowerCase();
         skill = skill.replace(" ","_");
         SetupCard(model.name,text,model.displayScheme);
-
         let stats = ["strength","dexterity","constitution","intelligence","wisdom","charisma"];
-
         let bonus;
         if (stats.includes(skill)) {
             bonus = model.statBonus[skill];
         } else {
             bonus = model.skills[skill];
         }
-
-        let roll1 = randomInteger(20);
-        let roll2 = randomInteger(20);
-        let altRoll;
-
-        let roll = roll1;
-        if (advantage === 1) {
-            roll = Math.max(roll1,roll2);
-            altRoll = Math.min(roll1,roll2);
-        }
-        if (advantage === -1) {
-            roll = Math.min(roll1,roll2);
-            altRoll = Math.max(roll1,roll2);
-        }
-        let rollTotal = Math.max(roll + bonus,1);
-        let c1 = "",c2 = "";
-        if (roll === 20) {
-            c1 = "[#008000]";
-            c2 = "[/#]";
-        }
-        if (roll === 1) {
-            c1 = "[#ff0000]";
-            c2 = "[/#]";
-        }
-
-        outputCard.body.push("[B]" + c1 + "Result: " + rollTotal + "[/b]" + c2);
-        outputCard.body.push("[hr]");
-
-        let line = "Roll: " + c1 + roll + c2;
-        if (advantage !== 0) {
-            line += "/[" + altRoll + "]";
-        }
-
-        line += " Bonus: ";
-        if (bonus >= 0) {
-            line += "+" + bonus;
-        } else {
-            line += bonus;
-        }
-        outputCard.body.push(line);
-
-        if (advantage === 1) {
-            outputCard.body.push("[Advantage]");
-        }
-        if (advantage === -1) {
-            outputCard.body.push("[Disadvantage]");
-        }
+        let result = D20(advantage);
+        OutputRoll(result,bonus);
         PlaySound("Dice")
         PrintCard();
     }
@@ -1360,7 +1255,25 @@ const DnD = (() => {
         return result;
     }
     
-
+    let OutputRoll = (result,bonus) => {
+        //used to output Save Roll, Check Roll, Initiative Roll etc
+        //if needed, returns the total
+        let c1 = "",c2 = "";
+        if (result.roll === 20) {
+            c1 = "[#008000]";
+            c2 = "[/#]";
+        }
+        if (result.roll === 1) {
+            c1 = "[#ff0000]";
+            c2 = "[/#]";
+        }
+        let rollTotal = Math.max(result.roll + bonus,1);
+        let bonusText;
+        if (bonus >= 0) {bonusText = " + " + bonus + " Bonus"} else {bonusText = " - " + Math.abs(bonus) + " Bonus"};
+        outputCard.body.push("[B]" + c1 + "Result: " + rollTotal + "[/b]" + c2);
+        outputCard.body.push(result.rollText + bonusText);
+        return rollTotal;
+    }
 
 
 
