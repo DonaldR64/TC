@@ -2,7 +2,7 @@ const DnD = (() => {
     const version = '2025.11.23';
     if (!state.DnD) {state.DnD = {}};
 
-
+    //various constants used in game
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
     let ModelArray = {};
@@ -19,7 +19,7 @@ const DnD = (() => {
     const playerColours = {
         "-OdzmtPMDNNfcmdvIN5m": "#ffd700",
         "-OdyHPJkwRBH1F9Zn5AU": "#228C22",
-        "-OeTGX5FY4C70LTFBna4": "#0000ff",
+        "-OeTGX5FY4C70LTFBna4": "#00ffff",
         "all": "#ff0000"
     };
 
@@ -42,13 +42,13 @@ const DnD = (() => {
             "backgroundColour": "#ffd700",
             "titlefont": "Candal",
             "fontColour": "#000000",
-            "borderColour": "#000000",
-            "borderStyle": "5px double",
+            "borderColour": "#ff00ff",
+            "borderStyle": "5px inset",
         },
         "Vic": {
-            "backgroundColour": "#0000ff",
+            "backgroundColour": "#00ffff",
             "titlefont": "Merriweather",
-            "fontColour": "#ffffff",
+            "fontColour": "#000000",
             "borderColour": "#0000ff",
             "borderStyle": "5px groove",
         },
@@ -92,7 +92,7 @@ const DnD = (() => {
 
 
 
-
+    //Classes
 
     class Point {
         constructor(x,y) {
@@ -294,10 +294,7 @@ const DnD = (() => {
 
 
 
-
-
-
-
+    //Functions
     const simpleObj = (o) => {
         let p = JSON.parse(JSON.stringify(o));
         return p;
@@ -327,7 +324,7 @@ const DnD = (() => {
 
 
     const Line = (start,end) => {
-        //return points between map indexes 1 and 2, incl 1 and 2
+        //return points between start and end points
         //translate points to squares
         let p0 = start;
         let p1 = end;
@@ -1213,9 +1210,11 @@ const DnD = (() => {
 
         SetupCard(model.name,"Initiative",model.displayScheme);
         let bonus = model.initBonus;
-        let roll = randomInteger(20);
-        let result = roll + bonus;
-        let tip = "Roll: " + roll + " + " + bonus;
+//later add in advantage/disadvantage for initiative here
+        let advantage = 0;
+        let initRoll = D20(advantage);
+        let result = initRoll.roll + bonus;
+        let tip = initRoll.rollText + " + " + bonus;
         tip = '[' + result + '](#" class="showtip" title="' + tip + ')';
         outputCard.body.push("Initiative Result: " + tip);
         PrintCard();
@@ -1225,12 +1224,24 @@ const DnD = (() => {
         } else {
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
-        turnorder.push({
-            _pageid:    model.token.get("_pageid"),
-            id:         id,
-            pr:         result,
-            formula:    "-1"
-        });
+        //replace result if already in turnorder, else add to turnorder
+        let flag = false;
+        _.each(turnorder,item => {
+            if (item.id === id) {
+                item.pr = result;
+                flag = true;
+                return;
+            }
+        })
+        if (flag === false) {
+            turnorder.push({
+                _pageid:    model.token.get("_pageid"),
+                id:         id,
+                pr:         result,
+                formula:    "-1"
+            });
+        }
+
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
         PlaySound("Dice")
@@ -1322,6 +1333,39 @@ const DnD = (() => {
         })
         sendChat("","/w GM Reloaded")
     }
+
+    let D20 = (advantage) => {
+        let roll1 = randomInteger(20);
+        let roll2 = randomInteger(20);
+        let addText,roll,s = "s"
+        if (advantage > 0) {
+            roll = Math.max(roll1,roll2);
+            addText = " [Advantage]";
+        } else if (advantage < 0) {
+            roll = Math.min(roll1,roll2);
+            addText = " [Disadvantage]";
+        } else {
+            roll = roll1;
+            s = "";
+        }
+        let altRoll = (roll === roll1) ? roll2:roll1;
+        let text = "Roll" +s + ": " + roll;
+        if (advantage !== 0) {
+            text += "/" + altRoll + addText; 
+        }
+        let result = {
+            roll: roll,
+            rollText: text,
+        }
+        return result;
+    }
+    
+
+
+
+
+
+
 
 
 
