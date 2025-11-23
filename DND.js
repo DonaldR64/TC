@@ -19,11 +19,14 @@ const Strahd = (() => {
         pageInfo.height = pageInfo.page.get("height");
         pageInfo.scaleNum = pageInfo.page.get("scale_number");
 
-        _.each(playerCodes,pID => {
-            let pObj = getObj('player', pID);
-            if (pObj) {
-                let colour = playerColours[pID];
-                pObj.set({color: colour});
+        let pObjs = findObjs({type: "player"});
+log(pObjs)
+        _.each(pObjs,pObj => {
+            let c = playerColours[pObj.id];
+            if (c) {
+                pObj.set("color",c);
+log(pObj.get("_displayname"));
+log(c);
             }
         })
 
@@ -471,18 +474,16 @@ log(array)
 
 
 
+
     class Model {
         constructor(token) {
             let char = getObj("character", token.get("represents")); 
             this.token = token;
             this.id = token.get("id");
-            this.name = token.get("name");
+            let name = token.get("name");
             let aa = AttributeArray(char.id);
     
             this.charID = char.id;
-
-log(this.name)
-log(aa)
             this.type = (aa.npc_type || " ").toLowerCase();
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
@@ -493,6 +494,9 @@ log(aa)
             this.npc = (aa.charactersheet_type === "npc") ? true:false;
             this.sheetType = "NPC";
             this.displayScheme = "NPC";
+
+
+
 
             this.ac = (this.npc === false) ? (parseInt(aa.ac) || 10):(parseInt(aa.npc_ac) || 10); //here as wildshapes are coming up as NPCs
 
@@ -505,6 +509,8 @@ log(aa)
                 this.displayScheme = playerCodes[control.split(",")[0]];;
                 this.npc = false;
             }
+
+            this.name = name;
 
             this.initBonus = parseInt(aa.initiative_bonus) || 0;
 
@@ -564,6 +570,7 @@ log(aa)
             this.party = (this.npc === false || this.special.includes("Party")) ? true:false;
 
             this.token.set({
+                name: name,
                 showname: true,
                 showplayers_name: true,
                 showplayers_bar1:true,
