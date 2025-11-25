@@ -1339,7 +1339,7 @@ const DnD = (() => {
             errorMsg.push("Target is Out of Max Range");
         }
 
-        //damage bonuses, move into weapon for Damage routine
+        //damage bonuses, move into weaponInfo for Damage routine
         //stat
         if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
             weapon.base += "+" + statBonus;
@@ -1355,9 +1355,6 @@ const DnD = (() => {
         }
 
         //attack bonuses
-log(statBonus)
-log(attacker.pb)
-log(attacker.sheetType)
         attackBonus = statBonus + attacker.pb;
 
         //Magic Items
@@ -1400,7 +1397,7 @@ log(attacker.sheetType)
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
         }
 
-        //advantage/disadvantage - pull from another routine
+//advantage/disadvantage - pull from another routine
 
         advantage = 0; //placeholder
 
@@ -1408,7 +1405,7 @@ log(attacker.sheetType)
         let attackTotal = attackResult.roll + attackBonus;
         let tip;
         let crit = false;
-        //bit on paralyzed, unconcious here
+//bit on paralyzed, unconcious here
 
         tip = attackResult.rollText + " + " + attackBonus + additionalText;
         tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
