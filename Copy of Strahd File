@@ -240,7 +240,7 @@
         if (inReach === false && weapon.properties.includes("Thrown") === false) {
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
         }
-
+///
         //Advantage/Disadvantage checking
 
         let attPos = ["Invisible","Advantage"];
@@ -352,7 +352,7 @@ log("Def Adv: " + defAdvantage)
         let advantage = attAdvantage + defAdvantage;
         advantage = Math.min(Math.max(-1,advantage),1);
 log("Final Adv: " + advantage)
-
+//
 
         //other mods
         let blessText = "";
@@ -634,77 +634,6 @@ log(weapon)
 
             return result;
     } 
-
-    const SetCondition = (msg) => {
-        let Tag = msg.content.split(";");
-        let id = msg.selected[0]._id;
-        if (!id) {
-            sendChat("","Select a Token");
-            return;
-        }
-        let model = ModelArray[id];
-        if (!model) {
-            sendChat("","Not in Array");
-            return;
-        }
-        let condition = Tag[1];
-        let marker = ConditionMarkers[condition];
-        let status = Tag[2];
-        if (marker) {
-
-
-        }
-
-        if (status === "On") {
-            model.token.set("status_" + marker,true);
-        } else if (status === "Off") {
-            model.token.set("status_" + marker,false);
-        } else if (status === "Clear") {
-            model.token.set("statusmarkers","");
-        }
-        
-    }
-
-
-
-    const ConditionMarkers = {
-        "Blind": "Blind-::2006481",
-        "Charmed": "Charmed::2006504",
-        "Deaf": "Deaf::2006484",
-        "Frightened": "Fear-or-Afraid::2006486",
-        "Grappled": "Grappled::2006490",
-        "Incapacitated": "interdiction",
-        "Invisible": "Invisible::2006516",
-        "Paralyzed": "Paralyzed::2006491",
-        "Petrified": "Petrified-or-Stone-2::2006594",
-        "Poisoned": "Poison::2006492",
-        "Prone": "Prone::2006547",
-        "Restrained": "Restrained-or-Webbed::2006494",
-        "Stunned": "Stunned::2006499",
-        "Unconscious": "KO::2006544",
-        "Dodge": "half-haze",
-        "Protection": "Shield::2006495",
-        "Disadvantage": "Minus::2006420",
-        "Advantage": "Plus::2006398",
-        "Bless": "Plus-1d4::2006401",
-    }
-
-    const Markers = (initial) => {
-        initial = initial.split(",");
-        let sm = [];
-        let keys = Object.keys(ConditionMarkers);
-        for (let i=0;i<initial.length;i++) {
-            let cond = initial[i];
-            for (let j=0;j<keys.length;j++) {
-                if (ConditionMarkers[keys[j]] === cond) {
-                    sm.push(keys[j]);
-                    break;
-                }
-            }
-        }
-        sm = sm.toString() || " ";
-        return sm;
-    }
 
     const Spell = (msg) => {
         let id = msg.selected[0]._id;

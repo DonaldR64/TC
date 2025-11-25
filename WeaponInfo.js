@@ -2,7 +2,6 @@
 
     const WeaponInfo = {
         Longsword: {
-            cat: "Weapon",
             base: '1d8',
             properties: "Versatile",
             damageType: "slashing",
@@ -12,7 +11,6 @@
             sound: "Sword",
         },
         Dagger: {
-            cat: "Weapon",
             base: '1d4',
             properties: "Finesse, Thrown",
             damageType: "slashing",
@@ -22,7 +20,6 @@
             sound: "Club",
         },
         Acornbringer: {
-            cat: "Weapon",
             base: '1d1',
             properties: "Finesse",
             damageType: "piercing",
@@ -32,7 +29,6 @@
             sound: "Sword",
         },
         'Quarterstaff (2H)': {
-            cat: "Weapon",
             base: '1d8',
             properties: "",
             damageType: "bludgeoning",
@@ -42,7 +38,6 @@
             sound: "Staff",
         },
         'Scimitar': {
-            cat: "Weapon",
             base: "1d6",
             properties: "Finesse",
             damageType: "slashing",
@@ -52,7 +47,6 @@
             sound: "Sword",
         },
         'Dire Wolf Bite': {
-            cat: "Weapon",
             base: "2d6",
             properties: "",
             damageType: "piercing",
@@ -63,7 +57,6 @@
             special: "If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
         },
         "Bear Bite": {
-            cat: "Weapon",
             base: "1d8",
             properties: "",
             damageType: "piercing",
@@ -74,7 +67,6 @@
             special: "",
         },
         "Bear Claws": {
-            cat: "Weapon",
             base: "2d6",
             properties: "",
             damageType: "slashing",
@@ -85,7 +77,6 @@
             special: "If the target is a Large or smaller creature, it has the Prone condition",
         },
         "Hand Crossbow": {
-            cat: "Weapon",
             base: "1d6",
             properties: "",
             damageType: "piercing",
@@ -96,7 +87,6 @@
             special: "",
         },
         "Light Crossbow": {
-            cat: "Weapon",
             base: "1d8",
             properties: "",
             damageType: "piercing",
@@ -107,7 +97,6 @@
             special: "",
         },
         'Spear (2H)': {
-            cat: "Weapon",
             base: "1d8",
             properties: "",
             damageType: "piercing",
@@ -117,7 +106,6 @@
             sound: "Sword",
         },
         'Mace': {
-            cat: "Weapon",
             base: "1d6",
             properties: "",
             damageType: "bludgeoning",

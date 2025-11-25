@@ -164,6 +164,7 @@ const DnD = (() => {
             if (control) {
                 this.displayScheme = playerCodes[control.split(",")[0]];;
                 this.npc = false;
+                this.sheetType = "PC";
             }
 
             this.initBonus = parseInt(aa.initiative_bonus) || 0;
@@ -1275,7 +1276,230 @@ const DnD = (() => {
         return rollTotal;
     }
 
+    const Attack = (msg) => {
+        let Tag = msg.content.split(";");
+        let attID = Tag[1];
+        let defID = Tag[2];
+        let weaponName = Tag[3];
+        let extra = Tag[4] || " ";
 
+        let attacker = ModelArray[attID];
+        let defender = ModelArray[defID];
+
+        let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        let defMarkers = Markers(defender.token.get("statusmarkers"));
+
+
+
+        let errorMsg = [];
+
+        if (!attacker) {
+            errorMsg.push("Attacker not in Array");
+            attacker = defender;
+        }
+        if (!defender) {
+            errorMsg.push("Defender not in Array");
+            defender = attacker;
+        }
+        let weapon = WeaponInfo[weaponName];
+        if (weapon) {
+            weapon = DeepCopy(WeaponInfo[weaponName]);
+        } else {
+            errorMsg.push("Weapon not in Array");
+            weapon = {range: 1000};
+        }
+
+        weapon.cat = "Weapon";
+        weapon.info = extra;
+
+        let inReach = false;
+
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
+
+        if (squares === 1) {
+            inReach = true;
+        }
+        if (weapon.properties.includes("Reach") && squares <= 2) {
+            inReach = true;
+        }
+        if (inReach !== true && weapon.type.includes("Ranged") === false) {
+            errorMsg.push("Target not in Reach");
+        } 
+
+        let statBonus = attacker.statBonus["strength"];
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
+            statBonus = attacker.statBonus["dexterity"];
+        }
+        if (weapon.properties.includes("Finesse")) {
+            statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
+        }
+
+        if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
+            errorMsg.push("Target is Out of Max Range");
+        }
+
+        //damage bonuses, move into weapon for Damage routine
+        //stat
+        if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
+            weapon.base += "+" + statBonus;
+        }
+        //abilities
+        if (attacker.name === "Wirsten" && inReach === true) {
+            weapon.base += "+2"; //Duellist
+        }
+        if (attacker.token.get("status_yellow") === true) {
+            //Divine Favour
+            weapon.secondBase= "1d4";
+            weapon.secondType = "Radiant"
+        }
+
+        //attack bonuses
+log(statBonus)
+log(attacker.pb)
+log(attacker.sheetType)
+        attackBonus = statBonus + attacker.pb;
+
+        //Magic Items
+        if (extra !== "Non-Magic" && extra !== "No") {
+            if (extra.includes("+")) {
+                magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
+                attackBonus += magicBonus;
+                weapon.base += "+" + magicBonus;
+                weapon.damageType += ",magic"
+            }
+        }
+        if (extra.includes("Silver")) {
+            weapon.damageType += ",silver"
+        }
+
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                sendChat("",msg);
+            })
+            return;
+        }
+
+        //other mods
+        let additionalText = "";
+        if (attMarkers.includes("Bless")) {
+            bless = randomInteger(4);
+            additionalText += " +" + bless + " [Bless]";
+            attackBonus += bless;
+        }
+
+        SetupCard(attacker.name,"Attack",attacker.displayScheme);
+        if (inReach === true && weapon.type.includes("Melee")) {
+            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
+        }
+        if (inReach === false && weapon.properties.includes("Thrown")) {
+            outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
+            weapon.sound = "Shuriken"
+        }
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
+            outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
+        }
+
+        //advantage/disadvantage - pull from another routine
+
+        advantage = 0; //placeholder
+
+        let attackResult = D20(advantage);
+        let attackTotal = attackResult.roll + attackBonus;
+        let tip;
+        let crit = false;
+        //bit on paralyzed, unconcious here
+
+        tip = attackResult.rollText + " + " + attackBonus + additionalText;
+        tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
+        if (attackResult.roll >= weapon.critOn) {
+            crit = true;
+        }
+        outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
+        if (crit === true) {
+            outputCard.body.push("[#ff0000]Crit![/#]");
+        }
+
+        if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true) {
+            outputCard.body.push("[B]Hit![/b]")
+log(weapon)
+        /*
+           let rollResults = RollDamage(weapon,crit,attacker);
+            let damageResults = ApplyDamage(weapon,attacker,defender,rollResults);
+            let add = "";
+            if (rollResults.bonus > 0) {
+                add = "+" + rollResults.bonus;
+            }
+            if (rollResults.bonus < 0) {
+                add = rollResults.bonus;
+            }
+            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
+            if (damageResults.note !== "") {
+                tip += "<br>" + damageResults.note;
+            }
+            tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Damage: " + tip);
+            if (crit === true) {
+                spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
+            } else {
+                spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
+            }
+
+            if (attacker.class.includes("paladin") && inReach === true) {
+                //add option of smite if has spell slots
+                let c = (crit === true) ? 1:0
+                let line = "!Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
+                let levels = [];
+                for (let level = 1;level < 6;level++) {
+                    if (SpellSlots(attacker,level) === true) {
+                        levels.push(level);
+                    }
+                }
+            
+                if (levels.length === 1) {
+                    line += levels[0];
+                } else {
+                    line += "?{Level";
+                    _.each(levels,level => {
+                        line += "|" + level;
+                    });
+                    line += "}"
+                }
+                if (levels.length > 0) {
+                    ButtonInfo("Smite!",line);
+                }
+            }
+
+
+
+
+            if (weapon.special) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(weapon.special);
+            }
+
+
+
+        */
+
+        } else {
+            outputCard.body.push("[B]Miss[/b]");
+        }
+
+        PlaySound(weapon.sound);
+
+        PrintCard();
+        
+
+
+
+
+
+
+
+
+
+    }
 
 
 
