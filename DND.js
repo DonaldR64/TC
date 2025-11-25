@@ -508,6 +508,7 @@ log(array)
             if (control) {
                 this.displayScheme = playerCodes[control.split(",")[0]];;
                 this.npc = false;
+                this.sheetType = "PC";
             }
 
             this.name = name;
