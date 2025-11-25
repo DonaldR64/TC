@@ -70,7 +70,12 @@
             type: "Melee",
             sound: "Staff",
         },
-
+        'Shortsword': {
+            base: "1d6,piercing",
+            properties: "Finesse",
+            type: "Melee",
+            sound: "Sword",
+        },
 
 
     }
