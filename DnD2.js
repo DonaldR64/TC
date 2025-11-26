@@ -792,12 +792,13 @@ const DnD = (() => {
         }
     }
 
-    const RollDamage = (damageInfo,crit,attacker,level,category) => {
+    const RollDamage = (damageInfo,critical) => {
         //spellinfo if a spell, weaponinfo if a weapon
         //eg 1d8+1d6+3 or even 3
-        if (category === "Spell") {
 
-//alter this
+/*
+        if (category === "Spell") {
+            //move this into spellarea
             //some spells do higher damage based on caster level or on spell level
             if (damageInfo.cLevel[attacker.casterLevel]) {
                 base = damageInfo.cLevel[attacker.casterLevel];
@@ -806,7 +807,7 @@ const DnD = (() => {
                 base = damageInfo.sLevel[level];
             }
         }
-
+*/
         damageInfo = damageInfo.split(",");
         base = damageInfo[0].trim();
         damageType = damageInfo[1].trim();
@@ -843,7 +844,7 @@ const DnD = (() => {
                 bonus += info.num;
             } else {
                 let dice = info.num;
-                if (crit === true) {
+                if (critical === true) {
                     dice *= 2;
                 }                
                 text.push(dice + "d" + info.type);
@@ -868,100 +869,99 @@ const DnD = (() => {
         let result = {
             diceText: text,
             total: total,
+            damageType: damageType,
         }
 
         return result;
     }
 
-    const ApplyDamage = (damageInfo,attacker,defender,damageRolls) => {
-            //as for area damage, damage starts same but then applied to individuals
-            let total = parseInt(damageRolls.total);
-            let note = "";
-            let immune = false, resistant = false;
-            //Immunities, Resistances, Vulnerabilities
-            if (defender.immunities.includes(damageInfo.damageType)) {
-                if (damageInfo.cat === "Weapon") {
-                    if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " from Non-magical Weapons";
-                    }
-                    if (defender.immunities.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
-                    }
-                    if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " Weapons";
-                    }
-                }
-                if (damageInfo.cat === "Spell") {
+    const ApplyDamage = (rollResults,attacker,defender,damageInfo) => {
+        let total = rollResults.total;
+        let damageType = rollResults.damageType;
+        let savingThrow = damageInfo.savingThrow;
+        let saveEffect = damageInfo.saveEffect;
+        let magic = damageInfo.magic === "magic" ? true:false;
+        let silver = damageInfo.magic === "silver" ? true:false;
+        let immune = false;
+        let resistant = false;
+        let note;
+        let weaponTypes = ["piercing","slashing","bludgeoning"]
+        //Immunities
+        if (defender.immunities.includes(damageType)) {
+            if (weaponTypes.includes(damageType)) {
+                if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && magic === false) {
                     immune = true;
-                    note = "Immune to " + damageInfo.damageType + " Damage";
+                    note = "Immune to " + damageType + " Damage from Non-magical Weapons";
                 }
-                if (immune === true) {
+                if (defender.immunities.includes("silver") && magic === false && silver === false) {
+                    immune = true;
+                    note = "Immune to " + damageType + " Damage from Non-magical, Non-Silvered Weapons";
+                }
+                if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
+                    immune = true;
+                    note = "Immune to " + damageType + " Damage";
+                }
+            } else {
+                immune = true;
+                note = "Immune to " + damageType + " Damage";
+            }
+        }
+        //Resistances
+        if (immune === false && defender.resistances.includes(damageType)) {
+            if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
+                resistant = true;
+                note = "Resistant to " + damageType + " Damage from Non-magical Weapons";
+            }
+            if (defender.resistances.includes("silver") && magic === false && silver === false) {
+                resistant = true;
+                note = "Resistant to " + damageType + " Damage from Non-magical, Non-Silvered Weapons";
+            }
+            if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
+                resistant = true;
+                note = "Immune to " + damageType + " Damage";
+            }
+        } else {
+            resistant = true;
+            note = "Resistant to " + damageType + " Damage";
+        }
+        if (immune == true) {total = 0};
+        if (resistant === true) {total = Math.round(total/2)};
+        //Vulnerabilities
+        if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
+            total *= 2;
+            note = "Vulnerable to " +  damageType + " Damage";
+        }
+
+        //other Damage Reduction Here
+
+        //Saving Throws
+        if (savingThrow && savingThrow !== "No") {
+            let dc = attacker.spellDC;
+            let result = Save(defender,dc,savingThrow); //save, saveTotal, saveTip
+            if (result.save === true) {
+                tip = '[Saves](#" class="showtip" title="' + result.saveTip + ')';
+                if (saveEffect === "No Damage") {
+                    tip += " and takes No Damage";
                     total = 0;
                 }
-            }
-            if (immune === false && defender.resistances.includes(damageInfo.damageType)) {
-                if (damageInfo.cat === "Weapon") {
-                    if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " from Non-magical Weapons";
-                    }
-                    if (defender.resistances.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
-                    }
-                    if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " Weapons";
-                    }
-                }
-                if (damageInfo.cat === "Spell") {
-                    resistant = true;
-                    note = "Resistant to " + damageInfo.damageType + " Damage";
-                }
-                if (resistant === true) {
+                if (saveEffect === "Half Damage") {
+                    tip += " and takes 1/2 Damage";
                     total = Math.round(total/2);
                 }
+            } else {
+                tip = tip = '[Fails](#" class="showtip" title="' + result.saveTip + ')' + " the Save";
             }
-            if (immune === false && resistant === false && defender.vulnerabilities.includes(damageInfo.damageType)) {
-                total *= 2;
-                note = "Vulnerable to " +  damageInfo.damageType + " = Double";
-            }
+            outputCard.body.push(defender.name + " " + tip);
+        }
 
-    //add in any other damage reductions here
+        let result = {
+            total: total,
+            note: note,
+        }
 
+        return result;
+    }
 
-            if (damageInfo.savingThrow && damageInfo.savingThrow !== "No") {
-                let dc = 10;
-                if (damageInfo.cat === "Spell") {
-                    dc = attacker.spellDC;
-                }
-                let result= Save(defender,dc,damageInfo.savingThrow);
-                if (result.save === true) {
-                    tip = tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
-                    if (damageInfo.saveEffect === "No Damage") {
-                        tip += " and takes No Damage";
-                        total = 0;
-                    }
-                    if (damageInfo.saveEffect === "Half Damage") {
-                        tip += " and takes 1/2 Damage";
-                        total = Math.round(total/2);
-                    }
-                } else {
-                    tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
-                }
-                outputCard.body.push(defender.name + " " + tip);
-            }
-
-            let result = {
-                total: total,
-                note: note,
-            }
-
-            return result;
-    } 
 
 
     const SetCondition = (msg) => {
@@ -1323,6 +1323,7 @@ const DnD = (() => {
         if (!weapon.critOn) {weapon.critOn = 20};
         if (!weapon.range) {weapon.range = [0,0]};
         if (!weapon.properties) {weapon.properties = " "};
+        weapon.magic = " ";
 
         let inReach = false;
 
@@ -1388,11 +1389,11 @@ const DnD = (() => {
                 magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
                 attackBonus += magicBonus;
                 weapon.base += "+" + magicBonus;
-                weapon.damageType += ",magic"
+                weapon.magic = "magic";
             }
         }
         if (extra.includes("Silver")) {
-            weapon.damageType += ",silver"
+            weapon.magic = "silver";
         }
 
         weapon.damage = [weapon.base];
@@ -1440,37 +1441,20 @@ const DnD = (() => {
                 //normally one eg 1d8+1, slashing damage for a longsword
                 //might have a 2nd eg 1d6,fire for a flaming longsword
                 //roll damage for each damage type then 'apply' it to defender
-                let rollResults = RollDamage(weapon.damage[i],crit,attacker,"Weapon");
-//temp - will need to 'apply'
-                let tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')';
+                let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
+                let damageResults = ApplyDamage(rollResults,attacker,defender,weapon);
+                let tip = rollResults.diceText;
+                if (damageResults.note !== "") {
+                    tip += "<br>" + damageResults.note;
+                }                
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
                 outputCard.body.push("Damage: " + tip);
-
-
+                if (crit === true) {
+                    spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
+                } else {
+                    spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
+                }
             }            
-
-
-log(weapon)
-        /*
-           let rollResults = RollDamage(weapon,crit,attacker);
-            let damageResults = ApplyDamage(weapon,attacker,defender,rollResults);
-            let add = "";
-            if (rollResults.bonus > 0) {
-                add = "+" + rollResults.bonus;
-            }
-            if (rollResults.bonus < 0) {
-                add = rollResults.bonus;
-            }
-            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
-            if (damageResults.note !== "") {
-                tip += "<br>" + damageResults.note;
-            }
-            tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Damage: " + tip);
-            if (crit === true) {
-                spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
-            } else {
-                spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
-            }
 
             if (attacker.class.includes("paladin") && inReach === true) {
                 //add option of smite if has spell slots
@@ -1482,7 +1466,6 @@ log(weapon)
                         levels.push(level);
                     }
                 }
-            
                 if (levels.length === 1) {
                     line += levels[0];
                 } else {
@@ -1497,18 +1480,10 @@ log(weapon)
                 }
             }
 
-
-
-
             if (weapon.special) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push(weapon.special);
             }
-
-
-
-        */
-
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
