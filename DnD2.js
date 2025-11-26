@@ -856,7 +856,7 @@ const DnD = (() => {
             }
         }
         total += bonus;
-//rewrite this - maybe to be 1d8+1 = Roll 3 + 1 then the damage type
+//rewrite this - maybe to be Roll: 3 + 1 then [1d8 +1 and damage type] in line under that
         let diceText = damageType + ": " + rolls.toString().replace(",","+") + "+" + bonus + "<br>[";
         _.each(text,element => {
             diceText += element + "+";
