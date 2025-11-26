@@ -792,11 +792,12 @@ const DnD = (() => {
         }
     }
 
-    const RollDamage = (damageInfo,crit,attacker,level) => {
+    const RollDamage = (damageInfo,crit,attacker,level,category) => {
         //spellinfo if a spell, weaponinfo if a weapon
         //eg 1d8+1d6+3 or even 3
-        let base = damageInfo.base;
-        if (damageInfo.cat === "Spell") {
+        if (category === "Spell") {
+
+//alter this
             //some spells do higher damage based on caster level or on spell level
             if (damageInfo.cLevel[attacker.casterLevel]) {
                 base = damageInfo.cLevel[attacker.casterLevel];
@@ -806,8 +807,9 @@ const DnD = (() => {
             }
         }
 
-
-
+        damageInfo = damageInfo.split(",");
+        base = damageInfo[0].trim();
+        damageType = damageInfo[1].trim();
 
         base = base.split("+");
         let comp = [];
@@ -852,12 +854,18 @@ const DnD = (() => {
                 }
             }
         }
-
-
         total += bonus;
+
+        let diceText = damageType + ": " + rolls.toString().replace(",","+") + bonus + "<br>[";
+        _.each(text,element => {
+            diceText += element + "+";
+        })
+        if (bonus < 0) {
+            diceText = diceText.substring(0,diceText.length - 1); //change the + to the - of the bonus
+        }
+        diceText += bonus + "]";
+
         let result = {
-            rolls: rolls,
-            bonus: bonus,
             diceText: text,
             total: total,
         }
@@ -1286,11 +1294,6 @@ const DnD = (() => {
         let attacker = ModelArray[attID];
         let defender = ModelArray[defID];
 
-        let attMarkers = Markers(attacker.token.get("statusmarkers"));
-        let defMarkers = Markers(defender.token.get("statusmarkers"));
-
-
-
         let errorMsg = [];
 
         if (!attacker) {
@@ -1301,6 +1304,13 @@ const DnD = (() => {
             errorMsg.push("Defender not in Array");
             defender = attacker;
         }
+
+        let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        let defMarkers = Markers(defender.token.get("statusmarkers"));
+
+
+
+
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
             weapon = DeepCopy(WeaponInfo[weaponName]);
@@ -1308,9 +1318,12 @@ const DnD = (() => {
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
-
         weapon.cat = "Weapon";
         weapon.info = extra;
+        //set some defaults
+        if (!weapon.critOn) {weapon.critOn = 20};
+        if (!weapon.range) {weapon.range = [0,0]};
+        if (!weapon.properties) {weapon.properties = " "};
 
         let inReach = false;
 
@@ -1339,6 +1352,14 @@ const DnD = (() => {
             errorMsg.push("Target is Out of Max Range");
         }
 
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                sendChat("",msg);
+            })
+            return;
+        }
+
+
         //damage bonuses, move into weaponInfo for Damage routine
         //stat
         if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
@@ -1348,14 +1369,19 @@ const DnD = (() => {
         if (attacker.name === "Wirsten" && inReach === true) {
             weapon.base += "+2"; //Duellist
         }
-        if (attacker.token.get("status_yellow") === true) {
-            //Divine Favour
-            weapon.secondBase= "1d4";
-            weapon.secondType = "Radiant"
-        }
 
         //attack bonuses
         attackBonus = statBonus + attacker.pb;
+
+        //other mods
+        let additionalText = "";
+        if (attMarkers.includes("Bless")) {
+            bless = randomInteger(4);
+            additionalText += " +" + bless + " [Bless]";
+            attackBonus += bless;
+        }
+
+
 
         //Magic Items
         if (extra !== "Non-Magic" && extra !== "No") {
@@ -1370,19 +1396,11 @@ const DnD = (() => {
             weapon.damageType += ",silver"
         }
 
-        if (errorMsg.length > 0) {
-            _.each(errorMsg,msg => {
-                sendChat("",msg);
-            })
-            return;
-        }
+        weapon.damage = [weapon.base];
 
-        //other mods
-        let additionalText = "";
-        if (attMarkers.includes("Bless")) {
-            bless = randomInteger(4);
-            additionalText += " +" + bless + " [Bless]";
-            attackBonus += bless;
+        if (attacker.token.get("status_yellow") === true) {
+            //Divine Favour
+            weapon.damage.push('1d4,radiant');
         }
 
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
@@ -1419,6 +1437,19 @@ const DnD = (() => {
 
         if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true) {
             outputCard.body.push("[B]Hit![/b]")
+            for (let i=0;i<weapon.damage.length;i++) {
+                //normally one eg 1d8+1, slashing damage for a longsword
+                //might have a 2nd eg 1d6,fire for a flaming longsword
+                //roll damage for each damage type then 'apply' it to defender
+                let rollResults = RollDamage(weapon.damage[i],crit,attacker,"Weapon");
+//temp - will need to 'apply'
+                let tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')';
+                outputCard.body.push("Damage: " + tip);
+
+
+            }            
+
+
 log(weapon)
         /*
            let rollResults = RollDamage(weapon,crit,attacker);
