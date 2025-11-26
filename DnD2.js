@@ -859,8 +859,8 @@ const DnD = (() => {
         }
         total += bonus;
         let s = (rolls.length === 1) ? "":"s";
-        let bonusText = (bonus < 0) ? bonus:"+" + bonus;
-        let results = "Roll" + s + ": " + rolls.toString().replace(",","+") + bonusText + "<br>[";
+        let bonusText = (bonus < 0) ? bonus:(bonus > 0) ? "+" + bonus:"";
+        let results = "Roll" + s + ": " + rolls.toString().replace(/,/g,"+") + bonusText + "<br>[";
         for (let i=0;i<text.length;i++) {
             if (i > 0) {results += "+"};
             results += text[i];
@@ -877,6 +877,7 @@ const DnD = (() => {
     }
 
     const ApplyDamage = (rollResults,attacker,defender,damageInfo) => {
+        if (!damageInfo) {damageInfo = {}};
         let total = rollResults.total;
         let damageType = rollResults.damageType;
         let savingThrow = damageInfo.savingThrow;
@@ -1214,7 +1215,7 @@ log(char)
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
         let text = Tag[2];
         let skill = text.toLowerCase();
-        skill = skill.replace(" ","_");
+        skill = skill.replace(/ /g,"_");
         SetupCard(model.name,text,model.displayScheme);
         let stats = ["strength","dexterity","constitution","intelligence","wisdom","charisma"];
         let bonus;
@@ -1427,7 +1428,7 @@ log(char)
         if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && inReach === true) {
             crit = true;
         }
-        let abText = (attackBonus < 0) ? attackBonus:"+" + attackBonus;
+        let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
 
         tip = attackResult.rollText + abText + additionalText;
         tip += "<br>[1d20" + abText + additionalText + "]";
@@ -1478,15 +1479,10 @@ log(damageResults)
             }
 
 
-
-            /*
-
-
-
             if (attacker.class.includes("paladin") && inReach === true) {
                 //add option of smite if has spell slots
-                let c = (crit === true) ? 1:0
-                let line = "!Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
+                let c = (crit === true) ? 1:0;
+                let line = "!SpecialAbility;Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
                 let levels = [];
                 for (let level = 1;level < 6;level++) {
                     if (SpellSlots(attacker,level) === true) {
@@ -1506,7 +1502,7 @@ log(damageResults)
                     ButtonInfo("Smite!",line);
                 }
             }
-*/
+
             if (weapon.special) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push(weapon.special);
@@ -1686,12 +1682,118 @@ log(damageResults)
     }
 
 
+    const SpecialAbility = (msg) => {
+        let Tag = msg.content.split(";");
+        let abilityName = Tag[1];
+        let attID = Tag[2];
+        let attacker = ModelArray[attID];
+
+
+        if (abilityName === "Shield Bash") {
+            let defID = Tag[3];
+            let defender = ModelArray[defID];
+            ShieldBash(attacker,defender);
+        }
+        if (abilityName === "Smite") {
+            let defID = Tag[3];
+            let defender = ModelArray[defID];
+            let critical = parseInt(Tag[4]) === 1 ? true:false;
+            let level = parseInt(Tag[5]);
+            Smite(attacker,defender,critical,level);
+        }
 
 
 
 
 
 
+
+
+
+
+
+        PrintCard();
+    }
+
+    const ShieldBash = (attacker,defender) => {
+        SetupCard(attacker.name,"Shield Bash",attacker.displayScheme);
+        if (defender.immunities.includes("prone")) {
+            outputCard.body.push(defender.name + " is immune");
+            return;
+        }
+        if (defender.size > attacker.size) {
+            outputCard.body.push(defender.name + " is too large to Bash");
+            return;
+        }
+
+        let attRoll = randomInteger(20);
+        let attTotal = attRoll + attacker.skills.athletics;
+
+        let defRoll = randomInteger(20);
+        let verb;
+        if (defender.skills.athletics >= defender.skills.acrobatics) {
+            defAtt = " [Athletics]";
+            verb = " resists ";
+            bonus = defender.skills.athletics;;
+        } else {
+            defAtt = " [Acrobatics]";
+            verb = " dodges ";
+            bonus = defender.skills.acrobatics;
+        }
+        let defTotal = defRoll + bonus;
+        let tip = attacker.name + " Rolls: " + attRoll + " + " + attacker.skills.athletics; 
+        tip += "<br>" + defender.name + " Rolls: " + defRoll + " + " + bonus + defAtt;
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+        outputCard.body.push(tip + " " + attacker.name + " bashes " + defender.name + " with his Shield");
+
+        if (defTotal < attTotal) {
+            outputCard.body.push("[B]Success[/b]");
+            outputCard.body.push(defender.name + " can be either pushed back 5ft or knocked prone");
+        } else {
+            outputCard.body.push("[B][#ff0000]Failure[/b][/#]");
+            outputCard.body.push(defender.name + verb + "the Shield Bash");
+        }
+        PlaySound("Shield");
+    }
+
+    const Smite = (attacker,defender,critical,level) => {
+        let sub = (critical === true) ? "Divine Smite Critical": "Divine Smite";
+        let dice = 2 + (level - 1);
+        if (defender.type.toLowerCase().includes("undead")) {
+            dice += 1;
+            sub += " vs. Undead";
+        }
+        if (defender.type.toLowerCase().includes("fiend")) {
+            dice += 1;
+            sub += " vs. Fiend";
+        }
+
+        if (critical === "Yes") {
+            sub = "Critical " + sub;
+            dice = dice * 2;
+        }
+        SetupCard(attacker.name,sub,attacker.displayScheme);
+
+        let damage = dice + "d8,radiant";
+        let rollResults = RollDamage(damage,critical);
+        let damageResults = ApplyDamage(rollResults,attacker,defender);
+        let tip = rollResults.diceText;
+        if (damageResults.note !== "") {
+            tip += "<br>" + damageResults.note;
+        }                
+        tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+        outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+        spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
+        PlaySound("Smite");
+    }
+
+    const SpellSlots = (caster,level) => {
+        if (level === 0) {return true};
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        if (slots === 0) {return false};
+        return true;
+    }
 
 
 
@@ -1754,8 +1856,8 @@ log(damageResults)
             case '!Smite':
                 Smite(msg);
                 break;
-            case '!ShieldShove':
-                ShieldShove(msg);
+            case '!SpecialAbility':
+                SpecialAbility(msg);
                 break;
             case '!SpellAttack':
                 SpellAttack(msg);
