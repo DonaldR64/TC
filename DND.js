@@ -32,6 +32,7 @@ log(c);
 
     }
 
+
     const playerCodes = {
         "-OdzmtPMDNNfcmdvIN5m": "Ted",
         "all": "Allied",
@@ -2619,7 +2620,6 @@ log(model.name)
             _pageid:    model.token.get("_pageid"),
             id:         id,
             pr:         result,
-            formula:    "-1"
         });
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
