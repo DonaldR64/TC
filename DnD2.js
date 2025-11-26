@@ -1632,9 +1632,6 @@ log(damageResults)
             }
         })
 
-log(defender.token.get("aura1_color"))
-log(defender.token.get("aura1_radius"))
-log(attacker.special)
         //specials, spells etc
         if (defender.token.get("aura1_color").toLowerCase() === "#ff00ff" && defender.token.get("aura1_radius") > 0) {
             advantage = true;
@@ -1644,8 +1641,10 @@ log(attacker.special)
             disText.push("Defender taking Dodge Action");
             disadvantage = true;
         }
-        creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
-        if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
+        creatTypes = ["aberation","celestial","elemental","fey","fiend","undead"];
+        let other = creatTypes.some(type => attacker.type.toLowerCase().includes(type));
+
+        if (defMarkers.includes("Protection") && other === true) {
             disadvantage = true;
             disText.push("Protection from Evil/Good");
         }
@@ -1669,13 +1668,6 @@ log(attacker.special)
                 advText.push("Pack Tactics");
             }
         }
-
-
-
-
-
-
-
 
 
         finalAdv = 0;
