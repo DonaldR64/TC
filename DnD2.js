@@ -1189,7 +1189,6 @@ const DnD = (() => {
                 _pageid:    model.token.get("_pageid"),
                 id:         id,
                 pr:         total,
-                formula:    "-1"
             });
         }
 
