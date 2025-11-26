@@ -856,8 +856,8 @@ const DnD = (() => {
             }
         }
         total += bonus;
-
-        let diceText = damageType + ": " + rolls.toString().replace(",","+") + bonus + "<br>[";
+//rewrite this - maybe to be 1d8+1 = Roll 3 + 1 then the damage type
+        let diceText = damageType + ": " + rolls.toString().replace(",","+") + "+" + bonus + "<br>[";
         _.each(text,element => {
             diceText += element + "+";
         })
@@ -1393,7 +1393,7 @@ const DnD = (() => {
             weapon.magic = "silver";
         }
 
-        weapon.damage = [weapon.base];
+        weapon.damage = [weapon.base + "," + weapon.damageType];
 
         if (attacker.token.get("status_yellow") === true) {
             //Divine Favour
