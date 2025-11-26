@@ -161,10 +161,16 @@ const DnD = (() => {
 
 
             let control = char.get("controlledby");
-            if (control) {
-                this.displayScheme = playerCodes[control.split(",")[0]];;
-                this.npc = false;
-                this.sheetType = "PC";
+            let inParty = char.get("inParty")
+            this.inParty = inParty;
+            if (inParty === true) {
+                if (control) {
+                    this.displayScheme = playerCodes[control.split(",")[0]];
+                    this.npc = false;
+                    this.sheetType = "PC";
+                } else {
+                    this.displayScheme = "Allied";
+                }
             }
 
             this.initBonus = parseInt(aa.initiative_bonus) || 0;
@@ -222,7 +228,6 @@ const DnD = (() => {
             }
 
             this.special = aa.special || " ";
-            this.party = (this.npc === false || this.special.includes("Party")) ? true:false;
 
             this.token.set({
                 showname: true,
@@ -853,7 +858,6 @@ const DnD = (() => {
             }
         }
         total += bonus;
-//rewrite this - maybe to be Roll: 3 + 1 then [1d8 +1 and damage type] in line under that
         let s = (rolls.length === 1) ? "":"s";
         let bonusText = (bonus < 0) ? bonus:"+" + bonus;
         let results = "Roll" + s + ": " + rolls.toString().replace(",","+") + bonusText + "<br>[";
@@ -891,19 +895,19 @@ log(defender.vulnerabilities)
             if (weaponTypes.includes(damageType)) {
                 if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && magic === false) {
                     immune = true;
-                    note = "Immune to " + damageType + " Damage from Non-magical Weapons";
+                    note = "Immune to " + Capit(damageType) + " Damage from Non-magical Weapons";
                 }
                 if (defender.immunities.includes("silver") && magic === false && silver === false) {
                     immune = true;
-                    note = "Immune to " + damageType + " Damage from Non-magical, Non-Silvered Weapons";
+                    note = "Immune to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
                 }
                 if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
                     immune = true;
-                    note = "Immune to " + damageType + " Damage";
+                    note = "Immune to " + Capit(damageType) + " Damage";
                 }
             } else {
                 immune = true;
-                note = "Immune to " + damageType + " Damage";
+                note = "Immune to " + Capit(damageType) + " Damage";
             }
         }
         //Resistances
@@ -911,19 +915,19 @@ log(defender.vulnerabilities)
             if (weaponTypes.includes(damageType)) {
                 if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
                     resistant = true;
-                    note = "Resistant to " + damageType + " Damage from Non-magical Weapons";
+                    note = "Resistant to " + Capit(damageType) + " Damage from Non-magical Weapons";
                 }
                 if (defender.resistances.includes("silver") && magic === false && silver === false) {
                     resistant = true;
-                    note = "Resistant to " + damageType + " Damage from Non-magical, Non-Silvered Weapons";
+                    note = "Resistant to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
                 }
                 if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
                     resistant = true;
-                    note = "Immune to " + damageType + " Damage";
+                    note = "Immune to " + Capit(damageType) + " Damage";
                 }
             } else {
                 resistant = true;
-                note = "Resistant to " + damageType + " Damage";
+                note = "Resistant to " + Capit(damageType) + " Damage";
             }
         }
         if (immune == true) {total = 0};
@@ -931,7 +935,7 @@ log(defender.vulnerabilities)
         //Vulnerabilities
         if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
             total *= 2;
-            note = "Vulnerable to " +  damageType;
+            note = "Vulnerable to " +  Capit(damageType);
         }
 
         //other Damage Reduction Here
@@ -1026,7 +1030,7 @@ log(defender.vulnerabilities)
             outputCard.body.push("Square: " + square.x + "/" + square.y)
         })
         let char = getObj("character", token.get("represents"));    
-
+log(char)
         
         PrintCard();
 
@@ -1402,20 +1406,21 @@ log(defender.vulnerabilities)
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
         if (inReach === true && weapon.type.includes("Melee")) {
             outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
+            weapon.type = "Melee";
         }
         if (inReach === false && weapon.properties.includes("Thrown")) {
             outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
-            weapon.sound = "Shuriken"
+            weapon.sound = "Shuriken";
+            weapon.type = "Ranged";
         }
         if (inReach === false && weapon.properties.includes("Thrown") === false) {
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
+            weapon.type = "Ranged";
         }
 
-//advantage/disadvantage - pull from another routine
-        let advantage = 0;
-        //advantage = Advantage(attacker,defender,weapon); //placeholder
+        let advResult = Advantage(attacker,defender,weapon); 
 
-        let attackResult = D20(advantage);
+        let attackResult = D20(advResult.advantage);
         let attackTotal = attackResult.roll + attackBonus;
         let tip;
         let crit = false;
@@ -1425,7 +1430,14 @@ log(defender.vulnerabilities)
         let abText = (attackBonus < 0) ? attackBonus:"+" + attackBonus;
 
         tip = attackResult.rollText + abText + additionalText;
-        tip += "<br>[1d20" + abText + additionalText;
+        tip += "<br>[1d20" + abText + additionalText + "]";
+        if (advResult.advText.length > 0) {
+            tip += "<br>Advantage from: " + advResult.advText.toString();
+        }
+       if (advResult.disText.length > 0) {
+            tip += "<br>Disadvantage from: " + advResult.disText.toString();
+        }
+
         tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
         if (attackResult.roll >= weapon.critOn) {
             crit = true;
@@ -1519,7 +1531,167 @@ log(damageResults)
     }
 
 
+    const Advantage = (attacker,defender,damageInfo) => {
+        let inReach = false;
 
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
+
+        if (squares === 1) {
+            inReach = true;
+        }
+        if (damageInfo.properties.includes("Reach") && squares <= 2) {
+            inReach = true;
+        }
+
+        let attMarkers = Markers(attacker.token.get("statusmarkers"));
+        let defMarkers = Markers(defender.token.get("statusmarkers"));
+        let ids = Object.keys(ModelArray);
+
+        let positive = ["Invisible","Advantage"];
+        let attNegative = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
+        let defNegative = ["Blind","Disadvantage"];
+        let incapacitated = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
+
+        let advantage = false;
+        let advText = [];
+        let disadvantage = false;
+        let disText = [];
+
+        if (damageInfo.type.includes("Melee") === false) {
+            //check if any adjacent enemies that arent incapacitated, as they will impose disadvantage
+            for (let i=0;i<ids.length;i++) {
+                let model2 = ModelArray[ids[i]];
+                if (model2.id === attacker.id) {continue};
+                if (attacker.inParty !== model2.inParty) {
+                    let sm = Markers[model2.token.get("statusmarkers")] || " ";
+                    let ignore = incapacitated.some(r=> sm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
+                    if (ignore === false) {
+                        let squares = attacker.Distance(model2);
+                        if (squares <= 1) {
+                            disadvantage = true;
+                            disText.push("Adjacent to Enemy")
+                            break;
+                        }
+                    } 
+                }
+            }
+        }
+
+        //Prone
+        if (inReach === true) {
+            if (attMarkers.includes("Prone")) {
+                //attacker at disadvantage
+                disText.push("Prone Melee Attack");
+                disadvantage = true;
+            }
+            if (defMarkers.includes("Prone")) {
+                advText.push("Prone Melee Defender")
+                advantage = true;
+            }
+        } else {
+            if (defMarkers.includes("Prone")) {
+                disText.push("Prone Defender at Range");
+                disadvantage = true;
+            }
+        }
+
+        //ranged weapons over 'normal' range; note that thrown has changed to ranged in attack routine
+        if (inReach === false && damageInfo.type === "Ranged" && distance > damageInfo.range[0]) {
+            disText.push("Long Range");
+            disadvantage = true;
+        }
+
+        //check for conditions
+        _.each(positive,cond => {
+            if (attMarkers.includes(cond)) {
+                advantage = true;
+                advText.push(cond);
+            }
+            if (defMarkers.includes(cond)) {
+                disadvantage = true;
+                disText.push(cond);
+            }
+        })
+        _.each(attNegative,cond => {
+            if (attMarkers.includes(cond)) {
+                disadvantage = true;
+                disText.push(cond);
+            }
+        })
+        _.each(defNegative,cond => {
+            if (defMarkers.includes(cond)) {
+                advantage = true;
+                advText.push(cond);
+            }
+        })
+        _.each(incapacitated,cond => {
+            if (defMarkers.includes(cond)) {
+                advantage = true;
+                advText.push(cond);
+            }
+        })
+
+log(defender.token.get("aura1_color"))
+log(defender.token.get("aura1_radius"))
+log(attacker.special)
+        //specials, spells etc
+        if (defender.token.get("aura1_color").toLowerCase() === "#ff00ff" && defender.token.get("aura1_radius") > 0) {
+            advantage = true;
+            advText.push("Faerie Fire");
+        };
+        if (defMarkers.includes("Dodge")) {
+            disText.push("Defender taking Dodge Action");
+            disadvantage = true;
+        }
+        creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
+        if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
+            disadvantage = true;
+            disText.push("Protection from Evil/Good");
+        }
+        if (attacker.special.includes("Pack Tactics")) {
+            let adj = false;
+            for (let i=0;i<ids.length;i++) {
+                let model2 = ModelArray[ids[i]];
+                if (model2.id === attacker.id || model2.id === defender.id) {
+                    continue;
+                }
+                if (model2.inParty === attacker.inParty) {
+                    let squares = model2.Distance(defender);
+                    if (squares <= 1) {
+                        adj = true;
+                        break;
+                    }
+                }
+            }
+            if (adj === true) {
+                advantage = true;
+                advText.push("Pack Tactics");
+            }
+        }
+
+
+
+
+
+
+
+
+
+        finalAdv = 0;
+        if (advantage === true && disadvantage === false) {
+            finalAdv = 1;
+        }
+        if (advantage === false && disadvantage === true) {
+            finalAdv = -1;
+        }
+        let result = {
+            advantage: finalAdv,
+            advText: advText,
+            disText: disText,
+        }
+        return result;
+    }
 
 
 
