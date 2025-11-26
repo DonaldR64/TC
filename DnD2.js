@@ -867,7 +867,7 @@ const DnD = (() => {
         diceText += bonus + "]";
 
         let result = {
-            diceText: text,
+            diceText: diceText,
             total: total,
             damageType: damageType,
         }
@@ -1307,9 +1307,6 @@ const DnD = (() => {
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
         let defMarkers = Markers(defender.token.get("statusmarkers"));
 
-
-
-
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
             weapon = DeepCopy(WeaponInfo[weaponName]);
@@ -1435,6 +1432,7 @@ const DnD = (() => {
             outputCard.body.push("[#ff0000]Crit![/#]");
         }
 
+log(weapon)
         if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true) {
             outputCard.body.push("[B]Hit![/b]")
             for (let i=0;i<weapon.damage.length;i++) {
@@ -1442,7 +1440,9 @@ const DnD = (() => {
                 //might have a 2nd eg 1d6,fire for a flaming longsword
                 //roll damage for each damage type then 'apply' it to defender
                 let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
+log(rollResults)
                 let damageResults = ApplyDamage(rollResults,attacker,defender,weapon);
+log(damageResults)
                 let tip = rollResults.diceText;
                 if (damageResults.note !== "") {
                     tip += "<br>" + damageResults.note;
@@ -1455,7 +1455,7 @@ const DnD = (() => {
                     spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
                 }
             }            
-
+/*
             if (attacker.class.includes("paladin") && inReach === true) {
                 //add option of smite if has spell slots
                 let c = (crit === true) ? 1:0
@@ -1479,7 +1479,7 @@ const DnD = (() => {
                     ButtonInfo("Smite!",line);
                 }
             }
-
+*/
             if (weapon.special) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push(weapon.special);
