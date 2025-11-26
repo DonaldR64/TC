@@ -1307,9 +1307,6 @@ const DnD = (() => {
         let attMarkers = Markers(attacker.token.get("statusmarkers"));
         let defMarkers = Markers(defender.token.get("statusmarkers"));
 
-
-
-
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
             weapon = DeepCopy(WeaponInfo[weaponName]);
@@ -1317,7 +1314,6 @@ const DnD = (() => {
             errorMsg.push("Weapon not in Array");
             weapon = {range: 1000};
         }
-        weapon.cat = "Weapon";
         weapon.info = extra;
         //set some defaults
         if (!weapon.critOn) {weapon.critOn = 20};
