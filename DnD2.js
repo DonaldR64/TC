@@ -10,11 +10,17 @@ const DnD = (() => {
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
     const playerCodes = {
-        "-OdzmtPMDNNfcmdvIN5m": "Ted",
+        c: "Ted",
         "all": "Allied",
         "-OdyHPJkwRBH1F9Zn5AU": "Ian",
         "-OeTGX5FY4C70LTFBna4": "Vic",
     };
+
+    let PCs = {
+        "-OdzmtPMDNNfcmdvIN5m": "",
+        "-OdyHPJkwRBH1F9Zn5AU": "",
+        "-OeTGX5FY4C70LTFBna4": "",
+    }
 
     const playerColours = {
         "-OdzmtPMDNNfcmdvIN5m": "#ffd700",
@@ -172,10 +178,17 @@ const DnD = (() => {
                     this.displayScheme = "Allied";
                 }
             }
+            if (this.name.includes("Haevan")) {
+                PCs["-OdyHPJkwRBH1F9Zn5AU"] = this.id;
+            }
+            if (this.name.includes("Wirsten")) {
+                PCs["-OdyHPJkwRBH1F9Zn5AU"] = this.id;
+            }
+            if (this.name.includes("Eivirin")) {
+                PCs["-OeTGX5FY4C70LTFBna4"] = this.id;
+            }
 
             this.initBonus = parseInt(aa.initiative_bonus) || 0;
-
-
 
             let dim = Math.max(token.get("width"),token.get("height"));
             dim = Math.round(dim/70);
@@ -265,6 +278,7 @@ const DnD = (() => {
             let pt = new Point(this.token.get("left"),this.token.get("top"))
             return pt;
         }
+
         Squares() {
             let squares = [];
             let pt = this.Point();
@@ -367,7 +381,6 @@ const DnD = (() => {
     const lerp = (start, end, t) => {
         return start * (1.0 - t) + t * end;
     }
-
 
     const EndLine = (p0,p1,length) => {
         //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
@@ -1205,12 +1218,19 @@ log(char)
     }
 
     const Check = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
+        if (!model) {return};
         let Tag = msg.content.split(";");
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
         let text = Tag[2];
@@ -1795,6 +1815,19 @@ log(damageResults)
         return true;
     }
 
+    const MakeParty = (msg) => {
+        if (!msg.selected) {return};
+        let ids = [];
+        for (let i=0;i<msg.selected.length;i++) {
+            let id = msg.selected[i]._id;
+            let model = ModelArray[id];
+            let char = getObj("character",model.charID);
+            char.set("inParty",true);
+            log(model.name + " added to Party");
+        }
+    }
+
+
 
 
 
@@ -1901,7 +1934,9 @@ log(damageResults)
             case '!UseItem':
                 UseItem(msg);
                 break;
-
+            case '!MakeParty':
+                MakeParty(msg);
+                break;
 
         }
     };
