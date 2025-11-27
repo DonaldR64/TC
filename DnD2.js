@@ -858,7 +858,7 @@ const DnD = (() => {
         total += bonus;
         let s = (rolls.length === 1) ? "":"s";
         let bonusText = (bonus < 0) ? bonus:(bonus > 0) ? "+" + bonus:"";
-        let results = "Roll" + s + ": " + rolls.toString().replace(/,/g,"+") + bonusText + "<br>[";
+        let results = "Roll" + s + ": [" + rolls.toString().replace(/,/g,"+") + "]" + bonusText + "<br>[";
         for (let i=0;i<text.length;i++) {
             if (i > 0) {results += "+"};
             results += text[i];
@@ -940,7 +940,7 @@ log(defender.vulnerabilities)
         //other Damage Reduction Here
 
         //Saving Throws
-        if (savingThrow && savingThrow !== false) {
+        if (savingThrow && savingThrow !== "No") {
             let dc = attacker.spellDC;
             let result = Save(defender,dc,savingThrow); //save, saveTotal, saveTip
             if (result.save === true) {
@@ -1544,7 +1544,7 @@ log(damageResults)
         if (squares === 1) {
             inReach = true;
         }
-        if (damageInfo.properties.includes("Reach") && squares <= 2) {
+        if (damageInfo.properties && damageInfo.properties.includes("Reach") && squares <= 2) {
             inReach = true;
         }
 
@@ -1652,7 +1652,7 @@ log(damageResults)
             disadvantage = true;
             disText.push("Protection from Evil/Good");
         }
-        if (attacker.special.includes("Pack Tactics")) {
+        if (attacker.special.includes("Pack Tactics") && inReach === true && damageInfo.type.includes("Melee")) {
             let adj = false;
             for (let i=0;i<ids.length;i++) {
                 let model2 = ModelArray[ids[i]];
@@ -1823,27 +1823,28 @@ log(damageResults)
 
     const DirectAttackSpell = (spellInfo) => {
         let caster = spellInfo.caster;
-        let targetIDs = spellInfo.targetIDs;
+        let targets = spellInfo.targets;
         let spell = spellInfo.spell;
         let level = spellInfo.level;
-        let squares = spellInfo.squares;
         let attMarkers = Markers(caster.token.get("statusmarkers"));
 
-        let emote = spellInfo.emote;
-        emote = emote.replace("%%C%%",caster.name);
+
+        let emote = spell.emote || " ";
+        emote = emote.replace(/%%C%%/g,caster.name);
         outputCard.body.push(emote);
 
-        if (spell.cLevel && spell.cLevel[attacker.casterLevel]) {
-            spell.base = spell.cLevel[attacker.casterLevel];
+        if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
+            spell.base = spell.cLevel[caster.casterLevel];
         }
         if (level > spell.level) {
             spell.base = spell.sLevel[level];
         }
 
-        spell.damage = [spell.base + "," + spell.damageType];
+        spell.damage = spell.base + "," + spell.damageType;
+        spell.type = "Spell";
 
-        for (let i=0;i<targetIDs.length;i++) {
-            let defender = ModelArray[targetIDs[i]];
+        for (let i=0;i<targets.length;i++) {
+            let defender = targets[i];
             let defMarkers = Markers(defender.token.get("statusmarkers"));
             if (!defender) {log("No Target at " + targetIDs[i]);continue};
             let advResult = Advantage(caster,defender,spell);
@@ -1863,7 +1864,7 @@ log(damageResults)
 
             let tip;
             let crit = false;
-            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && squares === 1) {
+            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && caster.Distance(defender) === 1) {
                 crit = true;
             }
 
@@ -1880,7 +1881,7 @@ log(damageResults)
 
             tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
 
-            if (spell.autoHit === false) {
+            if (spell.autoHit === "No") {
                 if (attackResult.roll === 20) {crit = true};
                 outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
                 if (crit === true) {
@@ -1888,11 +1889,11 @@ log(damageResults)
                 }
             }
 
-            if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true || spell.autoHit === true) {
+            if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
                 outputCard.body.push("[B]Hit![/b]")
                 let rollResults = RollDamage(spell.damage,crit); //total, diceText
     log(rollResults)
-                    let damageResults = ApplyDamage(rollResults,attacker,defender,spell);
+                    let damageResults = ApplyDamage(rollResults,caster,defender,spell);
     log(damageResults)
                     let tip = rollResults.diceText;
                     if (damageResults.note !== "") {
@@ -1907,71 +1908,70 @@ log(damageResults)
             } else {
                 outputCard.body.push("[B]Miss[/b]");
             }
-            FX(spell.fx,caster,defender);
+            //FX(spell.fx,caster,defender);
         }
         PlaySound(spell.sound);
     }
 
 const Spell = (msg) => {
     let Tag = msg.content.split(";");
-    let type = Tag[1];
-    let spellName = Tag[2];
-    let level = Tag[3];
-    let casterID = Tag[4];
-    let targetIDs = [];
-    for (let i=5;i<= Tag.length;i++) {
-        targetIDs.push(Tag[i]);
-    }
+    let spellName = Tag[1];
+    let level = Tag[2];
+    let casterID = Tag[3];
+    let targets = [];
+    let errorMsg = [];
 
     let caster = ModelArray[casterID];
     let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
-
-    let squares = caster.Distance(target);
-    let distance = squares * pageInfo.scale;
-
-    let errorMsg = [];
-
-    let spellInfo = {
-        caster: caster,
-        targets: targetIDs,
-        spell: spell,
-        level: level,
-        squares: squares,
-    }
-
-    SetupCard(caster.name,spellName,caster.displayScheme);
 
     //check spell slots, distance
     let slotsAvailable = SpellSlots(caster,level);
     if (slotsAvailable === false) {
         errorMsg.push("No Slots of that Level Available");
     }
-    if (distance > spell.range) {
-        errorMsg.push("Target is out of range");
+
+    for (let i=4;i<= Tag.length;i++) {
+        let target = ModelArray[Tag[i]];
+        if (!target) {
+            log("No Target at ID:" + Tag[i])
+        } else {
+            let squares = caster.Distance(target);
+            let distance = squares * pageInfo.scale;
+            if (distance > spell.range) {
+                errorMsg.push(target.name + " is out of Range");
+            } else {
+                targets.push(target);
+            }
+        }
     }
 
     if (errorMsg.length > 0) {
         _.each(errorMsg,error => {
             outputCard.body.push(error);
         });
-    } else {
-        if (type === "DirectAttack") {
-            //spells that directly attack the target
-            DirectAttackSpell(spellInfo);
-        }
-        if (type === "DirectOther") {
-            DirectOtherSpell(spellInfo);
-        }
-        if (type === "Template") {
-            //spells that need a template or similar eg AOE spells
-            TemplateSpell1(spellInfo);
-        }
+    } 
+
+    let spellInfo = {
+        caster: caster,
+        targets: targets,
+        spell: spell,
+        level: level,
     }
 
+    SetupCard(caster.name,spellName,caster.displayScheme);
 
-
-
+    if (spell.spellType === "DirectAttack") {
+        //spells that directly attack the target
+        DirectAttackSpell(spellInfo);
+    }
+    if (spell.spellType === "DirectOther") {
+        DirectOtherSpell(spellInfo);
+    }
+    if (spell.spellType === "Area") {
+        //spells that need a template or similar eg AOE spells
+        AreaSpell1(spellInfo);
+    }
 
     PrintCard();
 
@@ -2048,17 +2048,11 @@ const Spell = (msg) => {
             case '!SpecialAbility':
                 SpecialAbility(msg);
                 break;
-            case '!SpellAttack':
-                SpellAttack(msg);
-                break;
             case '!SetCondition':
                 SetCondition(msg);
                 break;
             case '!Spell':
                 Spell(msg);
-                break;
-            case '!CastSpell':
-                CastSpell(msg);
                 break;
             case '!Attack':
                 Attack(msg);
