@@ -16,7 +16,6 @@
             fx: "missile-frost",
         },
         "Acid Splash": {
-            cat: "Spell",
             level: 0,
             range: 60,
             autoHit: false,
@@ -28,7 +27,6 @@
             sound: "",
         },
         "Burning Hands": {
-            cat: "Spell",
             level: 1,
             range: 15,
             autoHit: true,
@@ -41,7 +39,6 @@
             sound: "Inferno",
         },
         "Magic Missile": {
-            cat: "Spell",
             level: 1,
             range: 120,
             autoHit: true,
@@ -79,7 +76,6 @@
             range: 60,
         },
         "Produce Flame": {
-            cat: "Spell",
             level: 0,
             range: 30,
             autoHit: false,
