@@ -12,6 +12,10 @@ const Spell = (msg) => {
     let caster = ModelArray[casterID];
     let spell = SpellInfo[spellName];
     spell.name = spellName;
+
+    let squares = caster.Distance(target);
+    let distance = squares * pageInfo.scale;
+
     let errorMsg = [];
 
     let spellInfo = {
@@ -19,17 +23,16 @@ const Spell = (msg) => {
         targets: targetIDs,
         spell: spell,
         level: level,
+        squares: squares,
     }
-
 
     SetupCard(caster.name,spellName,caster.displayScheme);
 
-    //check spell slots
+    //check spell slots, distance
     let slotsAvailable = SpellSlots(caster,level);
     if (slotsAvailable === false) {
         errorMsg.push("No Slots of that Level Available");
     }
-    let distance = caster.Distance(target);
     if (distance > spell.range) {
         errorMsg.push("Target is out of range");
     }
