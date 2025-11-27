@@ -1135,12 +1135,19 @@ log(char)
     }
 
     const SavingThrow = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
+        if (!model) {return};
         let Tag = msg.content.split(";");
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
         let stat = Tag[2];
@@ -1174,16 +1181,22 @@ log(char)
     }
 
     const Initiative = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
-
+        if (!model) {return};
         SetupCard(model.name,"Initiative",model.displayScheme);
         let bonus = model.initBonus;
-//later add in advantage/disadvantage for initiative here
+        //later add in advantage/disadvantage for initiative here
         let advantage = 0;
         let roll = D20(advantage);
         let total = OutputRoll(roll,bonus);
