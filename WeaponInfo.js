@@ -54,7 +54,6 @@
             damageType: "slashing",
             type: "Melee",
             sound: "Beast",
-            text: "If the target is a Large or smaller creature, it is knocked Prone",
         },
         "Hand Crossbow": {
             base: "1d6",
