@@ -1826,13 +1826,13 @@ log(damageResults)
             let char = getObj("character",model.charID);
             if (char.get("inParty") === false) {
                 char.set("inParty",true);
-                v = "added to";
+                v = " added to Party";
             } else {
                 char.set("inParty",false);
-                v = "removed from"
+                v = " removed from Party"
             }
             char.set("inParty",true);
-            log(model.name + " " + v + " Party");
+            sendChat("",model.name + v);
         }
     }
 
