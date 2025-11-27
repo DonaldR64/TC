@@ -549,6 +549,8 @@ const DnD = (() => {
         outputCard.buttons.push(info);
     };
 
+
+
     const SetupCard = (title,subtitle,side) => {
         outputCard.title = title;
         outputCard.subtitle = subtitle;
@@ -2028,10 +2030,12 @@ const ShowSpells = (msg) => {
     SetupCard(model.name,"Available Spells",model.displayScheme);
     //cantrips
     if (model.spells.cantrip) {
+        buttons = [];
         outputCard.body.push("[B][U]Cantrips[/b][/u]");
         _.each(model.spells.cantrip,cantrip => {
-            ButtonInfo(cantrip.name,"",true,'cantrip');
+
         })
+        outputCard.body.push("[hr]");
     }
 
     for (let i=1;i<6;i++) {
@@ -2039,11 +2043,13 @@ const ShowSpells = (msg) => {
             outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
             //show prepared spells for that level with a button
             let spells = model.spells[i];
+            let buttons = [];
             _.each(spells,spell => {
                 if (Attribute(model.charID,spell.prepared) == 1) {
-                    ButtonInfo(spell.name,"",true,i);
+                    
                 }
             })
+            outputCard.body.push("[hr]");
         }
     }
 
