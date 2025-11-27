@@ -307,9 +307,9 @@ const DnD = (() => {
         Spells(aa) {
             let spells = {};
             let keys = Object.keys(aa);
-            let list = ["cantrip",1,2,3,4,5,6,7];
+            let levels = ["cantrip",1,2,3,4,5,6,7];
             _.each(keys,key => {
-                _.each(list,level => {
+                _.each(levels,level => {
                     if (key.includes("repeating_spell-" + level) && key.includes("spellname") && key.includes("spellname_max") === false) {
                         let name = aa[key].trim();
                         if (name) {
@@ -327,7 +327,6 @@ const DnD = (() => {
                     }
                 })
             })
-log(spells)
             return spells
         }
 
@@ -537,13 +536,15 @@ log(spells)
 
 
 
-    const ButtonInfo = (phrase,action,inline) => {
+    const ButtonInfo = (phrase,action,inline,level) => {
         //inline - has to be true in any buttons to have them in same line -  starting one to ending one
         if (!inline) {inline = false};
+        if (!level) {level = false};
         let info = {
             phrase: phrase,
             action: action,
             inline: inline,
+            level: level,
         }
         outputCard.buttons.push(info);
     };
@@ -2026,15 +2027,12 @@ const ShowSpells = (msg) => {
     let model = ModelArray[msg.selected[0]._id];
     SetupCard(model.name,"Prepared Spells",model.displayScheme);
     //cantrips
-    if (model.spells.cantrips) {
+    if (model.spells.cantrip) {
         outputCard.body.push("[B][U]Cantrips[/b][/u]");
-        _.each(model.spells.cantrips,cantrip => {
-            outputCard.body.push(cantrip.name);
+        _.each(model.spells.cantrip,cantrip => {
+            ButtonInfo(cantrip.name,"",true,'cantrip');
         })
     }
-
-
-
 
     for (let i=1;i<6;i++) {
         if (SpellSlots(model,i)){
@@ -2043,7 +2041,7 @@ const ShowSpells = (msg) => {
             let spells = model.spells[i];
             _.each(spells,spell => {
                 if (Attribute(model.charID,spell.prepared) == 1) {
-                    outputCard.body.push(spell.name);
+                    ButtonInfo(spell.name,"",true,i);
                 }
             })
         }
