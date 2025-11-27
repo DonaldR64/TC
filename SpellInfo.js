@@ -3,7 +3,6 @@
     const SpellInfo = {
 
         "Ray of Frost": {
-            cat: "Spell",
             level: 0,
             range: 60,
             auto: false,
