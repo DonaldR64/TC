@@ -1853,9 +1853,6 @@ log(damageResults)
 
 
                 break;
-            case '!Smite':
-                Smite(msg);
-                break;
             case '!SpecialAbility':
                 SpecialAbility(msg);
                 break;
