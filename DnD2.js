@@ -2025,7 +2025,7 @@ const Spell = (msg) => {
 const ShowSpells = (msg) => {
     if (!msg.selected) {return};
     let model = ModelArray[msg.selected[0]._id];
-    SetupCard(model.name,"Prepared Spells",model.displayScheme);
+    SetupCard(model.name,"Available Spells",model.displayScheme);
     //cantrips
     if (model.spells.cantrip) {
         outputCard.body.push("[B][U]Cantrips[/b][/u]");
