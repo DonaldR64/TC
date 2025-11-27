@@ -609,28 +609,12 @@ const DnD = (() => {
         for (let i=0;i<outputCard.body.length;i++) {
             let out = "";
             let line = outputCard.body[i];
+log(i)
+log(line)
             if (!line || line === "") {continue};
-            if (line.includes("[INLINE")) {
-                let end = line.indexOf("]");
-                let substring = line.substring(0,end+1);
-                let num = substring.replace(/[^\d]/g,"");
-                if (!num) {num = 1};
-                line = line.replace(substring,"");
-                out += `<div style="display: table-row; background: #FFFFFF;; `;
-                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
-                out += `"><span style="line-height: normal; color: #000000; `;
-                out += `"> <div style='text-align: center; display:block;'>`;
-                out += line + " ";
-
-                for (let q=0;q<num;q++) {
-                    let info = outputCard.inline[inline];
-                    out += `<a style ="background-color: ` + Factions[outputCard.side].backgroundColour + `; padding: 5px;`
-                    out += `color: ` + Factions[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
-                    out += `border-color: ` + Factions[outputCard.side].borderColour + `; font-family: Tahoma; font-size: x-small; `;
-                    out += `"href = "` + info.action + `">` + info.phrase + `</a>`;
-                    inline++;                    
-                }
-                out += `</div></span></div></div>`;
+            if (line.includes("[FORMATTED]")) {
+                line = line.replace("[FORMATTED]","");
+                out += line;
             } else {
                 line = line.replace(/\[hr(.*?)\]/gi, '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">');
                 line = line.replace(/\[\#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})\](.*?)\[\/[\#]\]/g, "<span style='color: #$1;'>$2</span>"); // [#xxx] or [#xxxx]...[/#] for color codes. xxx is a 3-digit hex code
@@ -805,6 +789,38 @@ const DnD = (() => {
             istokenaction: true,
         })
     }    
+
+    const InlineButtons = (array) => {
+        let output = "[FORMATTED]";
+        for (let i=0;i<array.length;i++) {
+            let info = array[i];
+            let inline = true;
+            if (i>0 && inline === false) {
+                output += '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">';
+            }
+            let out = "";
+            let borderColour = Factions[outputCard.side].borderColour;
+            if (inline === false || i===0) {
+                out += `<div style="display: table-row; background: #FFFFFF;; ">`;
+                out += `<div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: center; display:block;'>`;
+            }
+            if (inline === true) {
+                out += '<span>     </span>';
+            }
+            out += `<a style ="background-color: ` + Factions[outputCard.side].backgroundColour + `; padding: 5px;`
+            out += `color: ` + Factions[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
+            out += `border-color: ` + borderColour + `; font-family: Tahoma; font-size: x-small; `;
+            out += `"href = "` + info.action + `">` + info.phrase + `</a>`
+            
+            if (inline === false || i === (array.length - 1)) {
+                out += `</div></span></div></div>`;
+            }
+            output += out;
+        }
+        return output;
+    }
 
 
 
@@ -2033,9 +2049,15 @@ const ShowSpells = (msg) => {
         buttons = [];
         outputCard.body.push("[B][U]Cantrips[/b][/u]");
         _.each(model.spells.cantrip,cantrip => {
-
+            buttons.push({
+                phrase: cantrip.name,
+                action: "",
+            })
         })
+        outputCard.body.push(InlineButtons(buttons));
+        outputCard.body.push("<br>");
         outputCard.body.push("[hr]");
+        
     }
 
     for (let i=1;i<6;i++) {
@@ -2046,9 +2068,14 @@ const ShowSpells = (msg) => {
             let buttons = [];
             _.each(spells,spell => {
                 if (Attribute(model.charID,spell.prepared) == 1) {
-                    
+                     buttons.push({
+                        phrase: spell.name,
+                        action: "",
+                    })
                 }
             })
+            outputCard.body.push(InlineButtons(buttons));
+            outputCard.body.push("<br>");
             outputCard.body.push("[hr]");
         }
     }
