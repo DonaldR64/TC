@@ -214,6 +214,9 @@ const DnD = (() => {
             this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
             this.casterLevel = parseInt(aa.caster_level) || 0;
             this.spellDC = parseInt(aa.spell_save_dc) || 0;
+        
+            this.spells = this.Spells(aa);
+
 
             let saveBonus = {
                 strength: parseInt(aa.strength_save_bonus) || 0,
@@ -300,6 +303,43 @@ const DnD = (() => {
             }
             return squares;
         }
+
+        Spells(aa) {
+            let spells = {};
+            let keys = Object.keys(aa);
+            let list = ["cantrip",1,2,3,4,5,6,7];
+            _.each(keys,key => {
+                _.each(list,level => {
+                    if (key.includes("repeating_spell-" + level) && key.includes("spellname") && key.includes("spellname_max") === false) {
+                        let name = aa[key].trim();
+                        if (name) {
+                            let prepkey = key.replace("spellname","spellprepared");
+                            let info = {
+                                name: name,
+                                prepared: prepkey,
+                            }
+                            if (spells[level]) {
+                                spells[level].push(info);
+                            } else {
+                                spells[level] = [info];
+                            }
+                        }
+                    }
+                })
+            })
+log(spells)
+            return spells
+        }
+
+
+
+
+
+
+
+
+
+
 
     }
 
@@ -1981,7 +2021,38 @@ const Spell = (msg) => {
 
 
 
+const ShowSpells = (msg) => {
+    if (!msg.selected) {return};
+    let model = ModelArray[msg.selected[0]._id];
+    SetupCard(model.name,"Prepared Spells",model.displayScheme);
+    //cantrips
+    if (model.spells.cantrips) {
+        outputCard.body.push("[B][U]Cantrips[/b][/u]");
+        _.each(model.spells.cantrips,cantrip => {
+            outputCard.body.push(cantrip.name);
+        })
+    }
 
+
+
+
+    for (let i=1;i<6;i++) {
+        if (SpellSlots(model,i)){
+            outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
+            //show prepared spells for that level with a button
+            let spells = model.spells[i];
+            _.each(spells,spell => {
+                if (Attribute(model.charID,spell.prepared) == 1) {
+                    outputCard.body.push(spell.name);
+                }
+            })
+        }
+    }
+
+
+
+    PrintCard(); //? maybe make this a whisper to player +/- GM ?
+}
 
 
 
