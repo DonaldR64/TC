@@ -10,7 +10,7 @@ const DnD = (() => {
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
     const playerCodes = {
-        c: "Ted",
+        "-OdzmtPMDNNfcmdvIN5m": "Ted",
         "all": "Allied",
         "-OdyHPJkwRBH1F9Zn5AU": "Ian",
         "-OeTGX5FY4C70LTFBna4": "Vic",
@@ -182,7 +182,7 @@ const DnD = (() => {
                 PCs["-OdyHPJkwRBH1F9Zn5AU"] = this.id;
             }
             if (this.name.includes("Wirsten")) {
-                PCs["-OdyHPJkwRBH1F9Zn5AU"] = this.id;
+                PCs["-OdzmtPMDNNfcmdvIN5m"] = this.id;
             }
             if (this.name.includes("Eivirin")) {
                 PCs["-OeTGX5FY4C70LTFBna4"] = this.id;
@@ -1029,7 +1029,8 @@ log(defender.vulnerabilities)
             outputCard.body.push("Square: " + square.x + "/" + square.y)
         })
         let char = getObj("character", token.get("represents"));    
-log(char)
+log(model)
+log(PCs)
         
         PrintCard();
 
@@ -2090,6 +2091,12 @@ const Spell = (msg) => {
             case '!MakeParty':
                 MakeParty(msg);
                 break;
+            case '!ShowSpells':
+                ShowSpells(msg);
+                break;
+
+
+
 
         }
     };
