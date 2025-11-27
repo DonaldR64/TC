@@ -1547,16 +1547,6 @@ log(damageResults)
         PlaySound(weapon.sound);
 
         PrintCard();
-        
-
-
-
-
-
-
-
-
-
     }
 
 
