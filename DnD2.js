@@ -1820,13 +1820,19 @@ log(damageResults)
 
     const MakeParty = (msg) => {
         if (!msg.selected) {return};
-        let ids = [];
         for (let i=0;i<msg.selected.length;i++) {
             let id = msg.selected[i]._id;
             let model = ModelArray[id];
             let char = getObj("character",model.charID);
+            if (char.get("inParty") === false) {
+                char.set("inParty",true);
+                v = "added to";
+            } else {
+                char.set("inParty",false);
+                v = "removed from"
+            }
             char.set("inParty",true);
-            log(model.name + " added to Party");
+            log(model.name + " " + v + " Party");
         }
     }
 
