@@ -808,21 +808,6 @@ const DnD = (() => {
     }
 
     const RollDamage = (damageInfo,critical) => {
-        //spellinfo if a spell, weaponinfo if a weapon
-        //eg 1d8+1d6+3 or even 3
-
-/*
-        if (category === "Spell") {
-            //move this into spellarea
-            //some spells do higher damage based on caster level or on spell level
-            if (damageInfo.cLevel[attacker.casterLevel]) {
-                base = damageInfo.cLevel[attacker.casterLevel];
-            }
-            if (level > damageInfo.level) {
-                base = damageInfo.sLevel[level];
-            }
-        }
-*/
         damageInfo = damageInfo.split(",");
         base = damageInfo[0].trim();
         damageType = damageInfo[1].trim();
@@ -955,7 +940,7 @@ log(defender.vulnerabilities)
         //other Damage Reduction Here
 
         //Saving Throws
-        if (savingThrow && savingThrow !== "No") {
+        if (savingThrow && savingThrow !== false) {
             let dc = attacker.spellDC;
             let result = Save(defender,dc,savingThrow); //save, saveTotal, saveTip
             if (result.save === true) {
@@ -1536,9 +1521,9 @@ log(damageResults)
                 }
             }
 
-            if (weapon.special) {
+            if (weapon.text) {
                 outputCard.body.push("[hr]");
-                outputCard.body.push(weapon.special);
+                outputCard.body.push(weapon.text);
             }
         } else {
             outputCard.body.push("[B]Miss[/b]");
@@ -1835,6 +1820,171 @@ log(damageResults)
             sendChat("",model.name + v);
         }
     }
+
+    const DirectAttackSpell = (spellInfo) => {
+        let caster = spellInfo.caster;
+        let targetIDs = spellInfo.targetIDs;
+        let spell = spellInfo.spell;
+        let level = spellInfo.level;
+        let squares = spellInfo.squares;
+        let attMarkers = Markers(caster.token.get("statusmarkers"));
+
+        let emote = spellInfo.emote;
+        emote = emote.replace("%%C%%",caster.name);
+        outputCard.body.push(emote);
+
+        if (spell.cLevel && spell.cLevel[attacker.casterLevel]) {
+            spell.base = spell.cLevel[attacker.casterLevel];
+        }
+        if (level > spell.level) {
+            spell.base = spell.sLevel[level];
+        }
+
+        spell.damage = [spell.base + "," + spell.damageType];
+
+        for (let i=0;i<targetIDs.length;i++) {
+            let defender = ModelArray[targetIDs[i]];
+            let defMarkers = Markers(defender.token.get("statusmarkers"));
+            if (!defender) {log("No Target at " + targetIDs[i]);continue};
+            let advResult = Advantage(caster,defender,spell);
+
+            //attack bonuses
+            let attackBonus = caster.spellAttack;
+            //other mods to attack bonus
+            let additionalText = "";
+            if (attMarkers.includes("Bless")) {
+                bless = randomInteger(4);
+                additionalText += " +" + bless + " [Bless]";
+                attackBonus += bless;
+            }
+
+            let attackResult = D20(advResult.advantage);
+            let attackTotal = attackResult.roll + attackBonus;
+
+            let tip;
+            let crit = false;
+            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && squares === 1) {
+                crit = true;
+            }
+
+            let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
+
+            tip = attackResult.rollText + abText + additionalText;
+            tip += "<br>[1d20" + abText + additionalText + "]";
+            if (advResult.advText.length > 0) {
+                tip += "<br>Advantage from: " + advResult.advText.toString();
+            }
+        if (advResult.disText.length > 0) {
+                tip += "<br>Disadvantage from: " + advResult.disText.toString();
+            }
+
+            tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
+
+            if (spell.autoHit === false) {
+                if (attackResult.roll === 20) {crit = true};
+                outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
+                if (crit === true) {
+                    outputCard.body.push("[#ff0000]Crit![/#]");
+                }
+            }
+
+            if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true || spell.autoHit === true) {
+                outputCard.body.push("[B]Hit![/b]")
+                let rollResults = RollDamage(spell.damage,crit); //total, diceText
+    log(rollResults)
+                    let damageResults = ApplyDamage(rollResults,attacker,defender,spell);
+    log(damageResults)
+                    let tip = rollResults.diceText;
+                    if (damageResults.note !== "") {
+                        tip += "<br>" + damageResults.note;
+                    }                
+                    tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                    outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+                if (spell.note) {
+                    outputCard.body.push("[hr]");
+                    outputCard.body.push(spell.note);
+                }
+            } else {
+                outputCard.body.push("[B]Miss[/b]");
+            }
+            FX(spell.fx,caster,defender);
+        }
+        PlaySound(spell.sound);
+    }
+
+const Spell = (msg) => {
+    let Tag = msg.content.split(";");
+    let type = Tag[1];
+    let spellName = Tag[2];
+    let level = Tag[3];
+    let casterID = Tag[4];
+    let targetIDs = [];
+    for (let i=5;i<= Tag.length;i++) {
+        targetIDs.push(Tag[i]);
+    }
+
+    let caster = ModelArray[casterID];
+    let spell = DeepCopy(SpellInfo[spellName]);
+    spell.name = spellName;
+
+    let squares = caster.Distance(target);
+    let distance = squares * pageInfo.scale;
+
+    let errorMsg = [];
+
+    let spellInfo = {
+        caster: caster,
+        targets: targetIDs,
+        spell: spell,
+        level: level,
+        squares: squares,
+    }
+
+    SetupCard(caster.name,spellName,caster.displayScheme);
+
+    //check spell slots, distance
+    let slotsAvailable = SpellSlots(caster,level);
+    if (slotsAvailable === false) {
+        errorMsg.push("No Slots of that Level Available");
+    }
+    if (distance > spell.range) {
+        errorMsg.push("Target is out of range");
+    }
+
+    if (errorMsg.length > 0) {
+        _.each(errorMsg,error => {
+            outputCard.body.push(error);
+        });
+    } else {
+        if (type === "DirectAttack") {
+            //spells that directly attack the target
+            DirectAttackSpell(spellInfo);
+        }
+        if (type === "DirectOther") {
+            DirectOtherSpell(spellInfo);
+        }
+        if (type === "Template") {
+            //spells that need a template or similar eg AOE spells
+            TemplateSpell1(spellInfo);
+        }
+    }
+
+
+
+
+
+    PrintCard();
+
+}
+
+
+
+
+
+
+
+
+
 
 
 

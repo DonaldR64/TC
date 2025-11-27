@@ -10,6 +10,15 @@ const DirectAttackSpell = (spellInfo) => {
     emote = emote.replace("%%C%%",caster.name);
     outputCard.body.push(emote);
 
+    if (spell.cLevel && spell.cLevel[attacker.casterLevel]) {
+        spell.base = spell.cLevel[attacker.casterLevel];
+    }
+    if (level > spell.level) {
+        spell.base = spell.sLevel[level];
+    }
+
+    spell.damage = [spell.base + "," + spell.damageType];
+
     for (let i=0;i<targetIDs.length;i++) {
         let defender = ModelArray[targetIDs[i]];
         let defMarkers = Markers(defender.token.get("statusmarkers"));
@@ -28,7 +37,6 @@ const DirectAttackSpell = (spellInfo) => {
 
         let attackResult = D20(advResult.advantage);
         let attackTotal = attackResult.roll + attackBonus;
-        if (spell.autoHit === true) {attackTotal = 50; attackResult.roll = 21};
 
         let tip;
         let crit = false;
@@ -36,20 +44,47 @@ const DirectAttackSpell = (spellInfo) => {
             crit = true;
         }
 
-        //1464 in dnd2
-        
+        let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
 
+        tip = attackResult.rollText + abText + additionalText;
+        tip += "<br>[1d20" + abText + additionalText + "]";
+        if (advResult.advText.length > 0) {
+            tip += "<br>Advantage from: " + advResult.advText.toString();
+        }
+       if (advResult.disText.length > 0) {
+            tip += "<br>Disadvantage from: " + advResult.disText.toString();
+        }
 
+        tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
 
+        if (spell.autoHit === false) {
+            if (attackResult.roll === 20) {crit = true};
+            outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
+            if (crit === true) {
+                outputCard.body.push("[#ff0000]Crit![/#]");
+            }
+        }
 
+        if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true || spell.autoHit === true) {
+            outputCard.body.push("[B]Hit![/b]")
+            let rollResults = RollDamage(spell.damage,crit); //total, diceText
+log(rollResults)
+                let damageResults = ApplyDamage(rollResults,attacker,defender,spell);
+log(damageResults)
+                let tip = rollResults.diceText;
+                if (damageResults.note !== "") {
+                    tip += "<br>" + damageResults.note;
+                }                
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+            if (spell.note) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(spell.note);
+            }
+        } else {
+            outputCard.body.push("[B]Miss[/b]");
+        }
+        FX(spell.fx,caster,defender);
     }
-
-
-
-
-
-
-
-
-
+    PlaySound(spell.sound);
 }

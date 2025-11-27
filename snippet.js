@@ -10,7 +10,7 @@ const Spell = (msg) => {
     }
 
     let caster = ModelArray[casterID];
-    let spell = SpellInfo[spellName];
+    let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
 
     let squares = caster.Distance(target);
