@@ -17,6 +17,7 @@ const DnD = (() => {
     };
 
     let PCs = {
+        //will put default tokenID attached to playerID here
         "-OdzmtPMDNNfcmdvIN5m": "",
         "-OdyHPJkwRBH1F9Zn5AU": "",
         "-OeTGX5FY4C70LTFBna4": "",
