@@ -88,6 +88,8 @@ const DnD = (() => {
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
         "Bless": "Plus-1d4::2006401",
+        "Divine Favour": "yellow",
+
     }
 
 
@@ -315,9 +317,11 @@ const DnD = (() => {
                         let name = aa[key].trim();
                         if (name) {
                             let prepkey = key.replace("spellname","spellprepared");
+                            let desckey = key.replace("spellname","spelldescription");
                             let info = {
                                 name: name,
                                 prepared: prepkey,
+                                desckey: desckey,
                             }
                             if (spells[level]) {
                                 spells[level].push(info);
@@ -1060,6 +1064,7 @@ log(defender.vulnerabilities)
 
     const Markers = (initial) => {
         initial = initial.split(",");
+log(initial)
         let sm = [];
         let keys = Object.keys(ConditionMarkers);
         for (let i=0;i<initial.length;i++) {
@@ -1477,9 +1482,8 @@ log(PCs)
         }
 
         weapon.damage = [weapon.base + "," + weapon.damageType];
-
-        if (attacker.token.get("status_yellow") === true) {
-            //Divine Favour
+log(attMarkers)
+        if (attMarkers.includes("Divine Favour")) {
             weapon.damage.push('1d4,radiant');
         }
 
@@ -1522,13 +1526,19 @@ log(PCs)
         if (attackResult.roll >= weapon.critOn) {
             crit = true;
         }
-        outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
+        let ac = defender.ac;
+        if (defender.token.get("aura2_color") === "#ffd700") {
+            ac += 2;
+        }
+
+
+        outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
         if (crit === true) {
             outputCard.body.push("[#ff0000]Crit![/#]");
         }
 
 log(weapon)
-        if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true) {
+        if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true) {
             outputCard.body.push("[B]Hit![/b]")
             let finalDamage = 0;
             for (let i=0;i<weapon.damage.length;i++) {
@@ -1564,7 +1574,7 @@ log(damageResults)
                 let line = "!SpecialAbility;Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
                 let levels = [];
                 for (let level = 1;level < 6;level++) {
-                    if (SpellSlots(attacker,level) === true) {
+                    if (SpellSlots(attacker,level) > 0) {
                         levels.push(level);
                     }
                 }
@@ -1860,8 +1870,7 @@ log(damageResults)
     const SpellSlots = (caster,level) => {
         if (level === 0) {return true};
         let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-        if (slots === 0) {return false};
-        return true;
+        return slots;
     }
 
     const MakeParty = (msg) => {
@@ -1942,15 +1951,20 @@ log(damageResults)
 
             tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
 
+            let ac = defender.ac;
+            if (defender.token.get("aura2_color") === "#ffd700") {
+                ac += 2;
+            }
+
             if (spell.autoHit === "No") {
                 if (attackResult.roll === 20) {crit = true};
-                outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
+                outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
                 if (crit === true) {
                     outputCard.body.push("[#ff0000]Crit![/#]");
                 }
             }
 
-            if ((attackTotal >= defender.ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
+            if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
                 outputCard.body.push("[B]Hit![/b]")
                 let rollResults = RollDamage(spell.damage,crit); //total, diceText
     log(rollResults)
@@ -1985,10 +1999,11 @@ const Spell = (msg) => {
     let caster = ModelArray[casterID];
     let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
+    
 
     //check spell slots, distance
     let slotsAvailable = SpellSlots(caster,level);
-    if (slotsAvailable === false) {
+    if (slotsAvailable === 0) {
         errorMsg.push("No Slots of that Level Available");
     }
 
@@ -2026,8 +2041,8 @@ const Spell = (msg) => {
         //spells that directly attack the target
         DirectAttackSpell(spellInfo);
     }
-    if (spell.spellType === "DirectOther") {
-        DirectOtherSpell(spellInfo);
+    if (spell.spellType === "Misc") {
+        MiscSpell(spellInfo);
     }
     if (spell.spellType === "Area") {
         //spells that need a template or similar eg AOE spells
@@ -2041,37 +2056,65 @@ const Spell = (msg) => {
 
 
 
-const ShowSpells = (msg) => {
-    if (!msg.selected) {return};
-    let model = ModelArray[msg.selected[0]._id];
-    SetupCard(model.name,"Available Spells",model.displayScheme);
-    //cantrips
-    if (model.spells.cantrip) {
-        buttons = [];
-        outputCard.body.push("[B][U]Cantrips[/b][/u]");
-        _.each(model.spells.cantrip,cantrip => {
-            buttons.push({
-                phrase: cantrip.name,
-                action: "",
+    const ShowSpells = (msg) => {
+        if (!msg.selected) {return};
+        let model = ModelArray[msg.selected[0]._id];
+log(model.spells)
+        SetupCard(model.name,"Available Spells",model.displayScheme);
+        //cantrips
+        if (model.spells.cantrip) {
+            buttons = [];
+            outputCard.body.push("[B][U]Cantrips[/b][/u]");
+            _.each(model.spells.cantrip,cantrip => {
+                let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
+                if (SpellInfo[spell.name]) {
+                    macro = SpellInfo[spell.name].macro;
+                    macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                }
+                buttons.push({
+                    phrase: cantrip.name,
+                    action: macro,
+                })
             })
-        })
-        outputCard.body.push(InlineButtons(buttons));
-        outputCard.body.push("<br>");
-        outputCard.body.push("[hr]");
-        
-    }
+            outputCard.body.push(InlineButtons(buttons));
+            outputCard.body.push("<br>");
+            outputCard.body.push("[hr]");
+        }
 
-    for (let i=1;i<6;i++) {
-        if (SpellSlots(model,i)){
-            outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
+        let availableSS = [];
+        let levelMacro = "?&#123;Level";
+        for (let i=1;i<6;i++) {
+            if (SpellSlots(model,i) > 0) {
+                availableSS.push(i);
+                levelMacro += "	&#124;" + i;
+            }
+        }
+        levelMacro += "&#125;";
+        if (availableSS.length === 1) {
+            levelMacro = parseInt(availableSS[0]);
+        }
+log("Spell SLots: " + availableSS)
+
+        for (let i=0;i<availableSS.length;i++) {
+            let level = availableSS[i];
+            outputCard.body.push("[B][U]Level " + level + "[/b][/u]");
+            outputCard.body.push("Spell Slots: " + SpellSlots(model,level));
             //show prepared spells for that level with a button
-            let spells = model.spells[i];
+            let spells = model.spells[level];
             let buttons = [];
             _.each(spells,spell => {
                 if (Attribute(model.charID,spell.prepared) == 1) {
-                     buttons.push({
+                    let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
+                    if (SpellInfo[spell.name]) {
+                        macro = SpellInfo[spell.name].macro || macro;
+                        macro = macro.replace("%Level%",levelMacro);
+                        macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                    }
+                    buttons.push({
                         phrase: spell.name,
-                        action: "",
+                        action: macro,
                     })
                 }
             })
@@ -2079,15 +2122,73 @@ const ShowSpells = (msg) => {
             outputCard.body.push("<br>");
             outputCard.body.push("[hr]");
         }
+
+
+
+        PrintCard(); //? maybe make this a whisper to player +/- GM ?
+    }
+
+    const DisplaySpellInfo = (msg) => {
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        let spellName = Tag[2];
+        let desckey = Tag[3];
+        let model = ModelArray[id];
+        let description = Attribute(model.charID,desckey);
+        SetupCard(model.name,spellName,model.displayScheme);
+        outputCard.body.push(description);
+        PrintCard();
     }
 
 
 
-    PrintCard(); //? maybe make this a whisper to player +/- GM ?
-}
+
+
+    const MiscSpell = (spellInfo) => {
+
+        let spellName = spellInfo.spell.name;
+
+        if (spellName === "Cure Wounds") {
+            let rolls = [];
+            let bonus = Math.max(0,(spellInfo.caster.spellDC - 10));
+            let total = bonus;
+            for (i=0;i<spellInfo.level;i++) {
+                let roll = randomInteger(8);
+                rolls.push(roll);
+                total += roll;
+            }
+            let tip ="Roll: [" + rolls.toString() + "] + " + bonus + "<br>[" + spellInfo.level + "d8+" + bonus + "]"; 
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
+        }
+        if (spellName === "Divine Favour") {
+            outputCard.body.push("Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.");
+            outputCard.body.push("Lasts 1 minute or Concentration");
+            spellInfo.caster.token.set("status_yellow",true);
+        }
+        if (spellName === "Shield of Faith") {
+            outputCard.body.push("A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.");
+            outputCard.body.push("Lasts 10 minutes or Concentration");
+            let target = spellInfo.targets[0];
+            target.token.set({
+                aura2_radius: 0.5,
+                aura2_color: "#ffd700",
+                showplayers_aura2: true,
+            })
+        }
+        
 
 
 
+
+
+
+
+
+        PlaySound(spellInfo.spell.sound);
+        //Use Slot
+
+    }
 
 
 
@@ -2197,7 +2298,9 @@ const ShowSpells = (msg) => {
             case '!ShowSpells':
                 ShowSpells(msg);
                 break;
-
+            case '!DisplaySpellInfo':
+                DisplaySpellInfo(msg);
+                break;
 
 
 

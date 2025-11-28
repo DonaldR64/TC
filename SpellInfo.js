@@ -14,6 +14,7 @@
             sound: "Laser",
             emote: "A frigid beam of blue-white light streaks toward the target",
             fx: "missile-frost",
+            macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
         "Acid Splash": {
             level: 0,
@@ -88,6 +89,31 @@
             emote: "%%C%% hurls a ball of flame at the target",
             fx: "missile-frost",
         },
+        "Cure Wounds": {
+            level: 1,
+            range: 1,
+            spellType: "Misc",
+            sound: "Angels",
+            macro: "!Spell;Cure Wounds;%Level%;%Selected%",
+        },
+        "Divine Favour": {
+            level: 1,
+            range: "Self",
+            spellType: "Misc",
+            macro: "!Spell;Divine Favour;1;%Selected%",
+            sound: "Angels",
+        },
+        "Shield of Faith": {
+            level: 1,
+            range: 60,
+            spellType: "Misc",
+            macro: "!Spell;Shield of Faith;1;%Selected%;%Target%",
+            sound: "Angels",
+        },
+
+
+
+
 
 
     }

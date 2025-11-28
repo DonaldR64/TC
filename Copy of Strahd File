@@ -303,55 +303,6 @@
 
 
 
-    const CastSpell2 = (msg) =>{
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let spellInfo = SpellInfo[spellName];
-        if (spellInfo) {
-            spellInfo = DeepCopy(SpellInfo[spellName]);
-            spellInfo.info = "Spell";
-        } else {
-            sendChat("","Need Spell Info");
-            return;
-        }
-        let attID = Tag[2];
-        let level = parseInt(Tag[3]);
-
-        let caster = ModelArray[attID];
-
-        let targetID = Tag[4];
-        let target = ModelArray[targetID];
-
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        if (SpellSlots(caster,level) === false) {
-            outputCard.body.push("No Available Spell Slots of level " + level);
-            PrintCard();
-            return;
-        }
-
-        let squares = caster.Distance(target);
-        let spellDist = squares * pageInfo.scaleNum;
-        if (spellDist > spellInfo.range) {
-            outputCard.body.push("Out of Range of Spell");
-            PrintCard();
-            return;
-        }
-
-
-        if (spellName === "Shield of Faith") {
-            outputCard.body.push("A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.");
-            outputCard.body.push("Lasts 10 minutes or Concentration");
-            target.token.set({
-                aura1_radius: 1,
-                aura1_color: "#ffd700",
-                showplayers_aura1: true,
-            })
-            PrintCard();
-            PlaySound("Angels")
-        }
-
-
-    }
 
 
 
