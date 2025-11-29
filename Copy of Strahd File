@@ -2,61 +2,6 @@
 
 
 
-    const Spell = (msg) => {
-        let id = msg.selected[0]._id;
-        let caster = ModelArray[id];
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
-        
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        if (SpellSlots(caster,level) === false) {
-            outputCard.body.push("No Available Spell Slots of level " + level);
-            PrintCard();
-            return;
-        }
-
-        if (spellName === "Sleep") {
-            //create the sleep token, place on caster, with instructions
-            let charID = "-OeJRVLCc-tJuxhw911C";
-            let img = getCleanImgSrc("https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066");
-            let target = SpellTarget(caster,"Sleep",level,charID,img,40);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Entangle") {
-            let charID = "-OeJFbyJkH36zRywNsEm";
-            let img = getCleanImgSrc("https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837");
-            let target = SpellTarget(caster,"Entangle",level,charID,img,20);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-        
-        if (spellName === "Faerie Fire") {
-            let charID = "-OeJf7QNTBO0lqtOd6Ac";
-            let img = getCleanImgSrc("https://files.d20.io/images/464592488/Ol6oEZ2kLqqfV-fEBHrq5Q/thumb.png");
-            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,20);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Thunderwave") {
-            let charID = "-OeJrE-MQDPwPo0KDLtq";
-            let img = getCleanImgSrc("https://files.d20.io/images/464597646/OEF2m9OvLSy6J_WrL4Mh7Q/thumb.png?1763433964");
-            let target = SpellTarget(caster,"Thunderwave",level,charID,img,15);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Fog Cloud") {
-            let charID = "-OeJzgHWtgd8SummEE5T";
-            let img = getCleanImgSrc("https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289");
-            let dim = 40 + ((level - 1) * 40); //radius is 20 ft so diameter is 40
-            let target = SpellTarget(caster,"Fog Cloud",level,charID,img,dim);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
 
         
         if (spellName === "Burning Hands") {
@@ -69,7 +14,7 @@
 
 
 
-    }
+    
 
 
     const CastSpell = (msg) => {
