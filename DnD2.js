@@ -2283,9 +2283,6 @@ log("Spell SLots: " + availableSS)
             case '!ClearState':
                 ClearState();
                 break;
-            case '!CastSpell2':
-                CastSpell2(msg);
-                break;
             case '!ReloadTokens':
                 ReloadTokens(msg);
                 break;
