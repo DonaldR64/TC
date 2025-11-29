@@ -2071,9 +2071,9 @@ log(model.spells)
             buttons = [];
             outputCard.body.push("[B][U]Cantrips[/b][/u]");
             _.each(model.spells.cantrip,cantrip => {
-                let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
-                if (SpellInfo[spell.name]) {
-                    macro = SpellInfo[spell.name].macro;
+                let macro = "!DisplaySpellInfo;" + model.id + ";" + cantrip.name + ";" + cantrip.desckey;
+                if (SpellInfo[cantrip.name]) {
+                    macro = SpellInfo[cantrip.name].macro;
                     macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
                     macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
                 }
