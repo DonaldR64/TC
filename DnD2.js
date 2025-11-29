@@ -1993,6 +1993,7 @@ const Spell = (msg) => {
     let spellName = Tag[1];
     let level = Tag[2];
     let casterID = Tag[3];
+    if (!casterID) {casterID = msg.selected[0]._id};
     let targets = [];
     let errorMsg = [];
 
@@ -2007,6 +2008,7 @@ const Spell = (msg) => {
         errorMsg.push("No Slots of that Level Available");
     }
 
+    //range check - note range check for Area checked in AreaSpell2 once template placed
     for (let i=4;i< Tag.length;i++) {
         let target = ModelArray[Tag[i]];
         if (!target) {
@@ -2045,8 +2047,11 @@ const Spell = (msg) => {
         MiscSpell(spellInfo);
     }
     if (spell.spellType === "Area") {
-        //spells that need a template or similar eg AOE spells
-        AreaSpell1(spellInfo);
+        //creates a target template (depending on spell)
+        //target template will have a macro to actually cast spell
+        ClearSpellTarget();
+        let target = SpellTarget(caster,spellName,level,spell.tempImg,spell.tempSize);
+        outputCard.body.push("Place Target then use Macro to Cast");
     }
 
     PrintCard();
@@ -2189,6 +2194,65 @@ log("Spell SLots: " + availableSS)
         //Use Slot
 
     }
+
+
+
+    const SpellTarget = (caster,spellName,level,img,dim) => {
+        let abilArray = findObjs({_type: "ability", _characterid: '-Oe8qdnMHHQEe4fSqqhm'});
+        //clear old abilities
+        for(let a=0;a<abilArray.length;a++) {
+            abilArray[a].remove();
+        } 
+        img = getCleanImgSrc(img);
+        let action = "!AreaSpell;" + spellName + ";" + caster.id + ";" + level;
+        AddAbility("Cast " + spellName,action,'-Oe8qdnMHHQEe4fSqqhm');
+        if (isNaN(dim)) {
+            if (dim.includes("Level")) {
+                if (dim.includes("*")) {
+                    dim = parseInt(dim.replace(/[^\d]/g,""));
+                    dim = level * dim;
+                }
+            }
+        }
+
+
+        dim = (dim * 70) / pageInfo.scaleNum;
+
+        let newToken = createObj("graphic", {
+            left: caster.token.get("left"),
+            top: caster.token.get("top"),
+            disableTokenMenu: true,
+            width: dim, 
+            height: dim,  
+            name: spellName,
+            pageid: caster.token.get("_pageid"),
+            imgsrc: img,
+            layer: "objects",
+            represents: '-Oe8qdnMHHQEe4fSqqhm',
+        })
+        toFront(newToken);
+        if (newToken) {
+            toFront(newToken);
+            let target = new Model(newToken);
+            return target;
+        } else {
+            sendChat("","Error in CreateObj")
+        }
+    }
+
+    const ClearSpellTarget = () => {
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            represents: '-Oe8qdnMHHQEe4fSqqhm',
+        });
+        _.each(tokens,token => {
+            token.remove();
+        })
+    }
+
+
 
 
 
