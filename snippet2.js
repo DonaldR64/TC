@@ -36,23 +36,23 @@ const AreaSpell = (msg) => {
     if (spell.areaEffect === "Effect") {
         _.each(targets,target => {
             if (spell.areaSave === "No") {
-                outputCard.body.push(target.name + spell.areaText);
+                outputCard.body.push(target.name + spell.areaTextF);
                 target.token.set(spell.effectMarker,true);
             } else {
                 if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
                     outputCard.body.push(target.name + " is Immune");
                 } else {
-
-
-
-
+                    let saveResult = Save(target,dc,spell.areaSave);
+                    let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                    if (result.save === true) {
+                        outputCard.body.push(target.name + '[saves]' + tip + spell.areaTextS);
+                    } else {
+                        outputCard.body.push(target.name + '[fails]' + tip + spell.areaTextS);
+                        target.token.set(spell.effectMarker,true);
+                    }
                 }
             }
         })
-
-
-
-
     } else if (spell.areaEffect === "Damage") {
 
 
@@ -60,8 +60,19 @@ const AreaSpell = (msg) => {
 
     }
 
-
-
+    if (spell.moveEffect === true) {
+        target.token.set({
+            represents: "",
+            layer: map,
+        })
+        delete ModelArray[targetID];
+    } else {
+        target.Destroy();
+    }
+    if (spell.emote) {
+            outputCard.body.push("[hr]");
+            outputCard.body.push(spell.emote);
+    }
     //Fx ??
     PlaySound(spell.sound);
 
@@ -106,4 +117,5 @@ const Sleep = (targets,level) => {
         hp -= phb;
         finalTargets.push(target);
     }
+    return finalTargets;
 }
