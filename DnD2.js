@@ -644,8 +644,8 @@ log(model.name + ": " + id)
         for (let i=0;i<outputCard.body.length;i++) {
             let out = "";
             let line = outputCard.body[i];
-log(i)
-log(line)
+//log(i)
+//log(line)
             if (!line || line === "") {continue};
             if (line.includes("[FORMATTED]")) {
                 line = line.replace("[FORMATTED]","");
@@ -714,7 +714,7 @@ log(line)
         }
 
         output += `</div></div><br />`;
-log(output)
+//log(output)
         sendChat("",output);
         outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
     }
@@ -873,6 +873,7 @@ log(output)
     const FX = (fxname,model1,model2) => {
         //model2 is target, model1 is shooter
         //if its an area effect, model1 isnt used
+        if (!fxname) {return};
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
         let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
 
@@ -970,6 +971,7 @@ log(output)
 
     const ApplyDamage = (rollResults,attacker,defender,damageInfo) => {
         if (!damageInfo) {damageInfo = {}};
+log(damageInfo)
         let total = rollResults.total;
         let damageType = rollResults.damageType;
         let savingThrow = damageInfo.savingThrow;
@@ -1036,9 +1038,10 @@ log(defender.vulnerabilities)
         //Saving Throws
         if (savingThrow && savingThrow !== "No") {
             let dc = attacker.spellDC;
-            let result = Save(defender,dc,savingThrow); //save, saveTotal, saveTip
+            let result = Save(defender,dc,savingThrow); //save, saveTotal, tip
+            let tip;
             if (result.save === true) {
-                tip = '[Saves](#" class="showtip" title="' + result.saveTip + ')';
+                tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
                 if (saveEffect === "No Damage") {
                     tip += " and takes No Damage";
                     total = 0;
@@ -1048,7 +1051,7 @@ log(defender.vulnerabilities)
                     total = Math.round(total/2);
                 }
             } else {
-                tip = tip = '[Fails](#" class="showtip" title="' + result.saveTip + ')' + " the Save";
+                tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
             }
             outputCard.body.push(defender.name + " " + tip);
         }
@@ -2305,6 +2308,7 @@ log("Spell SLots: " + availableSS)
         }
 
         let targets = [];
+
         if (spell.area.includes("Square")) {
             targets = AOETargets(spellTarget);
         } else if (spell.area.includes("Cone")) {
@@ -2314,31 +2318,64 @@ log("Spell SLots: " + availableSS)
         if (spellName === "Sleep") {
             targets = Sleep(targets,level); //refine based on hp
         }
+
 //effect AND damage - ? 
 
         if (spell.areaEffect === "Effect") {
             _.each(targets,target => {
-                if (spell.areaSave === "No") {
+                if (spell.savingThrow === "No") {
                     outputCard.body.push(target.name + spell.areaTextF);
-                    target.token.set(spell.effectMarker,true);
+                    if (spell.effectMarker) {
+                        target.token.set(spell.effectMarker,true);                   
+                    } else if (spell.effectAura){
+                        target.token.set({
+                            aura1_radius: 1,
+                            aura1_color: spell.effectAura,
+                            showplayers_aura1: true,
+                        })
+                    } 
+
                 } else {
                     if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
                         outputCard.body.push(target.name + " is Immune");
                     } else {
-                        let saveResult = Save(target,dc,spell.areaSave);
+                        let saveResult = Save(target,dc,spell.savingThrow);
                         let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
                         if (saveResult.save === true) {
                             outputCard.body.push(target.name + " " +  '[saves]' + tip + spell.areaTextS);
                         } else {
                             outputCard.body.push(target.name + " " + '[fails]' + tip + spell.areaTextF);
-                            target.token.set(spell.effectMarker,true);
+                           if (spell.effectMarker) {
+                                target.token.set(spell.effectMarker,true);                   
+                            } else if (spell.effectAura){
+                                target.token.set({
+                                    aura1_radius: 1,
+                                    aura1_color: spell.effectAura,
+                                    showplayers_aura1: true,
+                                })
+                            } 
                         }
                     }
                 }
             })
         } else if (spell.areaEffect === "Damage") {
-
-
+            if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
+                spell.base = spell.cLevel[caster.casterLevel];
+            }
+            if (level > spell.level) {
+                spell.base = spell.sLevel[level];
+            }
+            spell.damage = spell.base + "," + spell.damageType;
+            let rollResults = RollDamage(spell.damage,false); //total, diceText
+log(rollResults)
+            tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
+            outputCard.body.push("Spell Damage: " + tip);
+            outputCard.body.push("[hr]")
+            _.each(targets,target => {
+                let damageResults = (ApplyDamage(rollResults,caster,target,spell));
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + damageResults.note + ')';
+                outputCard.body.push(target.name + " takes " + tip + " " + Capit(spell.damageType) + " Damage");
+            })
 
 
         }

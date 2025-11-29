@@ -2,130 +2,6 @@
 
 
 
-
-    
-
-
-    const CastSpell = (msg) => {
-        let targetID = msg.selected[0]._id;
-        let target = ModelArray[targetID];
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let casterID = Tag[2];
-        let level = parseInt(Tag[3]);
-        let caster = ModelArray[casterID];
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        let spellInfo = DeepCopy(SpellInfo[spellName]);
-        let squares = caster.Distance(target);
-        let spellDist = squares * pageInfo.scaleNum;
-
-        if (spellDist > spellInfo.range) {
-            outputCard.body.push("Out of Range of Spell");
-            PrintCard();
-            return;
-        }
-
-        if (spellName === "Sleep") {
-            //models within 20 ft of centre
-            let possibles = AOETargets(target);
-            possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
-            let dice = 5 + ((level -1) * 2);
-            //5d8 hp. +2d8 for spell level > 1
-            let hp = 0;
-            let rolls = [];
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                hp += roll;
-            }
-            let tip = dice + "d8 = " + rolls.toString();
-            tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
-
-            outputCard.body.push(tip + " HP Affected");
-            for (let i = 0;i<possibles.length; i++) {
-                let possible = possibles[i];
-                if (possible.type.includes("undead")) {
-                    outputCard.body.push(possible.name + " is Immune");
-                    continue;
-                };
-                if (possible.conditionImmunities.includes("charmed")) {
-                    outputCard.body.push(possible.name + " is Immune");
-                    continue;
-                };
-                let posMarkers = Markers(possible.token.get("statusmarkers"));
-                if (posMarkers.includes("Unconscious")) {
-                    outputCard.body.push(possible.name + " is already Unconscious");
-                    continue;
-                };
-
-                let phb = parseInt(possibles[i].token.get("bar1_value"));
-                if (phb > hp) {
-                    outputCard.body.push("[" + possible.name + " HP exceeds remaining]" )
-                    break
-                };
-                hp -= phb;
-                outputCard.body.push(possible.name + " Falls Asleep");
-                possible.token.set({
-                    "status_KO::2006544": true,
-                })
-            }
-            target.Destroy();
-            PlaySound("FFire");
-        }
-
-        if (spellName === "Entangle") {
-            let possibles = AOETargets(target);
-            _.each(possibles,model => {
-                if (model.conditionImmunities.includes("restrained")) {
-                    outputCard.body.push(model.name + " is Immune");
-                    return;
-                };
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"strength");
-                if (result.save === false) {
-                    model.token.set({
-                        "status_Restrained-or-Webbed::2006494": true,
-                    })
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is restrained");
-                } else if (result.save === true) {
-                    tip = '[saves](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is free to act");                
-                }
-            })
-            target.token.set("layer","map");
-            delete ModelArray[targetID]; //leave target token as marks the ground
-            outputCard.body.push("[hr]");
-            outputCard.body.push("The Area remains Difficult Ground for 1 min or until Concentration ends");
-            PlaySound("Entangle");
-        }
-
-        if (spellName === "Faerie Fire") {
-            let possibles = AOETargets(target);
-            _.each(possibles,model => {
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"dexterity");
-                if (result.save === false) {
-                    model.token.set({
-                        aura1_radius: 1,
-                        aura1_color: "#ff00ff",
-                        showplayers_aura1: true,
-                    })
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is outlined by Faerie Fire");
-                } else if (result.save === true) {
-                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip);                
-                }
-            })
-            target.Destroy();
-            outputCard.body.push("[hr]");
-            outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
-            PlaySound("FFire");
-        }
-
         if (spellName === "Thunderwave") {
             let possibles = AOETargets(target);
             let dice = 2 + (level -1);
@@ -157,14 +33,6 @@
             })
             target.Destroy();
             PlaySound("Thunder");
-        }
-
-        if (spellName === "Fog Cloud") {
-            target.token.set("layer","map");
-            delete ModelArray[targetID]; //leave token
-            outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
-            outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
-            PlaySound("Woosh");
         }
 
         if (spellName === "Burning Hands") {
@@ -223,72 +91,9 @@
 
 
 
-    const AOETargets = (target) => {
-        let temp = [];
-        _.each(ModelArray,model => {
-            if (model.id === target.id) {return}
-            if (Venn(target.Squares(),model.Squares()) === true) {
-                temp.push(model.id);
-            }
-        })
-
-        temp = [...new Set(temp)];
-        let array = [];
-        _.each(temp,id => {
-            let model = ModelArray[id];
-log(model.name)
-            array.push(model);
-        })
-        return array;
-    }
-
-    const Venn = (array1,array2) => {
-        //for comparing arrays of squares
-        //true if any of array2 are in array
-        let a1 = array1.map((e) => e.toLabel());
-        let a2 = array2.map((e) => e.toLabel());
-        let venn = a2.some(r=> a1.includes(r))
-        return venn;
-    }
 
 
 
-
-
-
-
-
-    const SpellTarget = (caster,spellName,level,charID,img,dim) => {
-        let abilArray = findObjs({_type: "ability", _characterid: charID});
-        //clear old abilities
-        for(let a=0;a<abilArray.length;a++) {
-            abilArray[a].remove();
-        } 
-        let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility("Cast " + spellName,action,charID);
-
-        dim = (dim * 70) / pageInfo.scaleNum;
-
-        let newToken = createObj("graphic", {
-            left: caster.token.get("left"),
-            top: caster.token.get("top"),
-            disableTokenMenu: true,
-            width: dim, 
-            height: dim,  
-            name: spellName,
-            pageid: caster.token.get("_pageid"),
-            imgsrc: img,
-            layer: "objects",
-            represents: charID,
-        })
-        toFront(newToken);
-        if (newToken) {
-            let target = new Model(newToken);
-            return target;
-        } else {
-            sendChat("","Error in CreateObj")
-        }
-    }
 
 
 
