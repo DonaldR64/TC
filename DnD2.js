@@ -2008,7 +2008,7 @@ const Spell = (msg) => {
         errorMsg.push("No Slots of that Level Available");
     }
 
-    //range check - note range check for Area checked in AreaSpell2 once template placed
+    //range check - note range check for Area checked in AreaSpell once template placed
     for (let i=4;i< Tag.length;i++) {
         let target = ModelArray[Tag[i]];
         if (!target) {
