@@ -58,22 +58,6 @@
             PrintCard();
         }
 
-        if (spellName === "Cure Wounds") {
-            let rolls = [];
-            let bonus = Math.max(0,(caster.spellDC - 10));
-            let total = bonus;
-            for (i=0;i<level;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                total += roll;
-            }
-            let tip = level + "d8 + " + bonus + " = [" + rolls.toString() + "] + " + bonus;
-            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
-            PlaySound("Angels");
-            UseSlot(caster,level);
-            PrintCard();
-        }
         
         if (spellName === "Burning Hands") {
             let charID = '-Oe8qdnMHHQEe4fSqqhm';
@@ -83,12 +67,6 @@
             PrintCard();
         }
 
-        if (spellName === "Divine Favour") {
-            outputCard.body.push("Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.");
-            outputCard.body.push("Lasts 1 minute or Concentration");
-            caster.token.set("status_yellow",true);
-            PrintCard();
-        }
 
 
     }
