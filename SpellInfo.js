@@ -38,6 +38,9 @@
             damageType: "fire",
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
+            macro: '!Spell;Burning Hands;%Level',
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            tempSize: 5,
             emote: "A thin sheet of flame shoots forth from %%C%%'s fingertips",
             sound: "Inferno",
             macro: '!Spell;Burning Hands;%Level%'
