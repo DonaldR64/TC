@@ -13,7 +13,7 @@
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
             emote: "A frigid beam of blue-white light streaks toward the target",
-            fx: "missile-frost",
+            fx: "beam-frost",
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
         "Acid Splash": {
@@ -73,7 +73,7 @@
             emote: "Sleeping Creatures remain asleep for 1 minute or until they take damage or are deliberatly awakened",
             tempImg: 'https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066',
             tempSize: 40,
-            fx: "explosion-smoke",
+            fx: "explode-magic",
         },
         "Entangle": {
             level: 1,
@@ -92,6 +92,7 @@
             emote: "The Area remains Difficult Ground for 1 min or until Concentration ends",
             tempImg: 'https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837',
             tempSize: 20,
+            fx: "explosion-slime",
         },
         "Faerie Fire": {
             level: 1,

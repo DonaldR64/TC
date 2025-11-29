@@ -254,6 +254,8 @@ const DnD = (() => {
                 showplayers_bar1:true,
                 showplayers_aura1: true,
                 playersedit_bar1: true,
+                bar_location: 'overlap_bottom',
+                compact_bar: 'compact',
             })
 
             ModelArray[token.id] = this;
@@ -459,6 +461,34 @@ const DnD = (() => {
         let pt = new Point(point.x + deltaX,point.y + deltaY);
         return pt;
     }
+
+    const Venn = (array1,array2) => {
+        //for comparing arrays of squares
+        //true if any of array2 are in array
+        let a1 = array1.map((e) => e.toLabel());
+        let a2 = array2.map((e) => e.toLabel());
+        let venn = a2.some(r=> a1.includes(r))
+        return venn;
+    }
+
+    const AOETargets = (target) => {
+        let temp = [];
+        _.each(ModelArray,model => {
+            if (model.id === target.id) {return}
+            if (Venn(target.Squares(),model.Squares()) === true) {
+                temp.push(model.id);
+            }
+        })
+        temp = [...new Set(temp)];
+        let array = [];
+        _.each(temp,id => {
+            let model = ModelArray[id];
+log(model.name + ": " + id)
+            array.push(model);
+        })
+        return array;
+    }
+
 
     const Cone = (caster,target,length) => {
         let startTime = Date.now();
@@ -684,6 +714,7 @@ log(line)
         }
 
         output += `</div></div><br />`;
+log(output)
         sendChat("",output);
         outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
     }
@@ -845,20 +876,19 @@ log(line)
         let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
         let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
 
-        if (fxname.includes("System")) {
-            //system fx
-            fxname = fxname.replace("System-","");
-            if (fxname.includes("Blast")) {
-                fxname = fxname.replace("Blast-","");
-                spawnFx(model2.token.get("left"),model2.token.get("top"), fxname);
-            } else {
-                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
-
-            }
-        } else {
+        if (fxname.includes("Custom")) {
+            fxname = fxname.replace("Custom-","");
             let fxType =  findObjs({type: "custfx", name: fxname})[0];
             if (fxType) {
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
+            }
+        } else {
+            let directed = ["beam","missile","rocket"];
+            let points = directed.some(element => fxname.includes(element));
+            if (points === true) {
+                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
+            } else {
+                spawnFx(model2.token.get("left"),model2.token.get("top"), fxname);
             }
         }
     }
@@ -1167,7 +1197,7 @@ log(PCs)
             if (disAdvReasons.length > 0) {
                 saveTip += "<br>" + disAdvReasons.toString();
             }
-            if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
+            if ((saveTotal >= dc || saveRollResult.roll === 20) && saveRollResult.roll !== 1) {
                 saved = true;
             } 
             saveTip = "Save: " + saveTotal + " vs. DC " + dc + saveTip;
@@ -1983,7 +2013,7 @@ log(damageResults)
             } else {
                 outputCard.body.push("[B]Miss[/b]");
             }
-            //FX(spell.fx,caster,defender);
+            FX(spell.fx,caster,defender);
         }
         PlaySound(spell.sound);
     }
@@ -2252,6 +2282,120 @@ log("Spell SLots: " + availableSS)
         })
     }
 
+    const AreaSpell = (msg) => {
+        let targetID = msg.selected[0]._id;
+        let spellTarget = ModelArray[targetID];
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        let caster = ModelArray[Tag[2]];
+        let level = parseInt(Tag[3]);
+        let dc = caster.spellDC;
+
+        let spell = DeepCopy(SpellInfo[spellName]);
+
+        SetupCard(caster.name,spellName,caster.displayScheme);
+
+        let squares = caster.Distance(spellTarget);
+        let spellDistance = squares * pageInfo.scaleNum;
+
+        if (spellDistance > spell.range) {
+            outputCard.body.push("Out of Range of Spell");
+            PrintCard();
+            return;
+        }
+
+        let targets = [];
+        if (spell.area.includes("Square")) {
+            targets = AOETargets(spellTarget);
+        } else if (spell.area.includes("Cone")) {
+            targets = Cone(spellTarget);
+        }
+
+        if (spellName === "Sleep") {
+            targets = Sleep(targets,level); //refine based on hp
+        }
+//effect AND damage - ? 
+
+        if (spell.areaEffect === "Effect") {
+            _.each(targets,target => {
+                if (spell.areaSave === "No") {
+                    outputCard.body.push(target.name + spell.areaTextF);
+                    target.token.set(spell.effectMarker,true);
+                } else {
+                    if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
+                        outputCard.body.push(target.name + " is Immune");
+                    } else {
+                        let saveResult = Save(target,dc,spell.areaSave);
+                        let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                        if (saveResult.save === true) {
+                            outputCard.body.push(target.name + " " +  '[saves]' + tip + spell.areaTextS);
+                        } else {
+                            outputCard.body.push(target.name + " " + '[fails]' + tip + spell.areaTextF);
+                            target.token.set(spell.effectMarker,true);
+                        }
+                    }
+                }
+            })
+        } else if (spell.areaEffect === "Damage") {
+
+
+
+
+        }
+
+        if (spell.moveEffect === true) {
+            spellTarget.token.set({
+                represents: "",
+                layer: 'map',
+            })
+            delete ModelArray[targetID];
+        } else {
+            spellTarget.Destroy();
+        }
+        if (spell.emote) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(spell.emote);
+        }
+        FX(spell.fx,caster,spellTarget)
+        PlaySound(spell.sound);
+        PrintCard();
+    }
+
+
+
+    const Sleep = (targets,level) => {
+        let finalTargets = [];
+        targets.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
+        let dice = 2 * level + 3;
+        let hp = 0;
+        let rolls = [];
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(8);
+            rolls.push(roll);
+            hp += roll;
+        }
+        let tip = "[" + rolls.toString() + "]<br>[" + dice + "d8]";
+        tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
+        outputCard.body.push(tip + " HP Affected");
+        for (let i = 0;i<targets.length; i++) {
+            let target = targets[i];
+            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || Markers(target.token.get("statusmarkers")).includes("Unconscious")) {
+                continue;
+            };
+            let phb = parseInt(target.token.get("bar1_value"));
+            if (phb > hp) {
+                break
+            };
+            hp -= phb;
+            finalTargets.push(target);
+        }
+        return finalTargets;
+    }
+
+
+
+
+
 
 
 
@@ -2361,6 +2505,9 @@ log("Spell SLots: " + availableSS)
                 break;
             case '!DisplaySpellInfo':
                 DisplaySpellInfo(msg);
+                break;
+            case '!AreaSpell':
+                AreaSpell(msg);
                 break;
 
 
