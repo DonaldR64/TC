@@ -2,38 +2,6 @@
 
 
 
-        if (spellName === "Thunderwave") {
-            let possibles = AOETargets(target);
-            let dice = 2 + (level -1);
-            let total = 0;
-            let rolls = [];
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                total += roll;
-            }
-            let line = dice + "d8 = [" + rolls.toString() + "]";
-            tip = '[' + total + '](#" class="showtip" title="' + line + ')';
-
-            outputCard.body.push("Spell Damage: " + tip);
-            outputCard.body.push("[hr]");
-            _.each(possibles,model => {
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"constitution");
-                if (result.save === false) {
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " - takes " + total + " Damage and is pushed 10ft back");
-//move token back 10ft, and stop if wall
-
-                } else if (result.save === true) {
-                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " - takes " + Math.round(total/2) + " Damage");                
-                }
-            })
-            target.Destroy();
-            PlaySound("Thunder");
-        }
 
         if (spellName === "Burning Hands") {
             let targets = Cone(caster,target,15);
