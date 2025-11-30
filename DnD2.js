@@ -85,12 +85,13 @@ const DnD = (() => {
         "Stunned": "Stunned::2006499",
         "Unconscious": "KO::2006544",
         "Dodge": "half-haze",
-        "Protection": "Shield::2006495",
+        "Protection from Evil and Good": "Shield::2006495",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "yellow",
         "Sacred Weapon": "Torch-Light::2006651",
+        "Sanctuary": "Unknown-or-Mystery-2::2006534",
     }
 
 
@@ -2207,7 +2208,10 @@ log("Spell SLots: " + availableSS)
         let model = ModelArray[id];
         let description = Attribute(model.charID,desckey);
         SetupCard(model.name,spellName,model.displayScheme);
-        outputCard.body.push(description);
+        description = description.split('\n\n')
+        _.each(description,desc => {
+            outputCard.body.push(desc);
+        })
         PrintCard();
     }
 
@@ -2221,7 +2225,16 @@ log("Spell SLots: " + availableSS)
         if (spellInfo.spell.emote) {
             outputCard.body.push(spellInfo.spell.emote);
         }
-
+        if (spellInfo.spell.selfCM) {
+log(spellInfo.spell.selfCM)
+log(ConditionMarkers[spellInfo.spell.name])
+            spellInfo.caster.token.set("status_" + ConditionMarkers[spellInfo.spell.name],spellInfo.spell.selfCM);
+        }
+        if (spellInfo.spell.targetCM) {
+            _.each(spellInfo.targets,target => {
+                target.token.set("status_" + ConditionMarkers[spellInfo.spell.name],spellInfo.spell.targetCM);
+            })
+        }
 
         if (spellName === "Cure Wounds") {
             let rolls = [];
@@ -2236,9 +2249,6 @@ log("Spell SLots: " + availableSS)
             tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
             outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
         }
-        if (spellName === "Divine Favour") {
-            spellInfo.caster.token.set("status_yellow",true);
-        }
         if (spellName === "Shield of Faith") {
             let target = spellInfo.targets[0];
             target.token.set({
@@ -2247,7 +2257,6 @@ log("Spell SLots: " + availableSS)
                 showplayers_aura2: true,
             })
         }
-        
 
 
 
