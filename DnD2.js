@@ -89,7 +89,7 @@ const DnD = (() => {
         "Advantage": "Plus::2006398",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "yellow",
-
+        "Sacred Weapon": "Torch-Light::2006651",
     }
 
 
@@ -1497,9 +1497,16 @@ log(PCs)
         let additionalText = "";
         if (attMarkers.includes("Bless")) {
             bless = randomInteger(4);
-            additionalText += " +" + bless + " [Bless]";
+            additionalText += "<br>inc +" + bless + " Bless";
             attackBonus += bless;
         }
+        if (attMarkers.includes("Sacred Weapon") && weapon.type === "Melee") {
+            attackBonus += 2;
+            weapon.magic = "magic";
+            additionalText += "<br>inc +2 Sacred Weapon";
+        }
+
+
 
         //Magic Items
         if (extra !== "Non-Magic" && extra !== "No") {
@@ -1510,7 +1517,7 @@ log(PCs)
                 weapon.magic = "magic";
             }
         }
-        if (extra.includes("Silver")) {
+        if (extra.includes("Silver") && weapon.magic.includes("magic") === false) {
             weapon.magic = "silver";
         }
 
@@ -1546,8 +1553,8 @@ log(attMarkers)
         }
         let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
 
-        tip = attackResult.rollText + abText + additionalText;
-        tip += "<br>[1d20" + abText + additionalText + "]";
+        tip = attackResult.rollText + abText;
+        tip += "<br>[1d20" + abText + "]" + additionalText;
         if (advResult.advText.length > 0) {
             tip += "<br>Advantage from: " + advResult.advText.toString();
         }
@@ -2429,8 +2436,61 @@ log(rollResults)
         return finalTargets;
     }
 
+    const Paladin = (msg) => {
+        let id = msg.selected[0]._id;
+        if (!id) {return};
+        let model = ModelArray[id];
+        let ability = msg.content.split(";")[1];
+        SetupCard(model.name,ability,model.displayScheme);
+        if (ability === "Lay on Hands") {
+            outputCard.body.push("As an action, drawing upon your Holy Power, you can heal wounds");
+//resource
+            outputCard.body.push("Each point can heal 1 HP, 5 points can heal a disase or cure a poison");
+        }
+        if (ability === "Divine Sense") {
+            outputCard.body.push("Until the end of your next turn, you know the location of any celestial, fiend, or undead within 60 feet of you that is not behind total cover. You know the type (celestial, fiend, or undead) of any being whose presence you sense, but not its identity. Within the same radius, you also detect the presence of any place or object that has been consecrated or desecrated, as with the hallow spell.");
+//resource
+        }
+        if (ability === "Sacred Weapon") {
+//resource
+            outputCard.body.push("As an action, you imbue your weapon with Positive Energy");
+            outputCard.body.push("For 1 minute, it gains " + model.statBonus.charisma + " to Hit and is a Magical Weapon");
+            outputCard.body.push("It also emits light (20 feet bright, 20 feet dim)");
+            let marker = ConditionMarkers["Sacred Weapon"];
+            model.token.set("status_" + marker,true);
+        }
+        if (ability === "Turn the Unholy") {
+//resource
+            outputCard.body.push("As an action, you Channel Divinity and Turn Undead and Fiends within 30 feet.");
+            outputCard.body.push("[hr]");
+            Turn(model,["undead","fiend"],30);
+        }
+        PrintCard();
+    }
 
 
+    const Turn = (caster,types,range) => {
+        _.each(ModelArray,model => {
+            if (model.id !== caster.id) {
+log(model.name + ": " + model.type)
+                if (types.some(e => model.type.includes(e))) {
+                    let distance = caster.Distance(model) * pageInfo.scaleNum;
+log(distance)
+                    if (distance <= range) {
+                        let saveResult = Save(model,caster.spellDC,"wisdom");
+                        let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                        if (saveResult.save === true) {
+                            outputCard.body.push(model.name + " " +  '[saves]' + tip);
+                        } else {
+                            outputCard.body.push(model.name + " " + '[fails]'
+                                + tip + " and Flees!");
+                            model.token.set("status_" + ConditionMarkers["Frightened"],true);
+                        }
+                    }
+                }
+            };
+        })
+    }
 
 
 
@@ -2545,6 +2605,9 @@ log(rollResults)
                 break;
             case '!AreaSpell':
                 AreaSpell(msg);
+                break;
+            case '!Paladin':
+                Paladin(msg);
                 break;
 
 
