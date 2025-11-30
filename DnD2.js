@@ -1,11 +1,12 @@
 const DnD = (() => {
-    const version = '2025.11.27';
+    const version = '2025.11.30';
     if (!state.DnD) {state.DnD = {}};
 
     //various constants used in game
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
     let ModelArray = {};
+    let nameArray = {};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
@@ -800,6 +801,7 @@ log(model.name + ": " + id)
     //will need to rebuild on page change or when add a token
     const BuildArrays = () => {
         ModelArray = {};
+        nameArray = {};
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
@@ -884,7 +886,7 @@ log(model.name + ": " + id)
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
             }
         } else {
-            let directed = ["beam","missile","rocket"];
+            let directed = ["breath","beam","missile","rocket"];
             let points = directed.some(element => fxname.includes(element));
             if (points === true) {
                 spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
@@ -900,6 +902,7 @@ log(model.name + ": " + id)
 
 
         }
+        nameArray = {};
     }
 
     const RollDamage = (damageInfo,critical) => {
@@ -981,6 +984,8 @@ log(damageInfo)
         let immune = false;
         let resistant = false;
         let note = "";
+        let saveNote = " ";
+
         let weaponTypes = ["piercing","slashing","bludgeoning"]
 log(defender.immunities)
 log(defender.resistances)
@@ -1025,40 +1030,54 @@ log(defender.vulnerabilities)
                 note = "Resistant to " + Capit(damageType) + " Damage";
             }
         }
-        if (immune == true) {total = 0};
-        if (resistant === true) {total = Math.round(total/2)};
+        if (immune == true) {
+            total = 0
+            saveNote += "[#00ff00][Immune][/#]"        
+        };
+        if (resistant === true) {
+            total = Math.round(total/2)
+            saveNote += "[#00ff00][Resistant][/#]"
+        };
         //Vulnerabilities
         if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
             total *= 2;
             note = "Vulnerable to " +  Capit(damageType);
+            saveNote += "[#ff0000]Vulnerable[/#]";
         }
 
         //other Damage Reduction Here
 
         //Saving Throws
-        if (savingThrow && savingThrow !== "No") {
+        if (savingThrow && savingThrow !== "No" && immune === false) {
             let dc = attacker.spellDC;
             let result = Save(defender,dc,savingThrow); //save, saveTotal, tip
-            let tip;
+            //let tip;
+            if (note !== "") {note += "<br>"}
             if (result.save === true) {
-                tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
+                //tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
+                note += "Saves";
+                saveNote += "[Saves]"
                 if (saveEffect === "No Damage") {
-                    tip += " and takes No Damage";
+                    note += " and takes No Damage";
                     total = 0;
                 }
                 if (saveEffect === "Half Damage") {
-                    tip += " and takes 1/2 Damage";
+                    note += " and takes 1/2 Damage";
                     total = Math.round(total/2);
                 }
+                note += "<br>" + result.tip
             } else {
-                tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
+                //tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
+                note = "Fails<br>" + result.tip;
+                saveNote += "[#ff0000][Failed][/#]"
             }
-            outputCard.body.push(defender.name + " " + tip);
+            //outputCard.body.push(defender.name + " " + tip);
         }
 
         let result = {
             total: total,
             note: note,
+            save: saveNote,
         }
 
         return result;
@@ -1594,7 +1613,7 @@ log(damageResults)
                     tip += "<br>" + damageResults.note;
                 }                
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-                outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+                outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip  + damageResults.save);
                 if (crit === true) {
                     spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
                 } else {
@@ -1902,7 +1921,7 @@ log(damageResults)
             tip += "<br>" + damageResults.note;
         }                
         tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-        outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+        outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip  + damageResults.save);
         spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
         PlaySound("Smite");
     }
@@ -2015,7 +2034,8 @@ log(damageResults)
                         tip += "<br>" + damageResults.note;
                     }                
                     tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-                    outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip);
+
+                    outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip + damageResults.save);
                 if (spell.note) {
                     outputCard.body.push("[hr]");
                     outputCard.body.push(spell.note);
@@ -2319,7 +2339,7 @@ log("Spell SLots: " + availableSS)
         if (spell.area.includes("Square")) {
             targets = AOETargets(spellTarget);
         } else if (spell.area.includes("Cone")) {
-            targets = Cone(spellTarget);
+            targets = Cone(caster,spellTarget,spellDistance);
         }
 
         if (spellName === "Sleep") {
@@ -2376,15 +2396,20 @@ log("Spell SLots: " + availableSS)
             let rollResults = RollDamage(spell.damage,false); //total, diceText
 log(rollResults)
             tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
-            outputCard.body.push("Spell Damage: " + tip);
+            outputCard.body.push("Total: " + tip + " " + Capit(spell.damageType) + " Damage");   
+            if (spell.savingThrow && spell.savingThrow != "No") {
+                outputCard.body.push(Capit(spell.savingThrow) + " Save = " + spell.saveEffect);
+            } else {
+                outputCard.body.push("No Saving Throw");
+            }
             outputCard.body.push("[hr]")
+            outputCard.body.push("[hr]")
+
             _.each(targets,target => {
                 let damageResults = (ApplyDamage(rollResults,caster,target,spell));
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + damageResults.note + ')';
-                outputCard.body.push(target.name + " takes " + tip + " " + Capit(spell.damageType) + " Damage");
+                outputCard.body.push(target.name + " takes " + tip + " Damage" + damageResults.save);
             })
-
-
         }
 
         if (spell.moveEffect === true) {
@@ -2397,8 +2422,9 @@ log(rollResults)
             spellTarget.Destroy();
         }
         if (spell.emote) {
-                outputCard.body.push("[hr]");
-                outputCard.body.push(spell.emote);
+            spell.emote = spell.emote.replace(/%%C%%/g,caster.name);
+            outputCard.body.push("[hr]");
+            outputCard.body.push(spell.emote);
         }
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
@@ -2645,6 +2671,23 @@ log(rollResults)
 
     }
 
+    const Rename = (msg) => {
+        //add #s to a group of tokens with same name
+        for (let i=0;i<msg.selected.length;i++) {
+            let id = msg.selected[i]._id;
+            let token = findObjs({_type:"graphic", id: id})[0];
+            let currentName = token.get("name");
+            if (nameArray[currentName]) {
+                nameArray[currentName] += 1;
+                let newName = currentName + " " + nameArray[currentName];
+                token.set("name", newName);
+                ModelArray[id].name = newName;
+            } else {
+                nameArray[currentName] = 1;
+            }
+        }
+    }
+
 
 
 
@@ -2760,6 +2803,9 @@ log(rollResults)
                 break;
             case '!Paladin':
                 Paladin(msg);
+                break;
+            case '!Rename':
+                Rename(msg);
                 break;
 
 

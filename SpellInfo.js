@@ -26,7 +26,8 @@
             damageType: "acid",
             savingThrow: "dexterity",
             saveEffect: "No Damage",
-            sound: "",
+            emote: '%%C%% hurls a bubble of acid at the target',
+            sound: "Plasma",
             macro: '!Spell;Acid Splash;0;%Selected%;%Target%',
         },
         "Burning Hands": {
@@ -38,12 +39,13 @@
             damageType: "fire",
             savingThrow: "dexterity",
             saveEffect: "Half Damage",
-            macro: '!Spell;Burning Hands;%Level',
+            area: 'Cone',
+            areaEffect: "Damage",
             tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
             tempSize: 5,
-            emote: "A thin sheet of flame shoots forth from %%C%%'s fingertips",
-            sound: "Inferno",
-            macro: '!Spell;Burning Hands;%Level%'
+            sound: "Flames",
+            macro: '!Spell;Burning Hands;%Level%',
+            fx: "breath-fire",
         },
         "Magic Missile": {
             level: 1,
