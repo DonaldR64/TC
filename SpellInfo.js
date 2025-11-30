@@ -169,16 +169,18 @@
             range: "Self",
             spellType: "Misc",
             macro: "!Spell;Divine Favour;1;%Selected%",
+            emote: "Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.<br>Casting this only takes a Bonus Action",
             sound: "Angels",
         },
         "Shield of Faith": {
             level: 1,
             range: 60,
             spellType: "Misc",
+            emote: "A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.<br>Lasts 10 minutes or Concentration",
             macro: "!Spell;Shield of Faith;1;%Selected%;%Target%",
             sound: "Angels",
         },
-
+        
 
 
 

@@ -2218,6 +2218,10 @@ log("Spell SLots: " + availableSS)
     const MiscSpell = (spellInfo) => {
 
         let spellName = spellInfo.spell.name;
+        if (spellInfo.spell.emote) {
+            outputCard.body.push(spellInfo.spell.emote);
+        }
+
 
         if (spellName === "Cure Wounds") {
             let rolls = [];
@@ -2233,13 +2237,9 @@ log("Spell SLots: " + availableSS)
             outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
         }
         if (spellName === "Divine Favour") {
-            outputCard.body.push("Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.");
-            outputCard.body.push("Lasts 1 minute or Concentration");
             spellInfo.caster.token.set("status_yellow",true);
         }
         if (spellName === "Shield of Faith") {
-            outputCard.body.push("A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.");
-            outputCard.body.push("Lasts 10 minutes or Concentration");
             let target = spellInfo.targets[0];
             target.token.set({
                 aura2_radius: 0.5,
@@ -2697,6 +2697,17 @@ log(rollResults)
         }
     }
 
+    const RebuildSC = () => {
+        let macro = findObjs({type: 'macro',name: 'Set-Condition'})[0];
+        let text = "!SetCondition;?{Condition";
+        let list = Object.keys(ConditionMarkers);
+        _.each(list,condition => {
+            text += "|" + condition;
+        })
+        text += "};?{Status|On|Off|Clear All}";
+        macro.set("action",text);
+        sendChat("","Rebuilt")
+    }
 
 
 
@@ -2816,7 +2827,9 @@ log(rollResults)
             case '!Rename':
                 Rename(msg);
                 break;
-
+            case '!RebuildSC':
+                RebuildSC();
+                break;
 
 
         }
