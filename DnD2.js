@@ -92,6 +92,7 @@ const DnD = (() => {
         "Divine Favour": "yellow",
         "Sacred Weapon": "Torch-Light::2006651",
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
+        "Mage Armour": "418-MA-Buff::5818082",
     }
 
 
