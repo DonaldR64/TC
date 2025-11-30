@@ -13,7 +13,7 @@
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
             emote: "A frigid beam of blue-white light streaks toward the target",
-            fx: "Custom-FrostRay",
+            fx: "",
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
         "Acid Splash": {
@@ -153,7 +153,7 @@
             sound: "Plasma",
             macro: '!Spell;Produce Flame;0;%Selected%;%Target%',
             emote: "%%C%% hurls a ball of flame at the target",
-            fx: "missile-frost",
+            fx: "",
         },
         "Cure Wounds": {
             level: 1,
