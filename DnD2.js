@@ -983,8 +983,8 @@ log(damageInfo)
         let silver = damageInfo.magic === "silver" ? true:false;
         let immune = false;
         let resistant = false;
-        let note = "";
-        let saveNote = " ";
+        let irv = "";
+        let saveTip = "";
 
         let weaponTypes = ["piercing","slashing","bludgeoning"]
 log(defender.immunities)
@@ -995,19 +995,19 @@ log(defender.vulnerabilities)
             if (weaponTypes.includes(damageType)) {
                 if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && magic === false) {
                     immune = true;
-                    note = "Immune to " + Capit(damageType) + " Damage from Non-magical Weapons";
+                    saveTip = "Immune to " + Capit(damageType) + " Damage from Non-magical Weapons";
                 }
                 if (defender.immunities.includes("silver") && magic === false && silver === false) {
                     immune = true;
-                    note = "Immune to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
+                    saveTip = "Immune to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
                 }
                 if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
                     immune = true;
-                    note = "Immune to " + Capit(damageType) + " Damage";
+                    saveTip = "Immune to " + Capit(damageType) + " Damage";
                 }
             } else {
                 immune = true;
-                note = "Immune to " + Capit(damageType) + " Damage";
+                saveTip = "Immune to " + Capit(damageType) + " Damage";
             }
         }
         //Resistances
@@ -1015,69 +1015,67 @@ log(defender.vulnerabilities)
             if (weaponTypes.includes(damageType)) {
                 if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
                     resistant = true;
-                    note = "Resistant to " + Capit(damageType) + " Damage from Non-magical Weapons";
+                    saveTip = "Resistant to " + Capit(damageType) + " Damage from Non-magical Weapons";
                 }
                 if (defender.resistances.includes("silver") && magic === false && silver === false) {
                     resistant = true;
-                    note = "Resistant to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
+                    saveTip = "Resistant to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
                 }
                 if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
                     resistant = true;
-                    note = "Immune to " + Capit(damageType) + " Damage";
+                    saveTip = "Immune to " + Capit(damageType) + " Damage";
                 }
             } else {
                 resistant = true;
-                note = "Resistant to " + Capit(damageType) + " Damage";
+                saveTip = "Resistant to " + Capit(damageType) + " Damage";
             }
         }
         if (immune == true) {
             total = 0
-            saveNote += "[#00ff00][Immune][/#]"        
-        };
+            irv = " [#00ff00][Immune][/#]";        
+        }
         if (resistant === true) {
             total = Math.round(total/2)
-            saveNote += "[#00ff00][Resistant][/#]"
-        };
+            irv = " [#00ff00][Resistant][/#]";
+        }
         //Vulnerabilities
         if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
             total *= 2;
-            note = "Vulnerable to " +  Capit(damageType);
-            saveNote += "[#ff0000]Vulnerable[/#]";
+            saveTip = "Vulnerable to " +  Capit(damageType);
+            irv = " [#ff0000][Vulnerable][/#]";
         }
 
         //other Damage Reduction Here
 
         //Saving Throws
+        let save;
         if (savingThrow && savingThrow !== "No" && immune === false) {
             let dc = attacker.spellDC;
             let result = Save(defender,dc,savingThrow); //save, saveTotal, tip
-            //let tip;
-            if (note !== "") {note += "<br>"}
+            if (saveTip !== "") {saveTip += "<br>"}
             if (result.save === true) {
-                //tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
-                note += "Saves";
-                saveNote += "[Saves]"
+                save = "Saves";
+                saveTip += "Saves";
                 if (saveEffect === "No Damage") {
-                    note += " and takes No Damage";
+                    saveTip += " and takes No Damage";
                     total = 0;
                 }
                 if (saveEffect === "Half Damage") {
-                    note += " and takes 1/2 Damage";
+                    saveTip += " and takes 1/2 Damage";
                     total = Math.round(total/2);
                 }
-                note += "<br>" + result.tip
+                saveTip += "<br>" + result.tip
             } else {
-                //tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
-                note = "Fails<br>" + result.tip;
-                saveNote += "[#ff0000][Failed][/#]"
+                saveTip = "Fails<br>" + result.tip;
+                save = "Fails";
             }
-            //outputCard.body.push(defender.name + " " + tip);
         }
 
         let result = {
             total: total,
-            note: note,
-            save: saveNote,
+            irv: irv,
+            saveTip: saveTip,
+            save: save,
         }
 
         return result;
@@ -1608,12 +1606,17 @@ log(weapon)
 log(rollResults)
                 let damageResults = ApplyDamage(rollResults,attacker,defender,weapon);
 log(damageResults)
-                let tip = rollResults.diceText;
-                if (damageResults.note !== "") {
-                    tip += "<br>" + damageResults.note;
-                }                
-                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-                outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip  + damageResults.save);
+                let tip = rollResults.diceText;  
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
+                let saveTip = "";
+                if (damageResults.save) {
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
+                }
+
+                outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + damageResults.irv);
+
+
+
                 if (crit === true) {
                     spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
                 } else {
@@ -1916,12 +1919,15 @@ log(damageResults)
         let damage = dice + "d8,radiant";
         let rollResults = RollDamage(damage,critical);
         let damageResults = ApplyDamage(rollResults,attacker,defender);
-        let tip = rollResults.diceText;
-        if (damageResults.note !== "") {
-            tip += "<br>" + damageResults.note;
-        }                
-        tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-        outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip  + damageResults.save);
+        let tip = rollResults.diceText;         
+        tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
+        let saveTip = "";
+
+        if (damageResults.save) {
+            saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
+        }
+        outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + damageResults.irv);
+
         spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
         PlaySound("Smite");
     }
@@ -2027,15 +2033,15 @@ log(damageResults)
                 outputCard.body.push("[B]Hit![/b]")
                 let rollResults = RollDamage(spell.damage,crit); //total, diceText
     log(rollResults)
-                    let damageResults = ApplyDamage(rollResults,caster,defender,spell);
+                let damageResults = ApplyDamage(rollResults,caster,defender,spell);
     log(damageResults)
-                    let tip = rollResults.diceText;
-                    if (damageResults.note !== "") {
-                        tip += "<br>" + damageResults.note;
-                    }                
-                    tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-
-                    outputCard.body.push(Capit(rollResults.damageType) + " Damage: " + tip + damageResults.save);
+                let tip = rollResults.diceText;      
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                let saveTip = "";
+                if (damageResults.save) {
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + ": "
+                }
+                outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
                 if (spell.note) {
                     outputCard.body.push("[hr]");
                     outputCard.body.push(spell.note);
@@ -2407,8 +2413,11 @@ log(rollResults)
 
             _.each(targets,target => {
                 let damageResults = (ApplyDamage(rollResults,caster,target,spell));
-                tip = '[' + damageResults.total + '](#" class="showtip" title="' + damageResults.note + ')';
-                outputCard.body.push(target.name + " takes " + tip + " Damage" + damageResults.save);
+                let saveTip = "";
+                if (damageResults.save) {
+                    saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
+                }
+                outputCard.body.push(target.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
             })
         }
 
