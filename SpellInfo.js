@@ -71,7 +71,7 @@
             areaTextF: " falls asleep",
             effectMarker: "status_KO::2006544",
             sound: "FFire",
-            macro: '!Spell;Sleep;%Level',
+            macro: '!Spell;Sleep;%Level%',
             emote: "Sleeping Creatures remain asleep for 1 minute or until they take damage or are deliberately awakened",
             tempImg: 'https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066',
             tempSize: 40,
