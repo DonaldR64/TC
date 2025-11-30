@@ -13,7 +13,7 @@
             note: "Target's Speed is reduced by 10 for a turn",
             sound: "Laser",
             emote: "A frigid beam of blue-white light streaks toward the target",
-            fx: "beam-frost",
+            fx: "Custom-FrostRay",
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
         "Acid Splash": {
