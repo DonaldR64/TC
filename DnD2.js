@@ -990,7 +990,7 @@ log(model.name + ": " + id)
         return result;
     }
 
-    const ApplyDamage = (rollResults,attacker,defender,damageInfo) => {
+    const ApplyDamage = (rollResults,dc,defender,damageInfo) => {
         if (!damageInfo) {damageInfo = {}};
 log(damageInfo)
         let total = rollResults.total;
@@ -1068,7 +1068,6 @@ log(defender.vulnerabilities)
         //Saving Throws
         let save;
         if (savingThrow && savingThrow !== "No" && immune === false) {
-            let dc = attacker.spellDC;
             let result = Save(defender,dc,savingThrow); //save, saveTotal, tip
             if (saveTip !== "") {saveTip += "<br>"}
             if (result.save === true) {
@@ -1610,6 +1609,8 @@ log(attMarkers)
             ac += 2;
         }
 
+        let dc = 10;//modify???
+
 
         outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
         if (crit === true) {
@@ -1626,7 +1627,7 @@ log(weapon)
                 //roll damage for each damage type then 'apply' it to defender
                 let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
 log(rollResults)
-                let damageResults = ApplyDamage(rollResults,attacker,defender,weapon);
+                let damageResults = ApplyDamage(rollResults,dc,defender,weapon);
 log(damageResults)
                 let tip = rollResults.diceText;  
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
@@ -1851,7 +1852,6 @@ log(damageResults)
         let attID = Tag[2];
         let attacker = ModelArray[attID];
 
-
         if (abilityName === "Shield Bash") {
             let defID = Tag[3];
             let defender = ModelArray[defID];
@@ -1864,7 +1864,21 @@ log(damageResults)
             let level = parseInt(Tag[5]);
             Smite(attacker,defender,critical,level);
         }
-
+        if (abilityName === "Dragon's Breath") {
+            let spell = DeepCopy(SpellInfo["Breathe"]);
+            let spellInfo = {
+                caster: attacker,
+                spell: spell,
+                level: parseInt(Tag[3]),
+                dc: parseInt(Tag[5]),
+                originalCasterID: Tag[6],
+                damageType: Tag[4],
+            }
+            ClearSpellTarget();
+            SpellTarget(spellInfo);
+            SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
+            outputCard.body.push("Place Target then use Macro to Cast");
+        }
 
 
 
@@ -1938,9 +1952,10 @@ log(damageResults)
         }
         SetupCard(attacker.name,sub,attacker.displayScheme);
 
+
         let damage = dice + "d8,radiant";
         let rollResults = RollDamage(damage,critical);
-        let damageResults = ApplyDamage(rollResults,attacker,defender);
+        let damageResults = ApplyDamage(rollResults,attacker.spellDC,defender);
         let tip = rollResults.diceText;         
         tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
         let saveTip = "";
@@ -2055,11 +2070,13 @@ log(damageResults)
                 }
             }
 
+            let dc = caster.spellDC;
+
             if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
                 outputCard.body.push("[B]Hit![/b]")
                 let rollResults = RollDamage(spell.damage,crit); //total, diceText
     log(rollResults)
-                let damageResults = ApplyDamage(rollResults,caster,defender,spell);
+                let damageResults = ApplyDamage(rollResults,dc,defender,spell);
     log(damageResults)
                 let tip = rollResults.diceText;      
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
@@ -2081,6 +2098,7 @@ log(damageResults)
     }
 
 const Spell = (msg) => {
+    
     let Tag = msg.content.split(";");
     let spellName = Tag[1];
     let level = Tag[2];
@@ -2090,6 +2108,7 @@ const Spell = (msg) => {
     let errorMsg = [];
 
     let caster = ModelArray[casterID];
+    let spellDC = caster.spellDC;
 
     if (!SpellInfo[spellName]) {
         outputCard.body.push("Error");
@@ -2099,12 +2118,9 @@ const Spell = (msg) => {
 
     let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
-    let oddballs = ["Dragon's Breath","Breathe Energy"];    
-    let displacedCast = ["Breathe Energy"]; //spells that are based on another caster having put it on it
-
 
     //check spell slots, distance
-    if (displacedCast.includes(spellName) === false) {
+    if (!spell.exempt) {
         let slotsAvailable = SpellSlots(caster,level);
         if (slotsAvailable === 0) {
             errorMsg.push("No Slots of that Level Available");
@@ -2112,12 +2128,14 @@ const Spell = (msg) => {
     }
 
     //range check - note range check for Area checked in AreaSpell once template placed
+    let alt = 0;
     for (let i=4;i< Tag.length;i++) {
         let target = ModelArray[Tag[i]];
         if (!target) {
-            if (oddballs.includes(spellName)) {
-                targets.push(Tag[i]);
-            }
+            let alternate = spell.alternates[alt];
+            spell[alternate] = Tag[i];
+log(spell)
+            alt++;
         } else {
             let squares = caster.Distance(target);
             let distance = squares * pageInfo.scale;
@@ -2129,20 +2147,23 @@ const Spell = (msg) => {
         }
     }
 
+    SetupCard(caster.name,spellName,caster.displayScheme);
+
     if (errorMsg.length > 0) {
         _.each(errorMsg,error => {
             outputCard.body.push(error);
         });
+        PrintCard();
+        return;
     } 
 
-    let spellInfo = {
+    spellInfo = {
         caster: caster,
         targets: targets,
         spell: spell,
         level: level,
+        dc: spellDC,
     }
-
-    SetupCard(caster.name,spellName,caster.displayScheme);
 
     if (spell.spellType === "DirectAttack") {
         //spells that directly attack the target
@@ -2155,7 +2176,7 @@ const Spell = (msg) => {
         //creates a target template (depending on spell)
         //target template will have a macro to actually cast spell
         ClearSpellTarget();
-        let target = SpellTarget(caster,spellName,level,spell.tempImg,spell.tempSize);
+        SpellTarget(spellInfo);
         outputCard.body.push("Place Target then use Macro to Cast");
     }
 
@@ -2271,8 +2292,7 @@ log("Cumulative Slots: " + cumulativeSS)
         let spellName = spellInfo.spell.name;
         if (spellInfo.spell.emote) {
             if (spellName === "Dragon's Breath")  {
-                let energyType = spellInfo.targets[1];
-                spellInfo.spell.emote = spellInfo.spell.emote.replace("magical","magical " + energyType);
+                spellInfo.spell.emote = spellInfo.spell.emote.replace("magical",spellInfo.spell.damageType);
             }           
             outputCard.body.push(spellInfo.spell.emote);
         }
@@ -2308,13 +2328,20 @@ log("Cumulative Slots: " + cumulativeSS)
         }
         if (spellName === "Dragon's Breath") {
             let target = spellInfo.targets[0];
-            let energyType = spellInfo.targets[1];
-            let action = "!Spell;Breathe Energy;" + spellInfo.caster.id + ";" + spellInfo.level + ";" + energyType + ";" + spellInfo.caster.spellDC;
-            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe Energy"})[0];
+            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spellInfo.level + ";" + spellInfo.spell.damageType + ";" + spellInfo.caster.spellDC + ";" + spellInfo.caster.id;
+
+/*
+change to find any Breath ability
+            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe " + Capit(spellInfo.spell.damageType)})[0];
+            
+
+
+
             if (ability) {
                 ability.remove();
             }
-            AddAbility("Breathe Energy",action,target.charID);
+*/
+            AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
 
         PlaySound(spellInfo.spell.sound);
@@ -2324,35 +2351,46 @@ log("Cumulative Slots: " + cumulativeSS)
 
 
 
-    const SpellTarget = (caster,spellName,level,img,dim) => {
+    const SpellTarget = (spellInfo) => {
         let abilArray = findObjs({_type: "ability", _characterid: '-Oe8qdnMHHQEe4fSqqhm'});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
-        img = getCleanImgSrc(img);
-        let action = "!AreaSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility("Cast " + spellName,action,'-Oe8qdnMHHQEe4fSqqhm');
-        if (isNaN(dim)) {
-            if (dim.includes("Level")) {
-                if (dim.includes("*")) {
-                    dim = parseInt(dim.replace(/[^\d]/g,""));
-                    dim = level * dim;
+        img = getCleanImgSrc(spellInfo.spell.tempImg);
+        let action = "!AreaSpell;" + spellInfo.spell.name + ";" + spellInfo.caster.id + ";" + spellInfo.level;
+        if (spellInfo.damageType) {
+            action += ";" + spellInfo.damageType;
+        }
+        if (spellInfo.dc) {
+            action += ";" + spellInfo.dc;
+        }
+        if (spellInfo.originalCasterID) {
+            action += ";" + spellInfo.originalCasterID;
+        }
+        
+
+
+        AddAbility("Cast " + spellInfo.spell.name,action,'-Oe8qdnMHHQEe4fSqqhm');
+        if (isNaN(spellInfo.spell.tempSize)) {
+            if (spellInfo.spell.tempSize.includes("Level")) {
+                if (spellInfo.spell.tempSize.includes("*")) {
+                    spellInfo.spell.tempSize = parseInt(spellInfo.spell.tempSize.replace(/[^\d]/g,""));
+                    spellInfo.spell.tempSize = level * spellInfo.spell.tempSize;
                 }
             }
         }
 
-
-        dim = (dim * 70) / pageInfo.scaleNum;
+        spellInfo.spell.tempSize = (spellInfo.spell.tempSize * 70) / pageInfo.scaleNum;
 
         let newToken = createObj("graphic", {
-            left: caster.token.get("left"),
-            top: caster.token.get("top"),
+            left: spellInfo.caster.token.get("left"),
+            top: spellInfo.caster.token.get("top"),
             disableTokenMenu: true,
-            width: dim, 
-            height: dim,  
-            name: spellName,
-            pageid: caster.token.get("_pageid"),
+            width: spellInfo.spell.tempSize, 
+            height: spellInfo.spell.tempSize,  
+            name: spellInfo.spell.name || "",
+            pageid: spellInfo.caster.token.get("_pageid"),
             imgsrc: img,
             layer: "objects",
             represents: '-Oe8qdnMHHQEe4fSqqhm',
@@ -2384,36 +2422,44 @@ log("Cumulative Slots: " + cumulativeSS)
         let targetID = msg.selected[0]._id;
         let spellTarget = ModelArray[targetID];
         let Tag = msg.content.split(";");
-        let spellName = Tag[1];
         let caster = ModelArray[Tag[2]];
         let level = parseInt(Tag[3]);
         let dc = caster.spellDC;
+        let casterLevel = caster.casterLevel;
 
-        let spell = DeepCopy(SpellInfo[spellName]);
-        if (spellName === "Breathe Energy") {
+        let spell = DeepCopy(SpellInfo[Tag[1]]);
+
+        if (spell.name === "Breathe") {
             spell.damageType = Tag[4].toLowerCase();
-            dc = Tag[5];
-            spell.fx = "breathe-";
-            switch (Tag[4]) {
-                case 'Acid':
+            spell.name += " " + Capit(spell.damageType);
+log(spell)
+            dc = parseInt(Tag[5]);
+            originalCaster = ModelArray[Tag[6]];
+log(originalCaster.name)
+            casterLevel = originalCaster.casterLevel;
+            spell.fx = "breath-";
+//sound?
+            switch (spell.damageType) {
+                case 'acid':
                     spell.fx += "acid";
                     break;
-                case 'Cold':
+                case 'cold':
                     spell.fx += "frost";
                     break;
-                case 'Fire':
+                case 'fire':
                     spell.fx += "fire";
                     break;
-                case 'Lightning':
+                case 'lightning':
                     spell.fx += "magic";
                     break;
-                case 'Poison':
+                case 'poison':
                     spell.fx += "slime";
                     break;
             }
         }
+log(spell)
 
-        SetupCard(caster.name,spellName,caster.displayScheme);
+        SetupCard(caster.name,spell.name,caster.displayScheme);
 
         let squares = caster.Distance(spellTarget);
         let spellDistance = squares * pageInfo.scaleNum;
@@ -2432,7 +2478,7 @@ log("Cumulative Slots: " + cumulativeSS)
             targets = Cone(caster,spellTarget,spellDistance);
         }
 
-        if (spellName === "Sleep") {
+        if (spell.name === "Sleep") {
             targets = Sleep(targets,level); //refine based on hp
         }
 
@@ -2476,9 +2522,10 @@ log("Cumulative Slots: " + cumulativeSS)
                 }
             })
         } else if (spell.areaEffect === "Damage") {
-            if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
-                spell.base = spell.cLevel[caster.casterLevel];
+            if (spell.cLevel && spell.cLevel[casterLevel]) {
+                spell.base = spell.cLevel[casterLevel];
             }
+//need caster level for displaced spells
             if (level > spell.level) {
                 spell.base = spell.sLevel[level];
             }
@@ -2496,14 +2543,14 @@ log(rollResults)
             outputCard.body.push("[hr]")
 
             _.each(targets,target => {
-                let damageResults = (ApplyDamage(rollResults,caster,target,spell));
+                let damageResults = (ApplyDamage(rollResults,dc,target,spell));
                 let saveTip = "";
                 if (damageResults.save) {
                     saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
                 }
                 outputCard.body.push(target.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
 
-                if (spellName === "Thunderwave" && damageResults.save === "Fails") {
+                if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
                     MoveTarget(caster,target,10);
                 }
 
@@ -2513,10 +2560,10 @@ log(rollResults)
 
         if (spell.moveEffect === true) {
             spellTarget.token.set({
-                name: spellName,
+                name: spell.name,
                 layer: 'map',
             })
-            spellTarget.name = spellName;
+            spellTarget.name = spell.name;
             spellTarget.layer = "map";
         } else {
             spellTarget.Destroy();
