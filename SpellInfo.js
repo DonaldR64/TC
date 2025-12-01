@@ -227,8 +227,29 @@
             tempSize: 20,
             fx: "",
         },
-
-
+        "Dragon's Breath": {
+            level: 2,
+            range: 5,
+            spellType: "Misc",
+            sound: "",
+            emote: "Your target gains the ability to Breath Magical Energy in a 15 foot cone, doing 3d6 damage, 1/2 on a successful Dex Saving Throw<br>This lasts for 1 minute or Concentration",
+            macro: "!Spell;Dragon Breath;%Level%;%Selected%;%Target%;?{Energy Type|Acid|Cold|Fire|Lightning|Poison}",
+        },
+        "Breathe Energy": {
+            level: 2,
+            range: 15,
+            spellType: "Area",
+            base: '3d6',
+            sLevel: [0,0,"3d6","4d6","5d6","6d6","7d6"],
+            damageType: "",
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",
+            area: 'Cone',
+            areaEffect: "Damage",
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            tempSize: 5,
+            sound: "Flames",
+        }
 
 
 

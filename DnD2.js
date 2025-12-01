@@ -2077,7 +2077,7 @@ const Spell = (msg) => {
     let caster = ModelArray[casterID];
     let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
-    
+    let oddballs = ["Dragon Breath","Breathe Energy"];    
 
     //check spell slots, distance
     let slotsAvailable = SpellSlots(caster,level);
@@ -2089,7 +2089,9 @@ const Spell = (msg) => {
     for (let i=4;i< Tag.length;i++) {
         let target = ModelArray[Tag[i]];
         if (!target) {
-            log("No Target at ID:" + Tag[i])
+            if (oddballs.includes(spellName)) {
+                targets.push(Tag[i]);
+            }
         } else {
             let squares = caster.Distance(target);
             let distance = squares * pageInfo.scale;
@@ -2164,31 +2166,39 @@ log(model.spells)
             outputCard.body.push("[hr]");
         }
 
-        let availableSS = [];
-        let levelMacro = "?&#123;Level";
-        for (let i=1;i<6;i++) {
-            if (SpellSlots(model,i) > 0) {
-                availableSS.push(i);
-                levelMacro += "	&#124;" + i;
+        let availableSS = [0,0,0,0,0,0,0,0,0,0];
+        for (let i=1;i<10;i++) {
+            let ss = parseInt(SpellSlots(model,i));
+            for (let j=1;j<=i;j++) {
+                availableSS[j] += ss;
             }
         }
-        levelMacro += "&#125;";
-        if (availableSS.length === 1) {
-            levelMacro = parseInt(availableSS[0]);
-        }
-log("Spell SLots: " + availableSS)
 
-        for (let i=0;i<availableSS.length;i++) {
-            let level = availableSS[i];
-            outputCard.body.push("[B][U]Level " + level + "[/b][/u]");
-            outputCard.body.push("Spell Slots: " + SpellSlots(model,level));
+log("Spell SLots: " + availableSS)
+        for (let i=1;i<10;i++) {
+            if (availableSS[i] === 0) {continue};
+            outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
+            outputCard.body.push("Spell Slots: " + SpellSlots(model,i));
             //show prepared spells for that level with a button
-            let spells = model.spells[level];
+            let spells = model.spells[i];
             let buttons = [];
+//
             _.each(spells,spell => {
                 if (Attribute(model.charID,spell.prepared) == 1) {
                     let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
                     if (SpellInfo[spell.name]) {
+                        let levelMacro = "?&#123;Level&#124;" + i;
+                        let availLevels = [i];
+                        for (let j=(i+1);j<10;j++) {
+                            if (availableSS[j] > 0) {
+                                availLevels.push(j);
+                                levelMacro += "	&#124;" + j;
+                            }
+                        }
+                        levelMacro += "&#125;";
+                        if (availLevels.length === 1) {
+                            levelMacro = parseInt(availLevels[0]);
+                        }                                 
                         macro = SpellInfo[spell.name].macro || macro;
                         macro = macro.replace("%Level%",levelMacro);
                         macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
@@ -2204,8 +2214,6 @@ log("Spell SLots: " + availableSS)
             outputCard.body.push("<br>");
             outputCard.body.push("[hr]");
         }
-
-
 
         PrintCard(); //? maybe make this a whisper to player +/- GM ?
     }
@@ -2266,6 +2274,16 @@ log(ConditionMarkers[spellInfo.spell.name])
                 aura2_color: "#ffd700",
                 showplayers_aura2: true,
             })
+        }
+        if (spellName === "Dragon Breath") {
+            let target = spellInfo.targets[0];
+            let energyType = spellInfo.targets[1];
+            let action = "!Spell;Breathe Energy;" + spellInfo.caster.id + ";" + spellInfo.level + ";" + energyType + ";" + spellInfo.caster.spellDC;
+            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe Energy"})[0];
+            if (ability) {
+                ability.remove();
+            }
+            AddAbility("Breathe Energy",action,target.charID);
         }
 
 
@@ -2348,6 +2366,28 @@ log(ConditionMarkers[spellInfo.spell.name])
         let dc = caster.spellDC;
 
         let spell = DeepCopy(SpellInfo[spellName]);
+        if (spellName === "Breathe Energy") {
+            spell.damageType = Tag[4].toLowerCase();
+            dc = Tag[5];
+            spell.fx = "breathe-";
+            switch (Tag[4]) {
+                case 'Acid':
+                    spell.fx += "acid";
+                    break;
+                case 'Cold':
+                    spell.fx += "frost";
+                    break;
+                case 'Fire':
+                    spell.fx += "fire";
+                    break;
+                case 'Lightning':
+                    spell.fx += "magic";
+                    break;
+                case 'Poison':
+                    spell.fx += "slime";
+                    break;
+            }
+        }
 
         SetupCard(caster.name,spellName,caster.displayScheme);
 
