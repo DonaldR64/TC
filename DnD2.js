@@ -2167,16 +2167,20 @@ log(model.spells)
         }
 
         let availableSS = [0,0,0,0,0,0,0,0,0,0];
+        let cumulativeSS = [0,0,0,0,0,0,0,0,0,0];
         for (let i=1;i<10;i++) {
             let ss = parseInt(SpellSlots(model,i));
+            availableSS[i] = ss
             for (let j=1;j<=i;j++) {
-                availableSS[j] += ss;
+                cumulativeSS[j] += ss;
             }
         }
 
-log("Spell SLots: " + availableSS)
+log("Spell Slots: " + availableSS)
+log("Cumulative Slots: " + cumulativeSS)
+
         for (let i=1;i<10;i++) {
-            if (availableSS[i] === 0) {continue};
+            if (cumulativeSS[i] === 0) {continue};
             outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
             outputCard.body.push("Spell Slots: " + SpellSlots(model,i));
             //show prepared spells for that level with a button
