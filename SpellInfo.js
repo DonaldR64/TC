@@ -159,7 +159,7 @@
         },
         "Cure Wounds": {
             level: 1,
-            range: 1,
+            range: 5,
             spellType: "Misc",
             sound: "Angels",
             macro: "!Spell;Cure Wounds;%Level%;%Selected%",
@@ -183,7 +183,7 @@
         },
         "Protection from Evil and Good": {
             level:1,
-            range: 1,
+            range: 5,
             spellType: "Misc",
             emote: "The creature you touch is granted Protection against certain creatures.<br>Lasts 10 minutes of Concentration",
             macro: "!Spell;Protection from Evil and Good;1;%Selected%;%Target%",
@@ -201,13 +201,32 @@
         },
         "Mage Armour": {
             level: 1,
-            range: 1,
+            range: 5,
             spellType: "Misc",
             emote: "You touch a willing creature who isn’t wearing armor, and a protective magical force surrounds it until the spell ends.The target’s base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
             macro: "!Spell;Mage Armour;1;%Selected%;%Target%",
             sound: "Angels",
             targetCM: true,
-        }
+        },
+        "Web": {
+            level: 2,
+            range: 60,
+            spellType: "Area",
+            area: 'Square',
+            areaEffect: "Effect",
+            savingThrow: "dexterity",
+            conditionImmune: "restrained",
+            areaTextS: " and remains free to act",
+            areaTextF: " and is restrained by the webs",
+            effectMarker: "status_Restrained-or-Webbed::2006494",
+            moveEffect: true,
+            sound: "Web",
+            macro: '!Spell;Web;2',
+            emote: "A creature restrained by the webs can use its action to make a Strength check against your spell save DC. If it succeeds, it is no longer restrained. The webs are flammable. Any 5-foot cube of webs exposed to fire burns away in 1 round, dealing 2d4 fire damage to any creature that starts its turn in the fire. The Area remains Difficult Ground and Light Cover for 1 hour or until Concentration ends.",
+            tempImg: 'https://files.d20.io/images/466161281/XBL47z2Lc4rAKNcT7M4jjA/thumb.png?1764547188',
+            tempSize: 20,
+            fx: "",
+        },
 
 
 

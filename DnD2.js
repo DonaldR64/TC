@@ -171,6 +171,7 @@ const DnD = (() => {
             this.class = (aa.class || " ").toLowerCase();
             this.race = (aa.race || " ").toLowerCase();
 
+            this.layer = token.get("layer");
 
             let control = char.get("controlledby");
             let inParty = char.get("inParty")
@@ -477,7 +478,7 @@ const DnD = (() => {
     const AOETargets = (target) => {
         let temp = [];
         _.each(ModelArray,model => {
-            if (model.id === target.id) {return}
+            if (model.id === target.id || model.layer === "map") {return}
             if (Venn(target.Squares(),model.Squares()) === true) {
                 temp.push(model.id);
             }
@@ -539,7 +540,7 @@ log(model.name + ": " + id)
         //minimize ModelArray based on distance from caster
         let possibles = [];
         _.each(ModelArray,model => {
-            if (model.id === caster.id || model.id === target.id) {return}
+            if (model.id === caster.id || model.id === target.id || model.layer === "map") {return}
             if (model.Distance(caster) > sqL) {return}
             possibles.push(model)
         })
@@ -1589,6 +1590,10 @@ log(attMarkers)
         if (defender.token.get("aura2_color") === "#ffd700") {
             ac += 2;
         }
+        let cover = CheckCover(defender);
+        if (cover === "Light") {
+            ac += 2;
+        }
 
 
         outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
@@ -2022,6 +2027,10 @@ log(damageResults)
             if (defender.token.get("aura2_color") === "#ffd700") {
                 ac += 2;
             }
+            let cover = CheckCover(defender);
+            if (cover === "Light") {
+                ac += 2;
+            }
 
             if (spell.autoHit === "No") {
                 if (attackResult.roll === 20) {crit = true};
@@ -2321,6 +2330,7 @@ log(ConditionMarkers[spellInfo.spell.name])
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
             _subtype: "token",
+            layer: "objects",
             represents: '-Oe8qdnMHHQEe4fSqqhm',
         });
         _.each(tokens,token => {
@@ -2433,10 +2443,11 @@ log(rollResults)
 
         if (spell.moveEffect === true) {
             spellTarget.token.set({
-                represents: "",
+                name: spellName,
                 layer: 'map',
             })
-            delete ModelArray[targetID];
+            spellTarget.name = spellName;
+            spellTarget.layer = "map";
         } else {
             spellTarget.Destroy();
         }
@@ -2718,6 +2729,29 @@ log(rollResults)
         macro.set("action",text);
         sendChat("","Rebuilt")
     }
+
+    const CheckCover = (defender) => {
+        let cover = "None";
+        //Web only so far
+        let defSquares = defender.Squares();
+        //check map layer for possibles
+        _.each(ModelArray,model => {
+            if (model.layer === "map") {
+                if (Venn(defSquares,model.Squares()) === true) {
+                    if (model.name === "Web") {
+                        cover = "Light";
+                    }
+                }
+            }
+        })
+        return cover;
+    }    
+
+
+
+
+
+
 
 
 
