@@ -231,9 +231,9 @@
             level: 2,
             range: 5,
             spellType: "Misc",
-            sound: "",
-            emote: "Your target gains the ability to Breath Magical Energy in a 15 foot cone, doing 3d6 damage, 1/2 on a successful Dex Saving Throw<br>This lasts for 1 minute or Concentration",
-            macro: "!Spell;Dragon Breath;%Level%;%Selected%;%Target%;?{Energy Type|Acid|Cold|Fire|Lightning|Poison}",
+            sound: "Ding",
+            emote: "Your target gains the ability to breath magical in a 15 foot cone, doing 3d6 damage, 1/2 on a successful Dex Saving Throw<br>This lasts for 1 minute or Concentration",
+            macro: "!Spell;Dragon's Breath;%Level%;%Selected%;%Target%;?{Energy Type|Acid|Cold|Fire|Lightning|Poison}",
         },
         "Breathe Energy": {
             level: 2,

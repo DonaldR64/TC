@@ -2075,14 +2075,25 @@ const Spell = (msg) => {
     let errorMsg = [];
 
     let caster = ModelArray[casterID];
+
+    if (!SpellInfo[spellName]) {
+        outputCard.body.push("Error");
+        PrintCard();
+        return;
+    }
+
     let spell = DeepCopy(SpellInfo[spellName]);
     spell.name = spellName;
-    let oddballs = ["Dragon Breath","Breathe Energy"];    
+    let oddballs = ["Dragon's Breath","Breathe Energy"];    
+    let displacedCast = ["Breathe Energy"]; //spells that are based on another caster having put it on it
+
 
     //check spell slots, distance
-    let slotsAvailable = SpellSlots(caster,level);
-    if (slotsAvailable === 0) {
-        errorMsg.push("No Slots of that Level Available");
+    if (displacedCast.includes(spellName) === false) {
+        let slotsAvailable = SpellSlots(caster,level);
+        if (slotsAvailable === 0) {
+            errorMsg.push("No Slots of that Level Available");
+        }
     }
 
     //range check - note range check for Area checked in AreaSpell once template placed
@@ -2242,14 +2253,15 @@ log("Cumulative Slots: " + cumulativeSS)
 
 
     const MiscSpell = (spellInfo) => {
-
         let spellName = spellInfo.spell.name;
         if (spellInfo.spell.emote) {
+            if (spellName === "Dragon's Breath")  {
+                let energyType = spellInfo.targets[1];
+                spellInfo.spell.emote = spellInfo.spell.emote.replace("magical","magical " + energyType);
+            }           
             outputCard.body.push(spellInfo.spell.emote);
         }
         if (spellInfo.spell.selfCM) {
-log(spellInfo.spell.selfCM)
-log(ConditionMarkers[spellInfo.spell.name])
             spellInfo.caster.token.set("status_" + ConditionMarkers[spellInfo.spell.name],spellInfo.spell.selfCM);
         }
         if (spellInfo.spell.targetCM) {
@@ -2279,7 +2291,7 @@ log(ConditionMarkers[spellInfo.spell.name])
                 showplayers_aura2: true,
             })
         }
-        if (spellName === "Dragon Breath") {
+        if (spellName === "Dragon's Breath") {
             let target = spellInfo.targets[0];
             let energyType = spellInfo.targets[1];
             let action = "!Spell;Breathe Energy;" + spellInfo.caster.id + ";" + spellInfo.level + ";" + energyType + ";" + spellInfo.caster.spellDC;
@@ -2289,13 +2301,6 @@ log(ConditionMarkers[spellInfo.spell.name])
             }
             AddAbility("Breathe Energy",action,target.charID);
         }
-
-
-
-
-
-
-
 
         PlaySound(spellInfo.spell.sound);
         //Use Slot
