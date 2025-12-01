@@ -121,7 +121,6 @@
             areaEffect: "Damage",
             base: '3d6',
             damageType: "thunder",
-            emote: "Targets failing their save are also pushed back 10ft",
             sLevel: [0,'2d6',"3d6","4d6","5d6","6d6","7d6"],    
             savingThrow: "constitution",
             saveEffect: "Half Damage",       

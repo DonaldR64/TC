@@ -2487,6 +2487,12 @@ log(rollResults)
                     saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
                 }
                 outputCard.body.push(target.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
+
+                if (spellName === "Thunderwave" && damageResults.save === "Fails") {
+                    MoveTarget(caster,target,10);
+                }
+
+
             })
         }
 
@@ -2796,7 +2802,27 @@ log(rollResults)
         return cover;
     }    
 
+    const MoveTarget = (caster,target,distance) => {
+        distance = distance/pageInfo.scaleNum * 70;
+        let pt0 = new Point(caster.token.get("left"),caster.token.get("top"));
+        let pt1 = new Point(target.token.get("left"),target.token.get("top"));
+        let dX = (pt1.x - pt0.x);
+        let dY = (pt1.y - pt0.y);
+        let currentDist = Math.sqrt((dX * dX) + (dY * dY));
+        if (currentDist === 0) {currentDist = 1};
+        let unitX = dX / currentDist;
+        let unitY = dY / currentDist;
 
+        let x2 = pt1.x + unitX * distance;
+        let y2 = pt1.y + unitY * distance;
+
+        let pt2 = new Point(x2,y2);
+        pt2 = pt2.toSquare().toPoint();
+        target.token.set({
+            left: pt2.x,
+            top: pt2.y
+        })
+    }
 
 
 
