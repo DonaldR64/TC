@@ -223,7 +223,7 @@ const DnD = (() => {
             this.spellDC = parseInt(aa.spell_save_dc) || 0;
         
             this.spells = this.Spells(aa);
-
+            this.weapons = this.Weapons(aa);
 
             let saveBonus = {
                 strength: parseInt(aa.strength_save_bonus) || 0,
@@ -341,7 +341,22 @@ const DnD = (() => {
             return spells
         }
 
-
+        Weapons(aa) {
+            let weapons = [];
+            let keys = Object.keys(aa);
+            _.each(keys,key => {
+                if (key.includes("itemmodifiers")) {
+                    if (aa[key].includes("Weapon")) {
+                        let key2 = key.replace("itemmodifiers","itemname")
+                        let weaponName = aa[key2].trim();
+                        if (weaponName) {
+                            weapons.push(weaponName);
+                        }
+                    }
+                }
+            })
+            return weapons;
+        }
 
 
 
