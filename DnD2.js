@@ -1888,7 +1888,11 @@ log(damageResults)
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
         }
-
+        if (abilityName === "Lucky") {
+            SetupCard(attacker.name,"Lucky",attacker.displayScheme);
+            outputCard.body.push("You use one of your Luck Points to roll an additional d20. This can be an attack roll (yours or one against you), an ability check or a saving throw. You can choose which d20 is used for the result.")
+//resource
+        }
 
 
 
@@ -1979,7 +1983,6 @@ log(damageResults)
     }
 
     const SpellSlots = (caster,level) => {
-        if (level === 0) {return true};
         let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
         return slots;
     }
@@ -2110,7 +2113,7 @@ const Spell = (msg) => {
     
     let Tag = msg.content.split(";");
     let spellName = Tag[1];
-    let level = Tag[2];
+    let level = parseInt(Tag[2]);
     let casterID = Tag[3];
     if (!casterID) {casterID = msg.selected[0]._id};
     let targets = [];
@@ -2129,7 +2132,7 @@ const Spell = (msg) => {
     spell.name = spellName;
 
     //check spell slots, distance
-    if (!spell.exempt) {
+    if (!spell.exempt && level > 0) {
         let slotsAvailable = SpellSlots(caster,level);
         if (slotsAvailable === 0) {
             errorMsg.push("No Slots of that Level Available");
