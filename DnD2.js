@@ -1065,10 +1065,19 @@ log(defender.vulnerabilities)
 
         //other Damage Reduction Here
 
+
+        //advantage/disadvantage due to special considerations
+        let adv = 0;
+        if (damageInfo.name === "Moonbeam" && defender.type.includes("shapechanger")) {
+            adv = -1;
+            saveTip = "Disadvantage to Save";
+            irv = " [#ff0000][Disadvantage][/#]";
+        }
+
         //Saving Throws
         let save;
         if (savingThrow && savingThrow !== "No" && immune === false) {
-            let result = Save(defender,dc,savingThrow); //save, saveTotal, tip
+            let result = Save(defender,dc,savingThrow,adv); //save, saveTotal, tip
             if (saveTip !== "") {saveTip += "<br>"}
             if (result.save === true) {
                 save = "Saves";
@@ -2363,11 +2372,6 @@ change to find any Breath ability
 
 
     const SpellTarget = (spellInfo) => {
-        let abilArray = findObjs({_type: "ability", _characterid: '-Oe8qdnMHHQEe4fSqqhm'});
-        //clear old abilities
-        for(let a=0;a<abilArray.length;a++) {
-            abilArray[a].remove();
-        } 
         img = getCleanImgSrc(spellInfo.spell.tempImg);
         let action = "!AreaSpell;" + spellInfo.spell.name + ";" + spellInfo.caster.id + ";" + spellInfo.level;
         if (spellInfo.damageType) {
@@ -2381,8 +2385,14 @@ change to find any Breath ability
         }
         
 
+        let charID = (spellInfo.spell.charID) ? spellInfo.spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
 
-        AddAbility("Cast " + spellInfo.spell.name,action,'-Oe8qdnMHHQEe4fSqqhm');
+        let abilArray = findObjs({_type: "ability", _characterid: charID});
+        //clear old abilities
+        for(let a=0;a<abilArray.length;a++) {
+            abilArray[a].remove();
+        } 
+        AddAbility("Cast " + spellInfo.spell.name,action,charID);
         if (isNaN(spellInfo.spell.tempSize)) {
             if (spellInfo.spell.tempSize.includes("Level")) {
                 if (spellInfo.spell.tempSize.includes("*")) {
@@ -2404,8 +2414,11 @@ change to find any Breath ability
             pageid: spellInfo.caster.token.get("_pageid"),
             imgsrc: img,
             layer: "objects",
-            represents: '-Oe8qdnMHHQEe4fSqqhm',
+            represents: charID,
         })
+
+
+
         toFront(newToken);
         if (newToken) {
             toFront(newToken);
@@ -2568,14 +2581,17 @@ log(rollResults)
 
             })
         }
+        FX(spell.fx,caster,spellTarget)
+        PlaySound(spell.sound);
 
-        if (spell.moveEffect === true) {
+
+        if (spell.moveEffect) {
             spellTarget.token.set({
-                name: spell.name,
-                layer: 'map',
+                name: spell.name || "",
+                layer: spell.moveEffect,
             })
             spellTarget.name = spell.name;
-            spellTarget.layer = "map";
+            spellTarget.layer = spell.moveEffect;
         } else {
             spellTarget.Destroy();
         }
@@ -2584,8 +2600,7 @@ log(rollResults)
             outputCard.body.push("[hr]");
             outputCard.body.push(spell.emote);
         }
-        FX(spell.fx,caster,spellTarget)
-        PlaySound(spell.sound);
+
         PrintCard();
     }
 
@@ -2802,10 +2817,10 @@ log(rollResults)
         let hp,hpMax,ac;
         if (shape === "Human") {
             ac = Attribute(cID,"ac");
-            hp = parseInt(state.Strahd.wildshape[cName]["hp"]);
-            hpMax = parseInt(state.Strahd.wildshape[cName]["hpMax"]);
+            hp = parseInt(state.DnD.wildshape[cName]["hp"]);
+            hpMax = parseInt(state.DnD.wildshape[cName]["hpMax"]);
         } else {
-            state.Strahd.wildshape[cName] = {
+            state.DnD.wildshape[cName] = {
                 hp: model.token.get("bar1_value"),
                 hpMax: model.token.get("bar1_max"),
             }
@@ -2832,6 +2847,7 @@ log(rollResults)
             bar1_link: bar1Link,
             bar2_value: ac,
             statusmarkers: model.token.get("statusmarkers"),
+            has_bright_light_vision: true,
         });
 
         newToken.set({

@@ -88,7 +88,7 @@
             areaTextS: " and remains free to act",
             areaTextF: " and is restrained by the vines",
             effectMarker: "status_Restrained-or-Webbed::2006494",
-            moveEffect: true,
+            moveEffect: "map",
             sound: "Entangle",
             macro: '!Spell;Entangle;1',
             emote: "The Area remains Difficult Ground for 1 min or until Concentration ends",
@@ -138,7 +138,7 @@
             range: 120,
             emote: 'It lasts for 1 hour or until Concentration ends, or a Stronger wind blows it apart',
             areaEffect: "Graphic",
-            moveEffect: true,
+            moveEffect: "map",
             macro: '!Spell;Fog Cloud;%Level%',
             tempImg: "https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289",
             tempSize: 'Level * 40',
@@ -218,7 +218,7 @@
             areaTextS: " and remains free to act",
             areaTextF: " and is restrained by the webs",
             effectMarker: "status_Restrained-or-Webbed::2006494",
-            moveEffect: true,
+            moveEffect: "map",
             sound: "Web",
             macro: '!Spell;Web;2',
             emote: "A creature restrained by the webs can use its action to make a Strength check against your spell save DC. If it succeeds, it is no longer restrained. The webs are flammable. Any 5-foot cube of webs exposed to fire burns away in 1 round, dealing 2d4 fire damage to any creature that starts its turn in the fire. The Area remains Difficult Ground and Light Cover for 1 hour or until Concentration ends.",
@@ -265,9 +265,27 @@
             targetSave: "wisdom",
             emote: "The spell lasts for 1 minute, or until Concentration ends, or until the target makes a Wisdom save (can attempt end of each of its turns)",
         },
-
-
-
+        "Moonbeam": {
+            level: 2,
+            name: "Moonbeam",
+            range: 120,
+            spellType: "Area",
+            base: '2d10',
+            sLevel: [0,0,"2d10","3d10","4d10","5d10","6d10"],
+            damageType: "radiant",
+            savingThrow: "constitution",
+            saveEffect: "Half Damage",
+            area: 'Square',
+            areaEffect: "Damage",
+            tempImg: 'https://files.d20.io/images/466342179/VLWwiNSk5g-QKmRkYZ77qA/thumb.png?1764706936',
+            tempSize: 5,
+            sound: "Beam",
+            fx: "glow-holy",
+            macro: '!Spell;Moonbeam;%Level%',
+            moveEffect: "objects",
+            emote: "A silvery beam of pale light shines down in a 5-foot- radius, 40-foot-high cylinder centered on a point within range. This lasts for 1 minute or until Concentration ends. Creatures starting their turn in the Moonbeam take damage. The Caster can move the Beam on each of their turns, 60 feet.",
+            charID: '-OfVsgHiqLOZjV357ox_',
+        },
 
 
     }
