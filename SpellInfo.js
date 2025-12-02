@@ -254,7 +254,17 @@
             sound: "Flames",
             fx: "breath-fire",
         },
-
+        "Hold Person": {
+            level: 2,
+            range: 60,
+            spellType: "Misc",
+            macro: "!Spell;Hold Person;%Level%;%Selected%;%Target%",
+            sound: "Sound",
+            targetCM: true,
+            marker: "Restrained",
+            targetSave: "wisdom",
+            emote: "The spell lasts for 1 minute, or until Concentration ends, or until the target makes a Wisdom save (can attempt end of each of its turns)",
+        },
 
 
 

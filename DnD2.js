@@ -2157,6 +2157,8 @@ log(spell)
         return;
     } 
 
+    spell.marker = (!spell.marker) ? (ConditionMarkers[spell.name] || "blue"):ConditionMarkers[spell.marker];
+
     spellInfo = {
         caster: caster,
         targets: targets,
@@ -2290,6 +2292,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
     const MiscSpell = (spellInfo) => {
         let spellName = spellInfo.spell.name;
+log(spellInfo.spell)
         if (spellInfo.spell.emote) {
             if (spellName === "Dragon's Breath")  {
                 spellInfo.spell.emote = spellInfo.spell.emote.replace("magical",spellInfo.spell.damageType);
@@ -2297,11 +2300,22 @@ log("Cumulative Slots: " + cumulativeSS)
             outputCard.body.push(spellInfo.spell.emote);
         }
         if (spellInfo.spell.selfCM) {
-            spellInfo.caster.token.set("status_" + ConditionMarkers[spellInfo.spell.name],spellInfo.spell.selfCM);
+            spellInfo.caster.token.set("status_" + spellInfo.spell.marker,spellInfo.spell.selfCM);
         }
         if (spellInfo.spell.targetCM) {
             _.each(spellInfo.targets,target => {
-                target.token.set("status_" + ConditionMarkers[spellInfo.spell.name],spellInfo.spell.targetCM);
+                let saved = false
+                if (spellInfo.spell.targetSave) {
+                    let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
+                    saved = saveResult.save;
+                    noun = "Fails";
+                    if (saved === true) {noun = "Saves"};
+                    let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+                    outputCard.body.push(target.name + " " + tip);
+                }
+                if (saved === false) {
+                    target.token.set("status_" + spellInfo.spell.marker,spellInfo.spell.targetCM);
+                }
             })
         }
 
@@ -2338,11 +2352,11 @@ change to find any Breath ability
 */
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
-        if (spellName === "Flame Blade") {
+        if (spellName === "Hold Person") {
 
 
 
-            
+
         }
 
 
