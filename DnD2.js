@@ -2352,12 +2352,6 @@ change to find any Breath ability
 */
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
-        if (spellName === "Hold Person") {
-
-
-
-
-        }
 
 
 
