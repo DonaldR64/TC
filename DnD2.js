@@ -1470,7 +1470,7 @@ log(PCs)
             weapon = DeepCopy(WeaponInfo[weaponName]);
         } else {
             errorMsg.push("Weapon not in Array");
-            weapon = {range: 1000};
+            weapon = {range: 1000,type: " ",properties: " "};
         }
         weapon.info = extra;
         //set some defaults
@@ -2329,20 +2329,23 @@ log("Cumulative Slots: " + cumulativeSS)
         if (spellName === "Dragon's Breath") {
             let target = spellInfo.targets[0];
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spellInfo.level + ";" + spellInfo.spell.damageType + ";" + spellInfo.caster.spellDC + ";" + spellInfo.caster.id;
-
 /*
 change to find any Breath ability
-            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe " + Capit(spellInfo.spell.damageType)})[0];
-            
-
-
-
+            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe " + Capit(spellInfo.spell.damageType)})[0]
             if (ability) {
                 ability.remove();
             }
 */
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
+        if (spellName === "Flame Blade") {
+
+
+
+            
+        }
+
+
 
         PlaySound(spellInfo.spell.sound);
         //Use Slot
@@ -2665,9 +2668,40 @@ log(rollResults)
 
 
     const UseItem = (msg) => {
-        sendChat("","Not yet running")
-        //check resources and put up buttons in chat
+//change to
+//check resources and create macros
+        if (!msg.selected) {return};
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let itemName = Tag[1];
 
+        SetupCard(model.name,itemName,model.displayScheme);
+
+
+
+        if (itemName === "Potion of Healing") {
+            let total = 0;
+            let rolls = [];
+            for (let i=0;i<2;i++) {
+                roll = randomInteger(4);
+                rolls.push(roll);
+                total += roll;
+            }
+            total += 2;
+            let tip = "Rolls: " + rolls.toString() + " + 2";
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+
+            outputCard.body.push("[B]" + tip + "[/b]" + " HP are restored")
+        }
+
+
+
+
+
+
+
+            PrintCard();
     }
 
 

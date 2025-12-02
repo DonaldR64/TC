@@ -88,6 +88,23 @@
             damageType: "piercing",
             sound: "Sword",
         },
+        "Fire Bottle": {
+            base: "1d4",
+            damageType: "fire",
+            type: "Ranged",
+            range: [20,20],
+            sound: "Glass",
+            text: "Damage is 1d4 each turn, until put out. DC10 Dex to put out as an action",
+        },
+        'Flame Blade': {
+            base: "3d6",
+            damageType: 'fire',
+            properties: "Finesse",
+            type: "Melee",
+            sound: "Woosh",
+        },
+
+
 
 
     }
