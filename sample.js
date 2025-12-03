@@ -1,1818 +1,2537 @@
-/*
-    Select an existing token, then call !spawn --name|<CharToSpawn> --optionalArgs
-    
-    Description of of syntax:
-    !Spawn {{
-      --name|        < charName >    //(REQUIRED) name of the character whose target we want to spawn
-      --targets|     < #, optional text >           //Destination override. Instead of using selected token(s) as origin, use target token(s). If commas are to be included in Text, use replacement value %comma%
-      --qty|         < # >           //How many tokens to spawn at each origin point. DEFAULT =
-      --offset|	 < #,# >         //X,Y pos or neg shift in position of the spawn origin point(s) relative to the origin token(s), in number of SQUARES 
-                                            //DEFAULT = 0,0  // (NOTE: a POSITIVE Y offset means LOWER on the map)
-      --placement|   < option >      //How to arrange the tokens relative to the origin point (+ offset)
-                                            //'stack'      : (DEFAULT) All tokens will be stacked on top of each other
-                                            //'row'        : A horizontal row of tokens
-                                            //'column,col' : A vertical column of tokens
-                                            //'surround'   : A clockwise spiral placement around origin token, starting at top  (NOTE: any supplied offset will be ignored)
-                                            //'grid #'     : A square grid with "#" tokens per row. Raster left to right
-                                            //'burst #'    : An expanding diagonal distribution of tokens starting "#" squares from the 4 origin token corners. Large qty will form an "X" pattern
-                                            //'cross #'    : "evenly" distributed vert/horiz qty, starting directly above origin by # squares. Large qty will form a "+" pattern
-                                            //'random,rand #' : randomly populates tokens within a (# by #) square grid
-      --size|        < #,# >                //DEFAULT = 1,1 (X,Y) - How many SQUARES wide and tall are the spawned tokens?
-      --side|        < # or rand>           //DEFAULT = 1. Sets the side of a rollable table token. 
-                                                    // #              : Sets the side of all spawned tokens to "#"
-                                                    // 'rand,random'  : Each spawned token will be set to a random side
-      --order|       < option >             //The z-order of the token. (NOTE: a recent Roll20 "feature" will always put character tokens with sight above those without, so YMMV.)
-                                                    // toFront,front,top,above  : Spawn token moved to front
-                                                    // toBack,back,bottom,below : Spawn token moved to back
-      --light|       < #,# >                //Set light radius that all players can see. 
-                                                    //For Legacy Dynamic Lighting (LDL):
-                                                        //First # is the total radius of the light (light_radius)
-                                                        //Second # is the start of dim light (light_dimradius) (so: 10,5 will be 10 ft of total light, with dim radius starting at 5ft)
-                                                    //For Updated Dynamic Lighting (UDL):
-                                                        //First # is the radius of bright light (bright_light_distance)
-                                                        //Second # is the additional radius of dim light (so: 10,5 will be 10ft of bright light + 5ft of dim light)
-      --mook|        < yes/true/1/no/false/0 >      //DEFAULT = false (the "represents" characteristic of the token is removed so changes to one linked attribute, e.g. hp, will not propagate to other associated tokens.
-                                                        //If set to true, linked attributes will affect all tokens associated with that sheet
-      --force|       < yes/true/1/no/false/0 >      //DEFAULT = false. The origin point is by default relative to the geometric center of the origin token
-                                                        //Origin tokens of larger than 1x1 may spawn tokens in between squares, which may be strange depending on the specific case
-                                                        //Set to true in order to force the token to spawn in a full square
-      --sheet|       < charName2 >          //DEFAULT = selected character. The character sheet in which to look for the supplied ability
-                                                    //useful if the ability exists on a "macro mule" or simply another character sheet
-      --ability|     < abilityName >        //The ability to trigger after spawning occurs. With caveats s described below
-      --fx|          < type-color >         //Trigger FX at each origin point.
-                                                    //Supported types are: bomb,bubbling,burn,burst,explode,glow,missile,nova,splatter
-                                                    //Supported colors are: acid,blood,charm,death,fire,frost,holy,magic,slime,smoke,water
-      --bar1|        < currentVal/optionalMax optional "KeepLink">            //overrides the token's bar1 current and max values. Max is optional. Default is to remove bar1_link. If "KeepLink" is appended, the bar1_link will be preserved 
-      --bar2|        < currentVal/optionalMax optional "KeepLink">            //overrides the token's bar2 current and max values. Max is optional. Default is to remove bar2_link. If "KeepLink" is appended, the bar2_link will be preserved
-      --bar3|        < currentVal/optionalMax optional "KeepLink">            //overrides the token's bar3 current and max values. Max is optional. Default is to remove bar3_link. If "KeepLink" is appended, the bar3_link will be preserved
-      --expand|      < #frames, delay, optional yes/true/1 >         //DEFAULT = 0,0,false. Animates the token during spawn. Expands from size = 0 to max size. If third param =true, will delete spawned token after animation completes
-                                                        //#frames: how many frames the expansion animation will use. Start with something like 20
-                                                        //delay: how many milliseconds between triggering each frame? Start with something like 50. Any less than 30 may appear instant
-      --deleteSource|  < yes/true/1/no/false/0 >    //DEFAULT = false. Deletes the selected token(s) upon spawn
-      --deleteTarget|  < yes/true/1/no/false/0 >    //DEFAULT = false. Deletes the target token(s) upon spawn
-      --resizeSource|  < #,# <optional #frames, #delay> >    //DEFAULT = n/a. Animates the selected token(s) during spawn. 
-                                                        //#,#: the new size of the selected token(s). If any dimension is set to 0, it will delete the token after animation
-                                                        //#frames: DEFAULT = 20. how many frames the animation will use.
-                                                        //delay: DEFAULT = 50. how many milliseconds between triggering each frame? Anything less than 30 may appear instant
-      --resizeTarget|  < #,# <optional #frames, #delay> >    //DEFAULT = n/a. Animates the target token(s) during spawn. 
-                                                        //#,#: the new size of the target token(s). If any dimension is set to 0, it will delete the token after animation
-                                                        //#frames: DEFAULT = 20. how many frames the animation will use.
-                                                        //delay: DEFAULT = 50. how many milliseconds between triggering each frame? Anything less than 30 may appear instant
-      --layer| < object/token/map/gm >                  //DEFAULT = token(s) spawn on the same layer as the selected token(s). May explicitly set to spawn on a different layer.
-      --tokenName| < some name >                        //optional override for the token name - allows token name to be different than the character name
-      --controlledby| <optional +> <comma-delimited list of playerIDs or displayNames>   //adds or replaces the  controlledby property of the CHARACTER SHEET defined by the --name command
-      --tokenProps|<prop1:val1,prop2:val2...>           //sets various token properties. Valid properties include:
-                                                            name,statusmarkers,bar1_value,bar1_max,bar2_value,bar2_max,bar3_value,bar3_max,top,left,
-                                                            width,height,rotation,layer,aura1_radius,aura1_color,aura2_radius,aura2_color,aura1_square,
-                                                            aura2_square,tint_color,light_radius,light_dimradius,light_angle,light_losangle,light_multiplier,
-                                                            light_otherplayers,light_hassight,flipv,fliph,bar1_link,bar2_link,bar3_link,represents,layer,
-                                                            isdrawing,name,gmnotes,showname,showplayers_name,showplayers_bar1,showplayers_bar2,showplayers_bar3,
-                                                            showplayers_aura1,showplayers_aura2,playersedit_name,playersedit_bar1,playersedit_bar2,
-                                                            playersedit_bar3,playersedit_aura1,playersedit_aura2,lastmove,tooltip,show_tooltip,
-                                                            adv_fow_view_distance,has_bright_light_vision,has_night_vision,night_vision_distance,
-                                                            emits_bright_light,bright_light_distance,emits_low_light,low_light_distance,has_limit_field_of_vision,
-                                                            limit_field_of_vision_center,limit_field_of_vision_total,has_limit_field_of_night_vision,
-                                                            limit_field_of_night_vision_center,limit_field_of_night_vision_total,has_directional_bright_light,
-                                                            directional_bright_light_center,directional_bright_light_total,has_directional_dim_light,
-                                                            directional_dim_light_center,directional_dim_light_total,bar_location,compact_bar,
-                                                            light_sensitivity_multiplier,night_vision_effect,lightColor
-    }}
-    
-    
-*/
-// adding API_Meta for line offset
-var API_Meta = API_Meta || {};
-API_Meta.Spawn = { offset: Number.MAX_SAFE_INTEGER, lineCount: -1 };
-{
-    try { throw new Error(''); } catch (e) { API_Meta.Spawn.offset = (parseInt(e.stack.split(/\n/)[1].replace(/^.*:(\d+):.*$/, '$1'), 10) - (71)); }
-}
-//        log(`Spawn Offset: ${API_Meta.Spawn.offset}`);
+const CC = (() => {
+    const version = '2025.7.5';
+    if (!state.CC) {state.CC = {}};
 
-const SpawnDefaultToken = (() => {
-    
-    const scriptName = "SpawnDefaultToken";
-    const version = '0.26';
-    var gridSize = 70;  //this may be updated based on page settings 
-    
-    //an array of token properties which may be set for Spawned tokens
-	var tokenAttributes = ['name','statusmarkers','bar1_value','bar1_max','bar2_value','bar2_max','bar3_value','bar3_max','top','left','width','height','rotation','layer','aura1_radius','aura1_color','aura2_radius','aura2_color','aura1_square','aura2_square','tint_color','light_radius','light_dimradius','light_angle','light_losangle','light_multiplier','light_otherplayers','light_hassight','flipv','fliph','bar1_link','bar2_link','bar3_link','layer','isdrawing','name','gmnotes','showname','showplayers_name','showplayers_bar1','showplayers_bar2','showplayers_bar3','showplayers_aura1','showplayers_aura2','playersedit_name','playersedit_bar1','playersedit_bar2','playersedit_bar3','playersedit_aura1','playersedit_aura2','lastmove','tooltip','show_tooltip','adv_fow_view_distance','has_bright_light_vision','has_night_vision','night_vision_distance','emits_bright_light','bright_light_distance','emits_low_light','low_light_distance','has_limit_field_of_vision',' limit_field_of_vision_center',' limit_field_of_vision_total',' has_limit_field_of_night_vision',' limit_field_of_night_vision_center',' limit_field_of_night_vision_total',' has_directional_bright_light','directional_bright_light_center','directional_bright_light_total','has_directional_dim_light','directional_dim_light_center','directional_dim_light_total','bar_location','compact_bar','light_sensitivity_multiplier','night_vision_effect','lightColor'];
-	
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        //Due to a bug in the API, if a @{target|...} is supplied, the API does not acknowledge msg.selected anymore
-        //This code block helps enable the user to pass both selected and target info into the script
-            //---The initial api call will create a chat button that stores the original msg.content & selected tokenID as a "memento"...
-                //...clicking this button will trigger a second api call that will prompt for a number of targets. 
-                    //"--qty" number of tkens will spawn for EACH origin token (determined by selected or targeted)
-                    //Trick developed by TheAaron. 
-                    //Forum thread here : https://app.roll20.net/forum/post/8998098/can-you-pass-both-a-selected-and-target-tokenid-to-an-api-script/?pageforid=8998098#post-8998098
-                
-        //----------------------------------------------------------------------------
-        // Registry functions for storing an object and retrieving it by ID
-        let store;
-        let retrieve;
-        
-        // destructing assignment of two functions
-        [store,retrieve] = (() => {
-            // closure containing the id counter and storage for msgs
-            const mementos = {};
-            let num = 0;
-            
-            return [
-                /* store */ (msg) => {
-                    mementos[++num] = msg;
-                    return num;
+    const MapAreas = {};
+
+    const areaColours = {
+        "#355e3b": "Allies Order",
+        "#40826d": "Allies Action",
+        "#228b22": "Allies Event",
+        "#4f7942": "Allies Hex",
+        "#023020": "Allies Roll",
+        "#008000": "Allies Radio",
+        "#000000": "Axis Radio",
+        "#36454f": "Axis Order",
+        "#301934": "Axis Action",
+        "#343434": "Axis Event",
+        "#1b1212": "Axis Hex",
+        "#28282b": "Axis Roll",
+        "#ff0000": "Elite",
+        "#ffff00": "Line",
+        "#00ff00": "Green",
+        "#9900ff": "Secret0",
+        "#4a86e8": "Open",
+        "#00ffff": "Secret1",
+        "#5b0f00": "Allies Smoke",
+        "#e69138": 'Axis Smoke',
+        "#ff00ff": 'Axis Casualty',
+        "#cfe2f3": 'Allies Casualty',
+        "#073763": 'Weapon Casualty'
+    }
+
+    const pageInfo = {};
+    const rowLabels = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI"];
+
+    let HexSize, HexInfo, DIRECTIONS;
+
+    //math constants
+    const M = {
+        f0: Math.sqrt(3),
+        f1: Math.sqrt(3)/2,
+        f2: 0,
+        f3: 3/2,
+        b0: Math.sqrt(3)/3,
+        b1: -1/3,
+        b2: 0,
+        b3: 2/3,
+    }
+
+
+    const DefineHexInfo = () => {
+        HexSize = (70 * pageInfo.scale)/M.f0;
+        if (pageInfo.type === "hex") {
+            HexInfo = {
+                size: HexSize,
+                pixelStart: {
+                    x: 35 * pageInfo.scale,
+                    y: HexSize,
                 },
-                /* retrieve */ (mid) => {
-                    let m = mementos[mid];
-                    delete mementos[mid];
-                    return m;
-                }
-            ];
-        })();
-        
-        // making an array of numbers from 1..n
-        const range = (n)=>[...Array(n+1).keys()].slice(1);
-    //----------------------------------------------------------------------------
-    
-    const checkInstall = function() {
-        log(scriptName + ' v' + version + ' initialized.');
-        log(`Spawn Offset: ${API_Meta.Spawn.offset}`);
+                width: 70  * pageInfo.scale,
+                height: pageInfo.scale*HexSize,
+                xSpacing: 70 * pageInfo.scale,
+                ySpacing: 3/2 * HexSize,
+                directions: {
+                    "Northeast": new Cube(1,-1,0),
+                    "East": new Cube(1,0,-1),
+                    "Southeast": new Cube(0,1,-1),
+                    "Southwest": new Cube(-1,1,0),
+                    "West": new Cube(-1,0,1),
+                    "Northwest": new Cube(0,-1,1),
+                },
+                halfToggleX: 35 * pageInfo.scale,
+                halfToggleY: 0,
+            }
+            DIRECTIONS = ["Northeast","East","Southeast","Southwest","West","Northwest"];
+        } else if (pageInfo.type === "hexr") {
+            //Hex H or Flat Topped
+            HexInfo = {
+                size: HexSize,
+                pixelStart: {
+                    x: HexSize,
+                    y: 35 * pageInfo.scale,
+                },
+                width: pageInfo.scale*HexSize,
+                height: 70  * pageInfo.scale,
+                xSpacing: 3/2 * HexSize,
+                ySpacing: 70 * pageInfo.scale,
+                directions: {
+                    "North": new Cube(0, -1, 1),
+                    "Northeast": new Cube(1, -1, 0),
+                    "Southeast": new Cube(1,0,-1),
+                    "South": new Cube(0,1,-1),
+                    "Southwest": new Cube(-1,1,0),
+                    "Northwest": new Cube(-1,0,1),
+                },
+                halfToggleX: 0,
+                halfToggleY: 35 * pageInfo.scale,
+            }
+            DIRECTIONS = ["North","Northeast","Southeast","South","Southwest","Northwest"];
+        }
+    }
+
+
+    let UnitArray = {};
+    let DeckInfo = {};
+    let PlayerHands = {};
+    let PlayerInfo = {};
+    let MasterCardList = {};
+    let MCList2 = {};
+    let playedCardInfo = {};
+    let currentCardIDs = [];
+    let objectiveInfo = [{},{},{},{},{}];
+    let currentPlayer = 0;
+    let triggerFlag = false; //prevent triggers within trigger or time events
+    let fireFlag = false;
+    let orderNumber = [0,0];
+    let activePlayer = -1;
+
+    let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
+
+    const playerCodes = {
+        "Don": "2520699",
+        "DonAlt": "5097409",
+        "Ted": "6951960",
+        "Vic": "4892",
+        "Ian": "4219310",
+    }
+
+    const PlayerIDs = () => {
+        let players = Object.keys(playerCodes);
+        for (let i=0;i<players.length;i++) {
+            let roll20ID = playerCodes[players[i]];
+            let playerObj = findObjs({_type:'player',_d20userid: roll20ID})[0];
+            if (playerObj) {
+                PlayerInfo[playerObj.get("id")] = players[i];
+            }
+        }
+    }
+
+    const Axis = ["German","Germany","Italy","Italian"];
+
+    const Nations = {
+        "Soviet": {
+            "image": "https://s3.amazonaws.com/files.d20.io/images/324272729/H0Ea79FLkZIn-3riEhuOrA/thumb.png?1674441877",
+            "backgroundColour": "#FF0000",
+            "titlefont": "Anton",
+            "fontColour": "#000000",
+            "borderColour": "#FFFF00",
+            "borderStyle": "5px groove",
+            "objectiveImages": ["https://s3.amazonaws.com/files.d20.io/images/445304877/D8ucERb5s8nd0DOIsl9CMQ/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304874/dJ6xVWhfLCm4Uou48vnCfg/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304876/4odiUvSOkxHf00qcx1ppmA/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304868/igTVJFTaZwvaxTmPsfkCkw/thumb.png?1750123756","https://s3.amazonaws.com/files.d20.io/images/445304873/d_CPIui5A3wFCIKGDPHbIg/thumb.png?1750123755"],
+        },
+        "German": {
+            "image": "https://s3.amazonaws.com/files.d20.io/images/329415788/ypEgv2eFi-BKX3YK6q_uOQ/thumb.png?1677173028",
+            "backgroundColour": "#000000",
+            "titlefont": "Bokor",
+            "fontColour": "#FFFFFF",
+            "borderColour": "#000000",
+            "borderStyle": "5px double",
+            "objectiveImages": ["https://s3.amazonaws.com/files.d20.io/images/445304878/7sv6_pVqHCFGbGiWCuqbzg/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304871/FIF-LpYU5qgw9JBsP2dJLw/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304865/YuJzFMH6lFfsuyTYx6bVOw/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304875/StDmyn9pVDrtwEyTE-frIw/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304883/Y_Vl02FG29U-l1Vc6f1WUw/thumb.png?1750123758"],
+
+        },
+        "British": {
+            "image": "https://s3.amazonaws.com/files.d20.io/images/330506939/YtTgDTM3q7p8m0fJ4-E13A/thumb.png?1677713592",
+            "backgroundColour": "#0E2A7A",
+            "titlefont": "Merriweather",
+            "fontColour": "#FFFFFF",
+            "borderColour": "#BC2D2F",
+            "borderStyle": "5px groove",            
+        },
+        "US Army": {
+            "image": "https://s3.amazonaws.com/files.d20.io/images/327595663/Nwyhbv22KB4_xvwYEbL3PQ/thumb.png?1676165491",
+            "backgroundColour": "#FFFFFF",
+            "titlefont": "Arial",
+            "fontColour": "#006400",
+            "borderColour": "#006400",
+            "borderStyle": "5px double",
+            "objectiveImages": ["https://s3.amazonaws.com/files.d20.io/images/445304872/fIy67Yo923_h0TgDzZRStA/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304866/VzJBeQWNHTOxTxRQDsgA_w/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304867/ssuK9PNe0tDCLfvJ0GDo1g/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304869/hR1vO3ArlDpfSukaRqNIzw/thumb.png?1750123755","https://s3.amazonaws.com/files.d20.io/images/445304870/hhliLOiwpA8kQNZShdVr-Q/thumb.png?1750123755"],
+            
+        },
+
+        "Neutral": {
+            "image": "",
+            "backgroundColour": "#FFFFFF",
+            "dice": "UK",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#00FF00",
+            "borderStyle": "5px ridge",
+            "objectiveImages": ["https://s3.amazonaws.com/files.d20.io/images/445305278/d0gD6ulV_LWL6GqXLHl4Lg/thumb.png?1750123999","https://s3.amazonaws.com/files.d20.io/images/445305279/Qlfo7DUpfqQytnDDj1iNFw/thumb.png?1750124000","https://s3.amazonaws.com/files.d20.io/images/445305282/dDimDBtHc8VQCygdSvUsqA/thumb.png?1750123999","https://s3.amazonaws.com/files.d20.io/images/445305281/N-hzu0glUwi30tzyPJrmHA/thumb.png?1750123999","https://s3.amazonaws.com/files.d20.io/images/445305280/Km2iwf_F-BC_5ZBf0EaJ8A/thumb.png?1750123999"],
+
+        },
 
     };
-    
-    function processInlinerolls(msg) {
-    	if(_.has(msg,'inlinerolls')){
-    		return _.chain(msg.inlinerolls)
-    		.reduce(function(m,v,k){
-    			var ti=_.reduce(v.results.rolls,function(m2,v2){
-    				if(_.has(v2,'table')){
-    					m2.push(_.reduce(v2.results,function(m3,v3){
-    						m3.push(v3.tableItem.name);
-    						return m3;
-    					},[]).join(', '));
-    				}
-    				return m2;
-    			},[]).join(', ');
-    			m['$[['+k+']]']= (ti.length && ti) || v.results.total || 0;
-    			return m;
-    		},{})
-    		.reduce(function(m,v,k){
-    			return m.replace(k,v);
-    		},msg.content)
-    		.value();
-    	} else {
-    		return msg.content;
-    	}
-    }
-    
-    const getCleanImgsrc = function (imgsrc) {
-        let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^\?]*)(\?[^?]+)?$/);
-            if(parts) {
-                return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
-            }
+
+
+    const simpleObj = (o) => {
+        let p = JSON.parse(JSON.stringify(o));
+        return p;
+    };
+
+    const getCleanImgSrc = (imgsrc) => {
+        let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/);
+        if(parts) {
+            return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
+        }
         return;
     };
-    
-    function round(value, decimals) {
-        return Number(Math.round(value+'e'+decimals)+'e-'+decimals);
-    }
-    
-    async function resizeToken (tok, iterations, delay, start_W, start_H, end_W, end_H, destroyWhenDone=false) {
-        let new_W = start_W;
-        let new_H = start_H;
-        
-        let incrementX = Math.abs(start_W-end_W) * (1 / iterations);  // size expansion factor.
-        let incrementY = Math.abs(start_H-end_H) * (1 / iterations);  // size expansion factor.  
-        
-        while (new_W !== end_W && new_H !== end_H) {
-            promise = new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    if (start_W > end_W) {    //shrink X
-                        new_W = Math.max(new_W - incrementX, end_W)
-                    } else {                //grow X
-                        new_W = Math.min(new_W + incrementX, end_W)
-                    }
-                    if (start_H > end_H) {    //shrink Y
-                        new_H = Math.max(new_H - incrementY, end_H)
-                    } else {                //grow Y
-                        new_H = Math.min(new_H + incrementY, end_H)
-                    }
-                    
-                    tok.set({
-                        width: new_W,
-                        height: new_H
-                    });
-                    //tok.set("width", new_W);
-                    //tok.set("height", new_H);
-                    
-                    resolve("done!");
-                }, delay);
-            });
-            
-            result = await promise;
-           
+
+    const tokenImage = (img) => {
+        //modifies imgsrc to fit api's requirement for token
+        img = getCleanImgSrc(img);
+        img = img.replace("%3A", ":");
+        img = img.replace("%3F", "?");
+        img = img.replace("med", "thumb");
+        return img;
+    };
+
+    const DeepCopy = (variable) => {
+        variable = JSON.parse(JSON.stringify(variable))
+        return variable;
+    };
+
+    const PlaySound = (name) => {
+        let sound = findObjs({type: "jukeboxtrack", title: name})[0];
+        if (sound) {
+            sound.set({playing: true,softstop:false});
         }
-        
-        if (new_W <= 0 || new_H <= 0 || destroyWhenDone) {
-            tok.remove();
+    };
+
+    const translatePoly = (poly) => {
+        //translate points in a pathv2 polygon to map points
+        let vertices = [];
+        let points = JSON.parse(poly.get("points"));
+        let centre = new Point(poly.get("x"), poly.get("y"));
+        //covert path points from relative coords to actual map coords
+        //define 'bounding box;
+        let minX = Infinity,minY = Infinity, maxX = 0, maxY = 0;
+        _.each(points,pt => {
+            minX = Math.min(pt[0],minX);
+            minY = Math.min(pt[1],minY);
+            maxX = Math.max(pt[0],maxX);
+            maxY = Math.max(pt[1],maxY);
+        })
+        //translate each point back based on centre of box
+        let halfW = (maxX - minX)/2 + minX;
+        let halfH = (maxY - minY)/2 + minY
+        let zeroX = centre.x - halfW;
+        let zeroY = centre.y - halfH;
+        _.each(points,pt => {
+            let x = Math.round(pt[0] + zeroX);
+            let y = Math.round(pt[1] + zeroY);
+            vertices.push(new Point(x,y));
+        })
+        return vertices;
+    }
+
+
+    //Retrieve Values from character Sheet Attributes
+    const Attribute = (character,attributename) => {
+        //Retrieve Values from character Sheet Attributes
+        let attributeobj = findObjs({type:'attribute',characterid: character.id, name: attributename})[0]
+        let attributevalue = "";
+        if (attributeobj) {
+            attributevalue = attributeobj.get('current');
+        }
+        return attributevalue;
+    };
+
+    const AttributeArray = (characterID) => {
+        let aa = {}
+        let attributes = findObjs({_type:'attribute',_characterid: characterID});
+        for (let j=0;j<attributes.length;j++) {
+            let name = attributes[j].get("name")
+            let current = attributes[j].get("current")   
+            if (!current || current === "") {current = " "} 
+            aa[name] = current;
+            let max = attributes[j].get("max")   
+            if (!max || max === "") {max = " "} 
+            aa[name + "_max"] = max;
+        }
+        return aa;
+    };
+
+    const AttributeSet = (characterID,attributename,newvalue,max) => {
+        if (!max) {max = false};
+        let attributeobj = findObjs({type:'attribute',characterid: characterID, name: attributename})[0]
+        if (attributeobj) {
+            if (max === true) {
+                attributeobj.set("max",newvalue)
+            } else {
+                attributeobj.set("current",newvalue)
+            }
+        } else {
+            if (max === true) {
+                createObj("attribute", {
+                    name: attributename,
+                    current: newvalue,
+                    max: newvalue,
+                    characterid: characterID,
+                });            
+            } else {
+                createObj("attribute", {
+                    name: attributename,
+                    current: newvalue,
+                    characterid: characterID,
+                });            
+            }
+        }
+    };
+
+    const DeleteAttribute = (characterID,attributeName) => {
+        let attributeObj = findObjs({type:'attribute',characterid: characterID, name: attributeName})[0]
+        if (attributeObj) {
+            attributeObj.remove();
+        }
+    }
+
+    class Point {
+        constructor(x,y) {
+            this.x = x;
+            this.y = y;
+        };
+        toOffset() {
+            let cube = this.toCube();
+            let offset = cube.toOffset();
+            return offset;
+        };
+        toCube() {
+            let x = this.x - HexInfo.pixelStart.x;
+            let y = this.y - HexInfo.pixelStart.y;
+            let q,r;
+            if (pageInfo.type === "hex") {
+                q = (M.b0 * x + M.b1 * y) / HexInfo.size;
+                r = (M.b3 * y) / HexInfo.size;
+            } else if (pageInfo.type === "hexr") {
+                q = (M.b3 * x) / HexInfo.size;
+                r = (M.b1 * x + M.b0 * y) / HexInfo.size;
+            }
+            let cube = new Cube(q,r,-q-r).round();
+            return cube;
+        };
+        distance(b) {
+            return Math.sqrt(((this.x - b.x) * (this.x - b.x)) + ((this.y - b.y) * (this.y - b.y)));
+        }
+        label() {
+            return this.toCube().label();
+        }
+    }
+
+    class Offset {
+        constructor(col,row) {
+            this.col = col;
+            this.row = row;
+        }
+        label() {
+            let label = rowLabels[this.row] + (this.col + 1).toString();
+            return label;
+        }
+        toCube() {
+            let q,r;
+            if (pageInfo.type === "hex") {
+                q = this.col - (this.row - (this.row&1))/2;
+                r = this.row;
+            } else if (pageInfo.type === "hexr") {
+                q = this.col;
+                r = this.row - (this.col - (this.col&1))/2;
+            }
+            let cube = new Cube(q,r,-q-r);
+            cube = cube.round(); 
+            return cube;
+        }
+        toPoint() {
+            let cube = this.toCube();
+            let point = cube.toPoint();
+            return point;
+        }
+    };
+
+    const Angle = (theta) => {
+        while (theta < 0) {
+            theta += 360;
+        }
+        while (theta >= 360) {
+            theta -= 360;
+        }
+        return theta
+    }   
+
+    class Cube {
+        constructor(q,r,s) {
+            this.q = q;
+            this.r =r;
+            this.s = s;
+        }
+
+        add(b) {
+            return new Cube(this.q + b.q, this.r + b.r, this.s + b.s);
+        }
+        angle(b) {
+            //angle between 2 hexes
+            let origin = this.toPoint();
+            let destination = b.toPoint();
+
+            let x = Math.round(origin.x - destination.x);
+            let y = Math.round(origin.y - destination.y);
+            let phi = Math.atan2(y,x);
+            phi = phi * (180/Math.PI);
+            phi = Math.round(phi);
+            phi -= 90;
+            phi = Angle(phi);
+            return phi;
+        }        
+        subtract(b) {
+            return new Cube(this.q - b.q, this.r - b.r, this.s - b.s);
+        }
+        static direction(direction) {
+            return HexInfo.directions[direction];
+        }
+        neighbour(direction) {
+            //returns a hex (with q,r,s) for neighbour, specify direction eg. hex.neighbour("NE")
+            return this.add(HexInfo.directions[direction]);
+        }
+        neighbours() {
+            //all 6 neighbours
+            let results = [];
+            for (let i=0;i<DIRECTIONS.length;i++) {
+                results.push(this.neighbour(DIRECTIONS[i]));
+            }
+            return results;
+        }
+
+        len() {
+            return (Math.abs(this.q) + Math.abs(this.r) + Math.abs(this.s)) / 2;
+        }
+        distance(b) {
+            return this.subtract(b).len();
+        }
+        lerp(b, t) {
+            return new Cube(this.q * (1.0 - t) + b.q * t, this.r * (1.0 - t) + b.r * t, this.s * (1.0 - t) + b.s * t);
+        }
+        linedraw(b) {
+            //returns array of hexes between this hex and hex 'b'
+            var N = this.distance(b);
+            var a_nudge = new Cube(this.q + 1e-06, this.r + 1e-06, this.s - 2e-06);
+            var b_nudge = new Cube(b.q + 1e-06, b.r + 1e-06, b.s - 2e-06);
+            var results = [];
+            var step = 1.0 / Math.max(N, 1);
+            for (var i = 0; i < N; i++) {
+                results.push(a_nudge.lerp(b_nudge, step * i).round());
+            }
+            return results;
+        }
+        label() {
+            let offset = this.toOffset();
+            let label = offset.label();
+            return label;
+        }
+        radius(rad) {
+            //returns array of hexes in radius rad
+            //Not only is x + y + z = 0, but the absolute values of x, y and z are equal to twice the radius of the ring
+            let results = [];
+            let h;
+            for (let i = 0;i <= rad; i++) {
+                for (let j=-i;j<=i;j++) {
+                    for (let k=-i;k<=i;k++) {
+                        for (let l=-i;l<=i;l++) {
+                            if((Math.abs(j) + Math.abs(k) + Math.abs(l) === i*2) && (j + k + l === 0)) {
+                                h = new Cube(j,k,l);
+                                results.push(this.add(h));
+                            }
+                        }
+                    }
+                }
+            }
+            return results;
+        }
+
+        ring(radius) {
+            let results = [];
+            let b = new Cube(-1 * radius,0,1 * radius);  //start at west 
+            let cube = this.add(b);
+            for (let i=0;i<6;i++) {
+                //for each direction
+                for (let j=0;j<radius;j++) {
+                    results.push(cube);
+                    cube = cube.neighbour(DIRECTIONS[i]);
+                }
+            }
+            return results;
+        }
+
+        round() {
+            var qi = Math.round(this.q);
+            var ri = Math.round(this.r);
+            var si = Math.round(this.s);
+            var q_diff = Math.abs(qi - this.q);
+            var r_diff = Math.abs(ri - this.r);
+            var s_diff = Math.abs(si - this.s);
+            if (q_diff > r_diff && q_diff > s_diff) {
+                qi = -ri - si;
+            }
+            else if (r_diff > s_diff) {
+                ri = -qi - si;
+            }
+            else {
+                si = -qi - ri;
+            }
+            return new Cube(qi, ri, si);
+        }
+        toPoint() {
+            let x,y;
+            if (pageInfo.type === "hex") {
+                x = (M.f0 * this.q + M.f1 * this.r) * HexInfo.size;
+                y = 3/2 * this.r * HexInfo.size;
+            } else if (pageInfo.type === "hexr") {
+                x = 3/2 * this.q * HexInfo.size;
+                y = (M.f1 * this.q + M.f0 * this.r) * HexInfo.size;
+            }
+            x += HexInfo.pixelStart.x;
+            y += HexInfo.pixelStart.y;
+            let point = new Point(x,y);
+            return point;
+        }
+        toOffset() {
+            let col,row;
+            if (pageInfo.type === "hex") {
+                col = this.q + (this.r - (this.r&1))/2;
+                row = this.r;
+            } else if (pageInfo.type === "hexr") {
+                col = this.q;
+                row = this.r + (this.q - (this.q&1))/2;
+            }
+            let offset = new Offset(col,row);
+            return offset;
+        }
+        whatDirection(b) {
+            let delta = new Cube(b.q - this.q,b.r - this.r, b.s - this.s);
+            let dir = "Unknown";
+            let keys = Object.keys(HexInfo.directions);
+            for (let i=0;i<6;i++) {
+                let d = HexInfo.directions[keys[i]];
+                if (d.q === delta.q && d.r === delta.r && d.s === delta.s) {
+                    dir = keys[i];
+                }
+            }
+            return dir
+        }
+
+     
+    };
+
+    class Hex {
+        constructor(point) {
+            this.centre = point;
+            let offset = point.toOffset();
+            this.offset = offset;
+            this.tokenIDs = [];
+            this.cube = offset.toCube();
+            this.label = offset.label();
+            HexMap[this.label] = this;
+        }
+    }
+
+    class Unit {
+        constructor(token) {
+            let id = token.get("id");
+            let location = new Point(token.get("left"),token.get("top"));
+            let cube = location.toCube();
+            let label = cube.label();
+            let charID = token.get("represents");
+            let char = getObj("character", charID); 
+            let nation = Attribute(char,"nation") || "Neutral";
+
+            this.name = token.get("name");
+            this.charName = char.get("name");
+            this.id = id;
+            this.hexLabel = label;
+            this.nation = nation;
+            UnitArray[id] = this;
+            HexMap[label].tokenIDs.push(id);
+        }
+    }
+
+
+
+
+
+    const AddAbility = (abilityName,action,characterID) => {
+        createObj("ability", {
+            name: abilityName,
+            characterid: characterID,
+            action: action,
+            istokenaction: true,
+        })
+    }    
+
+    const AddAbilities = (msg) => {
+        if (!msg.selected) {
+            sendChat("","No Token Selected");
+            return;
+        };
+        //!AddAbilities;?{Type|Marker|Squad|Team|Weapon};?{Nation|Soviet|German|American};
+        let type = msg.content.split(";")[1];
+        let nation = msg.content.split(";")[2];
+        let side = (Axis.includes(nation)) ? "Axis":"Allies";
+
+        let id = msg.selected[0]._id;
+        let token = findObjs({_type:"graphic", id: id})[0];
+
+        let charID = token.get("represents");
+        if (!charID) {
+            sendChat("","No Associated Character for this Token");
+            return;
+        }
+        let char = getObj("character", charID);   
+
+        AttributeSet(charID,"nation",nation);
+        AttributeSet(charID,"type",type);
+        AttributeSet(charID,"side",side);
+
+
+        let abilityName,action;
+        let abilArray = findObjs({_type: "ability", _characterid: charID});
+        //clear old abilities
+        for(let a=0;a<abilArray.length;a++) {
+            abilArray[a].remove();
         } 
-        return;
+
+
+
+        if (type === "Marker") {
+            size = 40;
+            abilityName = "Flip";
+            action = "!Flip";
+            AddAbility(abilityName,action,charID);
+        }
+        if (type === "Weapon" || type === "Squad" || type === "Team" || type === "Leader") {
+            abilityName = "Break/Rally";
+            action = "!Flip";
+            AddAbility(abilityName,action,charID);       
+        }
+        if (type === "Weapon") {
+            size = 50;
+            abilityName = "Remove";
+            action = "!Casualty";
+            AddAbility(abilityName,action,charID);
+        }
+        if (type === "Squad" || type === "Team" || type === "Leader") {
+            size = 70;
+            abilityName = "Suppress";
+            action = "!AddMarker;Suppress";
+            AddAbility(abilityName,action,charID);
+            abilityName = "Veteran";
+            action = "!AddMarker;Veteran";
+            AddAbility(abilityName,action,charID);
+            abilityName = "Casualty";
+            action = "!Casualty";
+            AddAbility(abilityName,action,charID);
+        }
+
+
+
+
+
+        if (type === "Squad") {
+            abilityName = "Deploy";
+            action = "!Deploy;Deploy";
+            AddAbility(abilityName,action,charID);  
+            abilityName = "Light Wounds";
+            action = "!Deploy;Light";
+            AddAbility(abilityName,action,charID);  
+        }
+
+
+        token.set({
+            width: size,
+            height: size,
+            disableSnapping: true,
+            disableTokenMenu: true,
+        })
+
+
+        setDefaultTokenForCharacter(char,token);
+
+
+
+        sendChat("","Abilities Added")
     }
-    
-    //This function runs asynchronously, as called from the processCommands function
-    //We will sendChat errors, but the rest of processCommands keeps running :(
-    function spawnTokenAtXY (who, tokenJSON, pageID, spawnLayer, spawnX, spawnY, currentSideNew, sizeX, sizeY, zOrder, lightRad, lightDim, mook, UDL, bar1Val, bar1Max, bar1Link, bar2Val, bar2Max, bar2Link, bar3Val, bar3Max, bar3Link, expandIterations, expandDelay, destroyWhenDone, angle, isDrawing, tokenName, tooltip, tokenPropValPairs) {
-        let newSideImg;
-        let spawnObj;
-        let currentSideOld;
-        let imgsrc;
-        let sides;
-        let sidesArr;
-        let iLightRad;
-        let iLightDim;      
-        let result;
-                
-        try {
-            let baseObj = JSON.parse(tokenJSON);
-            //log(baseObj);
-            //set token properties
-            baseObj.pageid = pageID;
-            baseObj.layer = spawnLayer;
-            if (expandIterations === 0) {       //spawn full-sized token 
-                baseObj.left = spawnX;
-                baseObj.top = spawnY;
-                baseObj.width = sizeX;
-                baseObj.height = sizeY;
-                baseObj.rotation = angle;
-                baseObj.isdrawing = isDrawing;
-                if (tokenName !== '') { baseObj.name = tokenName }
-            } else {                            //will animate and expand token to full size after spawning
-                baseObj.left = spawnX;
-                baseObj.top = spawnY;
-                baseObj.width = 0;
-                baseObj.height = 0;
-                baseObj.rotation = angle;
-                baseObj.isdrawing = isDrawing;
-                if (tokenName !== '') { baseObj.name = tokenName }
-            }
-            
-            baseObj.imgsrc = getCleanImgsrc(baseObj.imgsrc); //ensure that we're using the thumb.png
-            
-            //image must exist in personal Roll20 image library 
-            if (baseObj.imgsrc ===undefined) {
-                sendChat('SpawnAPI',`/w "${who}" `+ 'Unable to find imgsrc for default token of \(' + baseObj.name + '\)' + "<br>" + 'You must use an image file that has been uploaded to your Roll20 Library.')
-                return;
-            }
-            
-            //check for mook
-            if (mook === true) {
-                baseObj.bar1_link = "";
-                baseObj.bar2_link = "";
-                baseObj.bar3_link = "";
-            }
-            
-            //token bar overrides
-            if (bar1Val !== "") {
-                baseObj.bar1_value = bar1Val;
-                if (bar1Link === false) {baseObj.bar1_link = ""}
-            }
-            if (bar1Max !== "") {
-                baseObj.bar1_max = bar1Max;
-            }
-            
-            if (bar2Val !== "") {
-                baseObj.bar2_value = bar2Val;
-                if (bar2Link === false) {baseObj.bar2_link = ""}
-            }
-            if (bar2Max !== "") {
-                baseObj.bar2_max = bar2Max;
-            }
-            
-            if (bar3Val !== "") {
-                baseObj.bar3_value = bar3Val;
-                if (bar3Link === false) {baseObj.bar3_link = ""}
-            }
-            if (bar3Max !== "") {
-                baseObj.bar3_max = bar3Max;
-            }
-            
-            //Get page lighting mode (UDL vs LDL)
-            var page = findObjs({                              
-              _id: pageID,                        
-            });
-            let UDL = page[0].get("dynamic_lighting_enabled");
-            
-            //set emitted light
-            if (UDL && lightRad !== -999) {
-                //Updated Dynamic Lighting
-                iLightRad = parseInt(lightRad);
-                iLightDim = parseInt(lightDim);
-                
-                if (iLightRad === 0) {baseObj.emits_bright_light = false;}
-                if (iLightDim === 0) {baseObj.emits_low_light = false;}
-                
-                if (lightRad !== "" && iLightRad > 0) {
-                    baseObj.emits_bright_light = true;
-                    baseObj.bright_light_distance = lightRad
-                }
-                if (lightDim !== "" && iLightDim > 0) {
-                    baseObj.emits_low_light = true;
-                    baseObj.low_light_distance = (iLightRad + iLightDim).toString();
-                }
-            } else if (lightRad !== -999) {
-                //Legacy Dynamic Lighting
-                baseObj.light_radius = lightRad;
-                baseObj.light_dimradius = lightDim;
-                baseObj.light_otherplayers = true;
-            }
-            
-            
-            //Check for rollable table token and side selection
-            if (baseObj.hasOwnProperty('sides')) {
-                sidesArr=baseObj["sides"].split('|');
-                if ( (currentSideNew !== -999) && (sidesArr[0] !== '') ) {
-                    
-                    //check for random side
-                    if ( isNaN(currentSideNew) ) {
-                        currentSideNew = randomInteger(sidesArr.length) - 1;    // Setting to random side. currentSide is 1-based for user
-                    } else {
-                        currentSideNew = parseInt(currentSideNew) - 1;          //currentSide is 1-based for user
-                    }
-                    
-                    //set the current side (wtih data validation for the requested side)
-                    if ( (currentSideNew > 0) || (currentSideNew <= sidesArr.length-1) ) {
-                        newSideImg = getCleanImgsrc(sidesArr[currentSideNew]);     //URL of the image
-                        baseObj["currentSide"] = currentSideNew;
-                        baseObj["imgsrc"] = newSideImg;
-                    } else {
-                        sendChat('SpawnAPI',`/w "${who}" `+ 'Error: Requested index of currentSide is invalid');
-                        return retVal;
-                    }
-                }
-            }
-            
-            if (tooltip) {
-                baseObj.tooltip = tooltip;
-                baseObj.show_tooltip = true;
-            }
-            
-            if (tokenPropValPairs) {
-                tokenPropValPairs.forEach(pair => {
-                    if (pair.indexOf(':') !== -1) {
-                        let pairArr = pair.split(":")
-                        let prop = pairArr[0].trim();
-                        if (tokenAttributes.includes(prop)) {
-                            baseObj[prop] = pairArr[1];
-                        }
-                    }
-                });
-            }
-            ////////////////////////////////////////////////////////////
-            //      Spawn the Token!
-            ////////////////////////////////////////////////////////////
-            spawnObj = createObj('graphic',baseObj);
-            
-            //---------------------------------------------------------
-            //Support for TokenNameNumber script by TheAaron
-            //  Triggers a global function in v0.5.12 or later of his script to rename the token
-            if (baseObj.name) {
-                if (baseObj.name.match( /%%NUMBERED%%/ ) ) {
-                    processCreated = (( 'undefined' !== typeof TokenNameNumber && TokenNameNumber.NotifyOfCreatedToken ) 
-                		? TokenNameNumber.NotifyOfCreatedToken
-                		: _.noop ),
-            	
-                    processCreated(spawnObj);
-                }
-            }
-            //---------------------------------------------------------
-            
-            //set the z-order
-            switch (zOrder) {
-                case 'toBack':
-                    toBack(spawnObj);
-                    break;
-                default:
-                    toFront(spawnObj);
-                    break;
-            }
-            
-            //check for expanding token size
-            
-            if (expandIterations > 0) {
-                resizeToken(spawnObj, expandIterations, expandDelay, 0, 0, sizeX, sizeY, destroyWhenDone);
-                /*
-                let new_W, new_H;
-                
-                let factor = 1 / expandIterations;  // size expansion factor.  
-                
-                while (spawnObj.get("width") <= sizeX) {
-                    promise = new Promise((resolve, reject) => {
-                        setTimeout(() => {
-                            new_W = Math.min(spawnObj.get("width") + sizeX * factor, sizeX)
-                            new_H = Math.min(spawnObj.get("height") + sizeY * factor, sizeY)
-                            
-                            spawnObj.set("width", new_W);
-                            spawnObj.set("height", new_H);
-                            //spawnObj.set("width", spawnObj.get("width") + sizeX * factor);
-                            //spawnObj.set("height", spawnObj.get("height") + sizeX * factor);
-                            resolve("done!");
-                        }, expandDelay);
-                    });
-                    
-                    result = await promise;
-                }
-                if (spawnObj.get("width") > sizeX) {
-                    spawnObj.set("width", sizeX);
-                }
-                if (spawnObj.get("height") > sizeY) {
-                    spawnObj.set("height", sizeY);
-                }
-                */
-            }
-            
+
+
+    const ButtonInfo = (phrase,action,inline) => {
+        //inline - has to be true in any buttons to have them in same line -  starting one to ending one
+        if (!inline) {inline = false};
+        let info = {
+            phrase: phrase,
+            action: action,
+            inline: inline,
         }
-        catch(err) {
-          sendChat('SpawnAPI',`/w "${who}" `+ 'Unhandled exception: ' + err.message)
+        outputCard.buttons.push(info);
+    };
+
+    const SetupCard = (title,subtitle,side) => {
+        outputCard.title = title;
+        outputCard.subtitle = subtitle;
+        outputCard.side = side;
+        outputCard.body = [];
+        outputCard.buttons = [];
+        outputCard.inline = [];
+    };
+
+    const DisplayDice = (roll,tablename,size) => {
+        roll = roll.toString();
+        let table = findObjs({type:'rollabletable', name: tablename})[0];
+        if (!table) {
+            table = findObjs({type:'rollabletable', name: "Neutral"})[0];
         }
+        let obj = findObjs({type:'tableitem', _rollabletableid: table.id, name: roll })[0];        
+        let avatar = obj.get('avatar');
+        let out = "<img width = "+ size + " height = " + size + " src=" + avatar + "></img>";
+        return out;
     };
-    
-    //returns character object for given token
-    const getCharacterFromToken = function (tokenObj) {
-        let charID = tokenObj.get("represents");
-        character = getObj("character", charID);
-        return character;
-    };
-    
-    //returns character object for given name
-    const getCharacterFromName = function (charName) {
-        let character = findObjs({
-            _type: 'character',
-            name: charName
-        }, {caseInsensitive: true})[0];
-        return character;
-    };
-    
-    //returns ability object for given characterID and ability name
-    const getAbilityFromName = function (charID, abilityName) {
-        let ability = findObjs({
-            _type: 'ability',
-            _characterid: charID,
-            name: abilityName
-        }, {caseInsensitive: true})[0];
-        return ability;
-    };
-    
-    //returns a string value: either 'true', or an appropriate errorString if a prior findObjs returned undefined
-    const validateObject = function (who, obj, type, name) {
-        let retValue
-        if (typeof obj !== 'undefined') {
-            retValue = 'true';  //Success!
+
+    const PrintCard = (id) => {
+        let output = "";
+        if (id) {
+            let playerObj = findObjs({type: 'player',id: id})[0];
+            let who = playerObj.get("displayname");
+            output += `/w "${who}"`;
         } else {
-            switch(type) {
-                case "character":
-                    retValue = 'character \"' + name + '\" not found';
-                    break;
-                case "ability":
-                    retValue = 'ability \"' + name + '\" not found';
-                    break;
-                default:
-                    retValue = 'object not defined';
-                    break;
-            }
-            //sendChat('SpawnAPI',`/w "${who}" `+ 'Error: ' + retValue); //send error msg
+            output += "/desc ";
         }
-        return retValue;
-    };
-    
-    //Returns an array of x,y coordinate objects corresponding to the squares surrounding the origin token.
-        //Based on size of token. Spirals clockwise a number of squares = qty
-        //starts one square to the right of upper left corner (so, directly above a 1x1 token, left top of larger token), and spirals clockwise
-        //Examples:   1x1 token         2x2 token
-                    
-                    //  9--> etc.       13	14--> etc.
-                    //  8   1   2       12	1	2	3
-                    //  7   --  3       11	--  --  4
-                    //  6   5   4       10	--  --	5
-                    //                  9	8	7	6
-                    
-    const GetSurroundingSquaresArr = function (qty, tok) {
-        function pt(x,y) {
-            this.x = x,
-            this.y = y
-        };
-        let pts = [];
-        
-        let originX = tok.get("left");
-        let originY = tok.get("top");
-        let w = parseFloat(tok.get("width"));
-        let h = parseFloat(tok.get("height"));
-        
-        let startX
-        let startY
-        if ( (w/gridSize)%2 === 0 ) {     //width is an even number of squares
-            startX = originX - w/2 + gridSize/2;
-            startY = originY - h/2 - gridSize/2;
-        } else {                    //width is an odd number of squares
-            startX = originX;
-            startY = originY - h/2 - gridSize/2;
+
+        if (!outputCard.side || !Nations[outputCard.side]) {
+            outputCard.side = "Neutral";
         }
-            
-        let x = startX; 
-        let y = startY;
-        
-        //Nested loops to generate coordinates
-        let done = false;
-        let i = 0;
-        while (i < qty) {
-            //go across right until upper right corner
-            while ( (x < originX + w/2 + gridSize/2) && (i < qty) ) {
-                pts.push( new pt(x,y) );
-                if (i === qty) {done = true;}
-                x += gridSize;
-                i++;
-            }
-            if (done === true) {break;}
-            
-            //go down until lower right corner
-            while ( y < originY + h/2 + gridSize/2 && i < qty ) {
-                pts.push( new pt(x,y) );
-                if (i === qty) {done = true;}
-                y += gridSize;
-                i++;
-            }
-            if (done === true) {break;}
-            
-            //go across left until lower left corner
-            while ( x > originX - w/2 - gridSize/2 && i < qty ) {
-                pts.push( new pt(x,y) );
-                if (i === qty) {done = true;}
-                x -= gridSize;
-                i++;
-            }
-            if (done === true) {break;}
-            
-            //go up until just past upper left corner
-            while ( y > originY - h/2 - gridSize*1.5 && i < qty ) {
-                pts.push( new pt(x,y) );
-                if (i === qty) {done = true;}
-                y -= gridSize;
-                i++;
-            }
-            if (done === true) {break;}
-            
-            //We've gone all the way around the token. Now continue spiraling with a larger radius
-            w = w + gridSize*2;
-            h = h + gridSize*2;
+
+        //start of card
+        output += `<div style="display: table; border: ` + Nations[outputCard.side].borderStyle + " " + Nations[outputCard.side].borderColour + `; `;
+        output += `background-color: #EEEEEE; width: 100%; text-align: center; `;
+        output += `border-radius: 1px; border-collapse: separate; box-shadow: 5px 3px 3px 0px #aaa;;`;
+        output += `"><div style="display: table-header-group; `;
+        output += `background-color: ` + Nations[outputCard.side].backgroundColour + `; `;
+        output += `background-image: url(` + Nations[outputCard.side].image + `), url(` + Nations[outputCard.side].image + `); `;
+        output += `background-position: left,right; background-repeat: no-repeat, no-repeat; background-size: contain, contain; align: center,center; `;
+        output += `border-bottom: 2px solid #444444; "><div style="display: table-row;"><div style="display: table-cell; padding: 2px 2px; text-align: center;"><span style="`;
+        output += `font-family: ` + Nations[outputCard.side].titlefont + `; `;
+        output += `font-style: normal; `;
+
+        let titlefontsize = "1.4em";
+        if (outputCard.title.length > 12) {
+            titlefontsize = "1em";
         }
-        
-        return pts;
-    };
-    
-    //Similar to GetSurroundingSquaresArr function above, but just returns an array of rastering grid coords with numCols tokens per row
-    const GetGridArr = function (qty, startX, startY, numCols) {
-        function pt(x,y) {
-            this.x = x,
-            this.y = y
-        };
-        let pts = [];
-        
-        let x = startX; 
-        let y = startY;
-        
-        let done = false;
-        let i = 0;
-        let c = 0;
-        
-        //Nested loops to generate coordinates
-        while (i < qty) {
-            while ( (c < numCols) && (i < qty) ) {
-                pts.push( new pt(x,y) );
-                if (i === qty) {done = true;}
-                x += gridSize;
-                c++;
-                i++;
-            }
-            if (done === true) {break;}
-            
-            //Next row
-            x -= numCols*gridSize;
-            y += gridSize;
-            c = 0;
-        }
-        
-        return pts;
-    };
-    
-    //Places tokens in random squares within a (numCols x numCols) grid
-    const GetRandArr = function (qty, startX, startY, numCols) {
-        function pt(x,y) {
-            this.x = x,
-            this.y = y
-        };
-        let pts = [];
-        
-        //first, populate all the coords as if the grid was filled completely
-        let fullQty = numCols*numCols;
-        let fullGridPts = GetGridArr(fullQty, startX, startY, numCols)
-        
-        for (let i=0; i<qty; i++) {
-            let idx = randomInteger(fullGridPts.length) - 1;
-            pts.push( fullGridPts[idx] );
-            fullGridPts.splice(idx, 1);    //remove used array element
-        }
-        
-        return pts;
-    };
-    
-    //Similar to GetGridArr function above, but returns an array of coords "evenly" distributed at a certain burst radius...
-    //      ... relative to the outer corner squares of the origin token (NOTE: when adjusted for offset, retains the "size" of origin token)
-                    //  5           8
-                    //    1       4
-                    //       Tok  
-                    //    3       2
-                    //  7           6
-    const GetBurstArr = function (qty, tok, rad, offsetX, offsetY) {
-        function pt(x,y) {
-            this.x = x,
-            this.y = y
-        };
-        let pts = [];
-        
-        
-        let originX = tok.get("left") + offsetX;
-        let originY = tok.get("top") + offsetY;
-        let w = parseFloat(tok.get("width"));
-        let h = parseFloat(tok.get("height"));
-        
-        let xSpacing = (2 * rad)*gridSize + w - gridSize;
-        let ySpacing = (2 * rad)*gridSize + h - gridSize;
-        let startX = (originX - w/2 - gridSize/2) - (rad-1)*gridSize;;
-        let startY = (originY - h/2 - gridSize/2)  - (rad-1)*gridSize;;
-        let x;
-        let y;
-        
-        let i = 0;
-        
-        while (i < qty) {
-            x = startX; 
-            y = startY; 
-            
-            for (let n = 0; n < 4; n++) {
-                if (i < qty) {
-                    switch (n) {
-                        case 0:
-                            pts.push( new pt(x,y) );
-                            break;
-                        case 1:
-                            pts.push( new pt(x+xSpacing,y+ySpacing) );
-                            break;
-                        case 2:
-                            pts.push( new pt(x,y+ySpacing) );
-                            break;
-                        case 3:
-                            pts.push( new pt(x+xSpacing,y) );
-                            break;
-                    }
+
+        output += `font-size: ` + titlefontsize + `; `;
+        output += `line-height: 1.2em; font-weight: strong; `;
+        output += `color: ` + Nations[outputCard.side].fontColour + `; `;
+        output += `text-shadow: none; `;
+        output += `">`+ outputCard.title + `</span><br /><span style="`;
+        output += `font-family: Arial; font-variant: normal; font-size: 13px; font-style: normal; font-weight: bold; `;
+        output += `color: ` +  Nations[outputCard.side].fontColour + `; `;
+        output += `">` + outputCard.subtitle + `</span></div></div></div>`;
+
+        //body of card
+        output += `<div style="display: table-row-group; ">`;
+
+        let inline = 0;
+
+        for (let i=0;i<outputCard.body.length;i++) {
+            let out = "";
+            let line = outputCard.body[i];
+            if (!line || line === "") {continue};
+            if (line.includes("[INLINE")) {
+                let end = line.indexOf("]");
+                let substring = line.substring(0,end+1);
+                let num = substring.replace(/[^\d]/g,"");
+                if (!num) {num = 1};
+                line = line.replace(substring,"");
+                out += `<div style="display: table-row; background: #FFFFFF;; `;
+                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: center; display:block;'>`;
+                out += line + " ";
+
+                for (let q=0;q<num;q++) {
+                    let info = outputCard.inline[inline];
+                    out += `<a style ="background-color: ` + Nations[outputCard.side].backgroundColour + `; padding: 5px;`
+                    out += `color: ` + Nations[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
+                    out += `border-color: ` + Nations[outputCard.side].borderColour + `; font-family: Tahoma; font-size: x-small; `;
+                    out += `"href = "` + info.action + `">` + info.phrase + `</a>`;
+                    inline++;                    
                 }
-            }
-            xSpacing += gridSize*2;
-            ySpacing += gridSize*2;
-            startX -= gridSize;
-            startY -= gridSize;
-            i++;
-        }
-        return pts;
-        
-    };
-    
-    //Similar to GetBurstArr function above, but returns an array of coords "evenly" distributed in a "Plus" pattern at a certain radius...
-    //      ... relative origin token (NOTE: when adjusted for offset, retains the "size" of origin token)
-                    //         5
-                    //         1
-                    //    7 3 Tok 4 8  
-                    //         2
-                    //         6
-    const GetCrossArr = function (qty, left, top, width, height, rad, force) {
-        function pt(x,y) {
-            this.x = x,
-            this.y = y
-        };
-        let pts = [];
-        
-        let originX = left;
-        let originY = top;
-        
-        let xSpacing = (2 * rad)*gridSize + width - gridSize;
-        let ySpacing = (2 * rad)*gridSize + height - gridSize;
-        
-        
-        let startX = originX;
-        let startY 
-        
-        if ( (height/gridSize)%2===0 ) {
-            if (force) {
-                startY = originY -gridSize - Math.floor(height/2) - (rad-1)*gridSize;
+                out += `</div></span></div></div>`;
             } else {
-                startY = originY -gridSize/2 - Math.floor(height/2) - (rad-1)*gridSize;
-            }
-        } else {
-            startY = originY - height/2 -gridSize/2 - (rad-1)*gridSize;
-        }
-      
-        
-        let x;
-        let y;
-        
-        let revolutions = 0;
-        let i = 0;
-        
-        while (i < qty) {
-            x = startX; 
-            y = startY; 
-            
-            for (let n = 0; n < 4; n++) {
-                if (i < qty) {
-                    switch (n) {
-                        case 0:         //ABOVE
-                            pts.push( new pt(x,y) );
-                            break;
-                        case 1:         //BELOW
-                            pts.push( new pt(x,y+ySpacing) );
-                            break;
-                        case 2:         //LEFT
-                            if ( (width/70)%2===0 ) {
-                                if (force) {
-                                    pts.push( new pt(x - gridSize - Math.floor(width/2) - (rad-1)*gridSize - revolutions*gridSize, originY ) );
-                                } else {
-                                    pts.push( new pt(x - width/2 -gridSize/2 - (rad-1)*gridSize - revolutions*gridSize, originY ) );
-                                }
-                            } else {
-                                pts.push( new pt(x - gridSize/2 - Math.floor(width/2) - (rad-1)*gridSize - revolutions*gridSize, originY ) );
-                            }
-                            break;
-                        case 3:         //RIGHT
-                            pts.push( new pt( pts[pts.length-1].x + xSpacing, originY ) );
-                            break;
+                line = line.replace(/\[hr(.*?)\]/gi, '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">');
+                line = line.replace(/\[\#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})\](.*?)\[\/[\#]\]/g, "<span style='color: #$1;'>$2</span>"); // [#xxx] or [#xxxx]...[/#] for color codes. xxx is a 3-digit hex code
+                line = line.replace(/\[[Uu]\](.*?)\[\/[Uu]\]/g, "<u>$1</u>"); // [U]...[/u] for underline
+                line = line.replace(/\[[Bb]\](.*?)\[\/[Bb]\]/g, "<b>$1</b>"); // [B]...[/B] for bolding
+                line = line.replace(/\[[Ii]\](.*?)\[\/[Ii]\]/g, "<i>$1</i>"); // [I]...[/I] for italics
+                let lineBack,fontcolour;
+                if (line.includes("[F]")) {
+                    let ind1 = line.indexOf("[F]") + 3;
+                    let ind2 = line.indexOf("[/f]");
+                    let fac = line.substring(ind1,ind2);
+                    if (Nations[fac]) {
+                        lineBack = Nations[fac].backgroundColour;
+                        fontcolour = Nations[fac].fontColour;
                     }
+                    line = line.replace("[F]" + fac + "[/f]","");
+
+                } else {
+                    lineBack = (i % 2 === 0) ? "#D3D3D3": "#EEEEEE";
+                    fontcolour = "#000000";
                 }
+                out += `<div style="display: table-row; background: ` + lineBack + `;; `;
+                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color:` + fontcolour + `; `;
+                out += `"> <div style='text-align: center; display:block;'>`;
+                out += line + `</div></span></div></div>`;                
             }
-            revolutions += 1;
-            xSpacing += gridSize*2;
-            ySpacing += gridSize*2;
-            //startX -= 70;     //no X adjustment, start of each cross is just directly above the previous start
-            startY -= gridSize;
-            i++;
+            output += out;
         }
-        return pts;
-        
-    };
-    
-    const isNumber = function isNumber(value) {
-       return typeof value === 'number' && isFinite(value);
-    }
-    
-    //This is the primary worker function
-    const processCommands = function(data, args) {
-        let retVal = [];        //array of potential error messages to pass back to main handleInput funtion
-        let validObj = "false"; //data validation string
-        let o = 0;              //counter for originTok loops
-        let q = 0;              //counter for spawn qty loops
-        let fxModes = ['bomb', 'bubbling', 'burn', 'burst', 'explode', 'glow', 'missile', 'nova', 'splatter'];
-        let fxColors = ['acid', 'blood', 'charm', 'death', 'fire', 'frost', 'holy', 'magic', 'slime', 'smoke', 'water'];
-        let charControlledBy = [];
-        let appendControlledBy = false;
-        let pageGridIncrement = 1;
-        
-        try {
-            //args is an array object full of cmd:params pairs
-            //get rid of the api call !Spawn
-            args.shift();
-            
-            if (args.length >= 1) {
-                //assign values to our params arrray based on args
-                args.forEach((arg) => {
-                    let option = arg["cmd"].toLowerCase().trim();
-                    let param = arg["params"].trim();
-                    
-                    switch(option) {
-                        case "memento":
-                        case "targs":
-                            //In case somebody clicks the api chat button again (the oldMsg info has been deleted)
-                            retVal.push('Cannot re-use the api chat button');
-                            return retVal;
-                            break;
-                        case "targets":
-                            //ignore this cmd from the original message, we already obtained targets from processing the api-generated chat button call 
-                            break;
-                        case "name":
-                            data.spawnName = param;
-                            break;
-                        case "qty":
-                            data.qty = parseInt(param) || 1;
-                            break;
-                        case "placement":
-                            data.placement = param;
-                            break;
-                        case 'force':
-                            if (_.contains(['true', 'yes', '1'], param.toLowerCase())) {
-                                data.forceToSquare = true;
-                            } else if (_.contains(['false', 'no', '0'], param.toLowerCase())) {
-                                data.forceToSquare = false;
-                            }
-                            else {
-                                retVal.push('Invalid force to square argument (\"' + param + '\"). Choose from: (' + data.validPlacements + ')');
-                                return retVal;
-                            }
-                            break;
-                        case "offset":
-                            let direction = param.split(',');
-                            data.offsetX = parseFloat(direction[0]);    //wil convert to pixels later
-                            data.offsetY = parseFloat(direction[1]);    //wil convert to pixels later
-                            break;
-                        case "sheet":
-                            data.sheetName = param;
-                            break;
-                        case "ability":
-                            data.abilityName = param;
-                            break;
-                        case "side":
-                            //either a number or ("random"/"rand"). Actually, any text will default to random
-                            data.currentSide = parseInt(param) || param;
-                            break;
-                        case "size":
-                            let sizes = param.split(',');
-                            data.sizeX = parseFloat(sizes[0]);              //wil convert to pixels later
-                            if (sizes.length > 1) {
-                                data.sizeY = parseFloat(sizes[1]);          //wil convert to pixels later
-                            } else {
-                                data.sizeY = data.sizeX;
-                            }
-                            break;
-                        case "order":
-                            if (_.contains(['tofront', 'front', 'top', 'above'], param.toLowerCase())) {
-                                data.zOrder = "toFront";
-                            }
-                            if (_.contains(['toback', 'back', 'bottom', 'below'], param.toLowerCase())) {
-                                data.zOrder = "toBack";
-                            }
-                            break;
-                        case "light":
-                            let lights = param.split(',');
-                            data.lightRad = lights[0];
-                            data.lightDim = lights[1];
-                            break;
-                        case "mook":
-                            //Default case is false. Only change if user requests false
-                            if (_.contains(['true','yes', '1'], param.toLowerCase())) {
-                                data.mook = true;
-                            }
-                            break;
-                        case "bar1":
-                            if (param.toLowerCase().includes('keeplink')) {
-                                data.bar1Link = true;
-                                param = param.replace(/keeplink/i,'').trim();
-                            } else {
-                                data.bar1Link = false;
-                            }
-                            let bar1 = param.split('/');
-                            data.bar1Val = bar1[0].trim();
-                            if (bar1.length > 1) {
-                                data.bar1Max = bar1[1].trim();
-                            } else {
-                                data.bar1Max = data.bar1Val
-                            }
-                            break;
-                         case "bar2":
-                            if (param.toLowerCase().includes('keeplink')) {
-                                data.bar2Link = true;
-                                param = param.replace(/keeplink/i,'').trim();
-                            } else {
-                                data.bar2Link = false;
-                            }
-                            let bar2 = param.split('/');
-                            data.bar2Val = bar2[0].trim();
-                            if (bar2.length > 1) {
-                                data.bar2Max = bar2[1].trim();
-                            } else {
-                                data.bar2Max = data.bar2Val
-                            }
-                            break;
-                         case "bar3":
-                             if (param.toLowerCase().includes('keeplink')) {
-                                data.bar3Link = true;
-                                param = param.replace(/keeplink/i,'').trim();
-                            } else {
-                                data.bar3Link = false;
-                            }
-                            let bar3 = param.split('/');
-                            data.bar3Val = bar3[0].trim();
-                            if (bar3.length > 1) {
-                                data.bar3Max = bar3[1].trim();
-                            } else {
-                                data.bar3Max = data.bar3Val
-                            }
-                            break;
-                        case "fx":
-                            data.fx = param;
-                            break;
-                        case "expand":
-                            let p = param.split(',').map(e=>e.trim());
-                            data.expandIterations = parseInt(p[0]);
-                            if (p.length > 1) {
-                                data.expandDelay = parseInt(p[1]);
-                            }
-                            if (p.length > 2) {
-                                if ( _.contains(['true','yes', '1'], p[2]) ) {
-                                    data.destroySpawnWhenDone = true;
-                                }
-                            }
-                            break;
-                        case "deletesource":
-                            if (_.contains(['true','yes', '1'], param.toLowerCase())) {
-                                data.deleteSource = true;
-                            }
-                            break;
-                        case "deletetarget":
-                            if (_.contains(['true','yes', '1'], param.toLowerCase())) {
-                                data.deleteTarget = true;
-                            }
-                            break;
-                        case "resizesource":
-                            let sourceSizes = param.split(',');
-                            data.resizeSourceX = parseFloat(sourceSizes[0]);   //will convert to pixels later
-                            data.resizeSourceY = parseFloat(sourceSizes[1]);   //will convert to pixels later
-                            if (sourceSizes.length >2) {
-                                data.resizeSourceIterations = parseInt(sourceSizes[2]);
-                            }
-                            if (sourceSizes.length >3) {
-                                data.resizeSourceDelay = parseInt(sourceSizes[3]);
-                            }
-                            break;
-                        case "resizetarget":
-                            let targetSizes = param.split(',');
-                            data.resizeTargetX = parseFloat(targetSizes[0]);    //will convert to pixels later
-                            data.resizeTargetY = parseFloat(targetSizes[1]);    //will convert to pixels later
-                            if (targetSizes.length >2) {
-                                data.resizeTargetIterations = parseInt(targetSizes[2]);
-                            }
-                            if (targetSizes.length >3) {
-                                data.resizeTargetDelay = parseInt(targetSizes[3]);
-                            }
-                            break;
-                        case "rotation":
-                            //either a number or ("random"/"rand"). Actually, any text will default to random
-                            data.angle = parseInt(param) || param;
-                            break;
-                        case "layer":
-                            //send token to object, gm, or map layer
-                            data.spawnLayer = param;
-                            data.userSpecifiedLayer = true;
-                            break;
-                        case "isdrawing":
-                            //Default case is false. Only change if user requests false
-                            if (_.contains(['true','yes', '1'], param.toLowerCase())) {
-                                data.isDrawing = true;
-                            }
-                            break;
-                        case "tokenname":
-                            data.tokenName = param;
-                            break;
-                        case "tooltip":
-                            data.tooltip = param;
-                            break;
-                        case "tokenprops":
-                        case "tokenprop":
-                            data.tokenPropValPairs = param.split(',');
-                            data.tokenPropValPairs = data.tokenPropValPairs.map(s => s.replace('%comma%',','));
-                            data.tokenPropValPairs.forEach(pair => {
-                                let pairArr = pair.split(':');
-                                let prop = pairArr[0].trim();
-                                if (!tokenAttributes.includes(prop)) {
-                                    retVal.push('Invalid token attribute requested (' + prop + ')');
-                                }
-                            });
-                            break;
-                        case "controlledby":
-                            if (param.charAt(0)==='+') {
-                                appendControlledBy = true;
-                                param = param.substring(1);
-                            }
-                            let list = param.split(',').map(e=>e.trim());
-                            let players=findObjs({_type:'player'});
-                            list.forEach(item => {
-                                if (item.toLowerCase().includes('all') && item.length===3) {
-                                    charControlledBy.push('all');
-                                } else {
-                                    let playerID;
-                                    let player = players.filter(p=>p.get('_id')===item);
-                                    if (player.length > 0) {
-                                        playerID = player[0].get('_id');
-                                        charControlledBy.push(playerID);
-                                    } else {
-                                        player = players.filter(p=>p.get('_displayname')===item);
-                                        if (player.length > 0) {
-                                            playerID = player[0].get('_id');
-                                            charControlledBy.push(playerID);
-                                        } else {
-                                            retVal.push('Invalid playerID or displayname (' + item + ') in --controlledby statement.)');
-                                        }
-                                    }
-                                }
-                            });
-                            break;
-                        default:
-                            retVal.push('Unexpected argument identifier (' + option + '). Choose from: (' + data.validArgs + ')');
-                            break;    
-                    }
-                }); //end forEach arg
-            } else {
-                retVal.push('No arguments supplied. Format is \"!Spawn --Command|Value\"');
-                return retVal;
-            }
-            //First data validation checkpoint
-            if (retVal.length > 0) {return retVal};
-            
-            //////////////////////////////////////////////////////
-            //  Input commands are good. Validate input parameters
-            //////////////////////////////////////////////////////
-            //SpawnName is a required arg
-            if (data.spawnName === "") {
-                retVal.push('No spawn target identified. Argument \"spawn|characterName\" required');;
-            }
-            
-            //"Placement" parameter. Additional checks if 'grid', 'burst', 'cross', or 'random' 
-            if ( _.contains(['stack', 'row', 'col', 'column', 'surround'], data.placement.toLowerCase()) ) {
-                //Good, no additional info req'd
-            } else if ( data.placement.match(/grid/i) ) {
-                    //grid case     --check for number
-                    if ( !data.placement.match(/(\d+)/) ) {
-                        retVal.push('Invalid grid row length supplied (\"' + data.placement + '\"). Format is --placement|grid #');
-                    } else {        
-                        //good grid #
-                        data.gridCols = data.placement.match(/(\d+)/)[0];   //use first number found for gridCols
-                        data.placement = 'grid';
-                    }
-            } else if ( data.placement.match(/burst/i) ) {  
-                    //burst case    --check for number
-                    if ( !data.placement.match(/(\d+)/) ) {
-                        retVal.push('Invalid burst radius supplied (\"' + data.placement + '\"). Format is --placement|burst #');
-                    } else {        
-                        //good burst #
-                        data.burstRad = data.placement.match(/(\d+)/)[0];   //use first number found for burstRad
-                        data.placement = 'burst';
-                    }
-            }  else if ( data.placement.match(/cross/i) ) {  
-                    //burst case    --check for number
-                    if ( !data.placement.match(/(\d+)/) ) {
-                        retVal.push('Invalid cross radius supplied (\"' + data.placement + '\"). Format is --placement|cross #');
-                    } else {        
-                        //good burst #
-                        data.crossRad = data.placement.match(/(\d+)/)[0];   //use first number found for crossRad
-                        data.placement = 'cross';
-                    }
-            }  else if ( data.placement.match(/rand/i) ) {
-                    //random case     --check for number
-                    if ( !data.placement.match(/(\d+)/) ) {
-                        retVal.push('Invalid random grid row length supplied (\"' + data.placement + '\"). Format is --placement|random #');
-                    } else if (data.qty > data.placement.match(/(\d+)/)[0]*data.placement.match(/(\d+)/)[0]) {
-                        let numSquares = data.placement.match(/(\d+)/)[0] * data.placement.match(/(\d+)/)[0];
-                        retVal.push('Input qty (\"' + data.qty + '\") exceeds the number of available grid squares(\"'+ numSquares + '\"). Consider increasing the grid size or reducing qty.');
-                    } else {        
-                        //good grid #
-                        data.gridCols = data.placement.match(/(\d+)/)[0];   //use first number found for gridCols
-                        data.placement = 'random';
-                    }
-            } else {
-                retVal.push('Invalid placement argument (\"' + data.placement + '\"). Choose from: (' + data.validPlacements + ')');
-            }
-            
-            //Check for valid offset X/Y (numeric)
-            if (isNaN(data.offsetX) || isNaN(data.offsetY)) {
-                retVal.push('Non-numeric offset detected. Format is \"--offset|#,#\" in Squares');
-            } else if (data.offsetX > 50*70 || data.offsetY > 50*70) {
-                //In case the offset was entered in pixels
-                retVal.push('Offset out of range. Format is \"--offset|#,#\" in Squares (Max 50)');
-            }
-            
-            //size must be "#,#""
-            if (isNaN(data.sizeX) || isNaN(data.sizeY) || data.sizeX === null || data.sizeY === null) {
-                retVal.push('Non-numeric size detected. Format is \"--size|#,#\"');
-            }
-            
-            //light must be "#,#""
-            if (isNaN(data.lightRad) || isNaN(data.lightDim) || data.lightRad === null || data.lightDim === null) {
-                retVal.push('Non-numeric light radius detected. Format is \"--size|#,#\" \(bright, dim\)');
-            }
-            
-            //Numeric qty between 1 and 20 required
-            if (isNaN(data.qty)) {
-                retVal.push('Non-numeric qty detected. Format is \"--qty|#\"');
-            } /* else if ( data.qty <  1 || data.qty > 20 ) {
-                retVal.push('Input qty out of range. Must be between 1 and 20.');
-            }
-            */
-            
-            //Check for supported FX
-            if (data.fx !== '') {
-                let fx = data.fx.split('-');
-                if (fx.length !== 2) {
-                    retVal.push('Invalid FX format. Format is --fx|type-color');
-                } else if (fxModes.indexOf(fx[0]) === -1 ) {
-                    retVal.push('Invalid FX type requested. Supported types are ' + fxModes.join(','));
-                } else if (fxColors.indexOf(fx[1]) === -1 ) {
-                    retVal.push('Invalid FX color requested. Supported colors are ' + fxColors.join(','));
+
+        //buttons
+        if (outputCard.buttons.length > 0) {
+            for (let i=0;i<outputCard.buttons.length;i++) {
+                let info = outputCard.buttons[i];
+                let inline = info.inline;
+                if (i>0 && inline === false) {
+                    output += '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">';
                 }
+                let out = "";
+                let borderColour = Nations[outputCard.side].borderColour;
+                
+                if (inline === false || i===0) {
+                    out += `<div style="display: table-row; background: #FFFFFF;; ">`;
+                    out += `<div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                    out += `"><span style="line-height: normal; color: #000000; `;
+                    out += `"> <div style='text-align: center; display:block;'>`;
+                }
+                if (inline === true) {
+                    out += '<span>     </span>';
+                }
+                out += `<a style ="background-color: ` + Nations[outputCard.side].backgroundColour + `; padding: 5px;`
+                out += `color: ` + Nations[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
+                out += `border-color: ` + borderColour + `; font-family: Tahoma; font-size: x-small; `;
+                out += `"href = "` + info.action + `">` + info.phrase + `</a>`
+                
+                if (inline === false || i === (outputCard.buttons.length - 1)) {
+                    out += `</div></span></div></div>`;
+                }
+                output += out;
             }
 
-            //check token expansion animation parameters
-            if (data.expandIterations !== 0) {
-                if (isNaN(data.expandIterations)) {
-                    retVal.push('Non-numeric animation iterations detected. Format is \"--expand|#,#\" \(iterations, delay\)');
-                }
-                if (isNaN(data.expandDelay)) {
-                    retVal.push('Non-numeric animation delay detected. Format is \"--expand|#,#\" \(iterations, delay\)');
-                }
-            }
-            
-            //check rotation input
-            if (!isNumber(data.angle)) {
-                if(!_.contains(['random','rand'], data.angle.toLowerCase())) {
-                    retVal.push('Invalid rotation detected. Format is \"--rotation|# or rand/random\"');
-                } else {
-                    data.angle = randomInteger(360)-1;  //0 to 359deg
-                }
-            } else {    //normalize to account for excess degrees
-                data.angle %= 360
-            }
-            
-            //check layer input
-            if (data.userSpecifiedLayer) {
-                if ( data.spawnLayer.match(/obj/i) || data.spawnLayer.match(/tok/i) ) {
-                    data.spawnLayer = 'objects';
-                } else if ( data.spawnLayer.match(/gm/i) ) {
-                    data.spawnLayer = 'gmlayer';
-                } else if ( data.spawnLayer.match(/map/i) ) {
-                    data.spawnLayer = 'map';
-                } else {
-                    retVal.push('Invalid layer requested. Valid layers are \"object(s)\", \"token\", \"tok\", \"gm\",\"map\"');
-                }
-            }
-            
-            
-            //2nd data validation checkpoint. Potentially return several error msgs
-            if (retVal.length > 0) {return retVal};
-            
-            //////////////////////////////////////////////////////////////////////
-            //  Input parameters are Valid. Continue with the collected parameters
-            //////////////////////////////////////////////////////////////////////
-            
-            //The spawn location is determined relative to spawn origin token. Default is selected token. Optionally was passed as arg by user via "--targets"
-            //  Get token objects for "selected" and "targets"
-            if (data.originIDs.length === 0) {
-                //  Origin(s) = selected token(s) --default condition
-                data.selectedIDs.forEach(id => {
-                    data.selectedToks.push(getObj("graphic",id));
-                    data.originToks.push(getObj("graphic",id));
-                });
-            } else {
-                //  Origin(s) are targets, separate from selected tokens
-                data.selectedIDs.forEach(id => data.selectedToks.push(getObj("graphic",id)));
-                data.originIDs.forEach(id => data.originToks.push(getObj("graphic",id)));
-            }
-            
-            //get the page grid settings
-            data.spawnPageID = data.originToks[0].get("pageid");
-            if (data.spawnPageID) {
-                let page = getObj("page", data.spawnPageID);
-                if (page) {
-                    pageGridIncrement = page.get("snapping_increment");
-                    gridSize = 70 * pageGridIncrement;
-                } else {
-                    sendChat('SpawnAPI',`/w "${data.who}" `+ 'Error: Unable to find pageGridIncrement for current page. Default 70px will be used');
-                }
-            } else {
-                 return 'Error: Unable to find SpawnPageID for origin token';
-            }
-            
-            //convert user input to pixels using current gridSize
-            data.offsetX = data.offsetX * gridSize;
-            data.offsetY = data.offsetY * gridSize;
-            data.sizeX = data.sizeX * gridSize;
-            data.sizeY = data.sizeY * gridSize;
-            if (data.resizeSourceX !== -999) { data.resizeSourceX = data.resizeSourceX * gridSize }
-            if (data.resizeSourceY !== -999) { data.resizeSourceY = data.resizeSourceY * gridSize }
-            
-            if (data.resizeTargetX !== -999) { data.resizeTargetX = data.resizeTargetX * gridSize }
-            if (data.resizeTargetY !== -999) { data.resizeTargetY = data.resizeTargetY * gridSize }
-            
-            
-            //For spawn tokens larger than 1x1, we need to apply a correction to the spawn position 
-                    //otherwise inputting an offset could still spawn on top of the origin token 
-            let tokSizeCorrectX = [];
-            let tokSizeCorrectY = [];
-            
-            data.originToks.forEach(tok => {
-                let w = parseFloat(tok.get("width"));
-                let h = parseFloat(tok.get("height"));
-                
-                data.originToksWidth.push(w);
-                data.originToksHeight.push(h);
-                
-                //Handle all cases for the sign of offset X & Y
-                //NOTE: special case if the origin token is an even number of squares and forceToSquare===true, we'd like it to spawn within a full square, not halfway between squares
-                switch (true) {
-                    case data.offsetX === 0 && data.offsetY === 0:  //X=0 && Y=0
-                        tokSizeCorrectX.push(0);
-                        tokSizeCorrectY.push(0);
-                        if (data.forceToSquare) {
-                            /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX === 0 && data.offsetY > 0:    //X=0 && Y POS
-                        tokSizeCorrectX.push(0);
-                        tokSizeCorrectY.push( (w-gridSize)/2 ); 
-                        if (data.forceToSquare) {
-                            /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX === 0 && data.offsetY < 0:    //X=0 && Y NEG
-                        tokSizeCorrectX.push(0);
-                        tokSizeCorrectY.push( -(w-gridSize)/2 );
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectX[tokSizeCorrectX.length - 1] += gridSize/2;
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX > 0 && data.offsetY === 0:    //X POS && Y=0
-                        tokSizeCorrectX.push( (w-gridSize)/2 ); 
-                        tokSizeCorrectY.push(0);
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        //tokSizeCorrectX[tokSizeCorrectX.length - 1] += 35;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX < 0 && data.offsetY === 0:    //X NEG && Y=0
-                        tokSizeCorrectX.push( -(w-gridSize)/2 ); 
-                        tokSizeCorrectY.push(0); 
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        //tokSizeCorrectX[tokSizeCorrectX.length - 1] += 35;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX > 0 && data.offsetY > 0:    //X POS && Y POS
-                        tokSizeCorrectX.push( (w-gridSize)/2 ); 
-                        tokSizeCorrectY.push( (w-gridSize)/2 );
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        //no additional correction
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX > 0 && data.offsetY < 0:    //X POS && Y NEG
-                        tokSizeCorrectX.push( (w-gridSize)/2 ); 
-                        tokSizeCorrectY.push( -(w-gridSize)/2 );
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        //no additional correction
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX < 0 && data.offsetY > 0:    //X NEG && Y POS
-                        tokSizeCorrectX.push( -(w-gridSize)/2 ); 
-                        tokSizeCorrectY.push( (w-gridSize)/2 ); 
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        //no additional correction
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;
-                        }
-                    case data.offsetX < 0 && data.offsetY < 0:    //X NEG && Y NEG
-                        tokSizeCorrectX.push( -(w-gridSize)/2 ); 
-                        tokSizeCorrectY.push( -(w-gridSize)/2 );
-                        if (data.forceToSquare) {
-                                /*   */if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 === 0) {     //EVEN && EVEN
-                                        //no additional correction
-                            } else if ( (w/gridSize)%2 === 0 && (h/gridSize)%2 !== 0) {     //EVEN && ODD
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] += gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 === 0) {     //ODD && EVEN
-                                        tokSizeCorrectY[tokSizeCorrectY.length - 1] -= gridSize/2;
-                            } else if ( (w/gridSize)%2 !== 0 && (h/gridSize)%2 !== 0) {     //ODD && ODD
-                                        //no additional correction
-                            } 
-                            break;    
-                        }
-                }
-            }); //end of data.originToks.forEach block (spawn placement corrections based on origin token size)
-            
-             
-            ///////////////////////////////////////////////////////////////
-            //  Spawn Placement  -- calculate all coordinates
-            ///////////////////////////////////////////////////////////////
-            
-            //All tokens spawn on the same page and layer as the origin token(s) unless specified by user command
-            //data.spawnPageID = data.originToks[0].get("pageid");      //this line moved up so we can get the page grid settings 
-            if (data.userSpecifiedLayer===false) {
-                data.spawnLayer = data.originToks[0].get("layer");
-            } 
-            
-            
-            let left;
-            let top;
-            let width;
-            let height;
-            //Calculate spawn coords
-            switch (data.placement) {   //If user gave no "placement" command, default to "stack" tokens on top of each other
-                //there will be (qty*num_OriginToks) coordinate pairs
-                case "row":
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left");
-                        top = data.originToks[o].get("top");
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(left + data.offsetX  + tokSizeCorrectX[o] + q*gridSize);   
-                            data.spawnY.push(top + data.offsetY  + tokSizeCorrectY[o]);
-                        }
-                    }
-                    break;
-                case "col":
-                case "column":
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left");
-                        top = data.originToks[o].get("top");
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(left + data.offsetX + tokSizeCorrectX[o]);   
-                            data.spawnY.push(top + data.offsetY  + tokSizeCorrectY[o] + q*gridSize);
-                        }
-                    }
-                    break;
-                case "surround":
-                    //NOTE: This case ignores offset. Starts above the token and spirals clockwise
-                    for (o = 0; o < data.originToks.length; o++) {
-                        let surroundingSquares = GetSurroundingSquaresArr(data.qty, data.originToks[o]);
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(surroundingSquares[q].x);   
-                            data.spawnY.push(surroundingSquares[q].y);
-                        }
-                    }
-                    break;
-                case "grid":   //arrange in a square grid 
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left") + data.offsetX + tokSizeCorrectX[o];
-                        top = data.originToks[o].get("top") + data.offsetY + tokSizeCorrectY[o];
-                        
-                        let gridSquares = GetGridArr(data.qty, left, top, data.gridCols);
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(gridSquares[q].x);   
-                            data.spawnY.push(gridSquares[q].y);
-                        }
-                    }
-                    break; 
-                case "burst":   //arrange in an expanding burst from corners 
-                    for (o = 0; o < data.originToks.length; o++) {
-                        let burstSquares = GetBurstArr(data.qty, data.originToks[o], data.burstRad, data.offsetX, data.offsetY);
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(burstSquares[q].x);   
-                            data.spawnY.push(burstSquares[q].y);
-                        }
-                    }
-                    break;   
-                case "cross":   //arrange in an expanding cross pattern vertically & horizontally 
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left") + data.offsetX + tokSizeCorrectX[o];
-                        top = data.originToks[o].get("top") + data.offsetY + tokSizeCorrectY[o];
-                        width = parseFloat(data.originToks[o].get("width"));
-                        height = parseFloat(data.originToks[o].get("height"))
-                        
-                        let crossSquares = GetCrossArr(data.qty, left, top, width, height, data.crossRad, data.forceToSquare);
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(crossSquares[q].x);   
-                            data.spawnY.push(crossSquares[q].y);
-                        }
-                    }
-                    break;
-                case "random":   //arrange in random spaces within a square grid 
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left") + data.offsetX + tokSizeCorrectX[o];
-                        top = data.originToks[o].get("top") + data.offsetY + tokSizeCorrectY[o];
-                        
-                        let randSquares = GetRandArr(data.qty, left, top, data.gridCols);
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(randSquares[q].x);   
-                            data.spawnY.push(randSquares[q].y);
-                        }
-                    }
-                    break; 
-                case "stack":   //The default case is "stack"
-                default:    
-                    for (o = 0; o < data.originToks.length; o++) {
-                        left = data.originToks[o].get("left");
-                        top = data.originToks[o].get("top");
-                        for (q = 0; q < data.qty; q++) {
-                            data.spawnX.push(left + data.offsetX + tokSizeCorrectX[o]);
-                            data.spawnY.push(top + data.offsetY + tokSizeCorrectY[o]);
-                        }
-                    }
-                    break;    
-            }
-            
-            //Get page lighting mode (UDL vs LDL)
-            var page = findObjs({                              
-              _id: data.spawnPageID,                        
-            });
-            data.UDL = page[0].get("dynamic_lighting_enabled");
-            let spawnX_max = parseInt(page[0].get("width")) * 70/pageGridIncrement;
-            let spawnY_max = parseInt(page[0].get("height")) * 70/pageGridIncrement;
-            
-            //grab the character object to spawn from supplied spawnName
-            let spawnObj = getCharacterFromName(data.spawnName);
-            let validObj = validateObject(data.who, spawnObj, 'character', data.spawnName);
-            if (!(validObj === 'true')) {
-                retVal.push(validObj);
-                return retVal;
-            }
-            
-            //potentially update the controlledby property of the character sheet to be spawned
-            if (charControlledBy.length > 0) {
-                let cbList = '';
-                let tempArr = [];
-                if (appendControlledBy) {
-                    let currentControlledBy = spawnObj.get('controlledby');
-                    if (currentControlledBy === '') {
-                        cbList = charControlledBy.join(',');
-                    } else {
-                        charControlledBy.forEach(pid => {
-                            if (currentControlledBy.includes(pid)===false) {
-                                tempArr.push(pid);
-                            }
-                        });
-                        if (tempArr.length > 0) {
-                            cbList = currentControlledBy + ',' + tempArr.join(',');
-                        } else {
-                            cbList = currentControlledBy;
-                        }
-                    }
-                } else {
-                    cbList = charControlledBy.join(',');
-                }
-                spawnObj.set('controlledby', cbList);
-            }
-            
-            ///////////////////////////////////////////////////////////////////////////////////
-            //  Start spawning!         --spawns (q=qty) tokens at each of (o=origin) locations
-            ///////////////////////////////////////////////////////////////////////////////////
-            //get defaulttoken for SpawnObj, then start spawning with the assembled options 
-            //  NOTE: this runs asynchronously, so calling the spawn function from within callback
-                spawnObj.get("_defaulttoken", function(defaultToken) {
-                    let iteration = 0
-                    for (o = 0; o < data.originToks.length; o++) {
-                        for (q = 0; q < data.qty; q++) {
-                            //Make sure we don't try to spawn off the map
-                            if (data.spawnX[iteration] > 0 && data.spawnX[iteration] < spawnX_max & data.spawnY[iteration] > 0 && data.spawnY[iteration] < spawnY_max) {
-                                //trigger special FX?
-                                if (data.fx !== ''){
-                                    spawnFx(data.spawnX[iteration], data.spawnY[iteration], data.fx, data.spawnPageID);
-                                }
-                                //Spawn the token!
-                                spawnTokenAtXY(data.who, defaultToken, data.spawnPageID, data.spawnLayer, data.spawnX[iteration], data.spawnY[iteration], data.currentSide, data.sizeX, data.sizeY, data.zOrder, data.lightRad, data.lightDim, data.mook, data.UDL, data.bar1Val, data.bar1Max, data.bar1Link, data.bar2Val, data.bar2Max, data.bar2Link, data.bar3Val, data.bar3Max, data.bar3Link, data.expandIterations, data.expandDelay, data.destroySpawnWhenDone, data.angle, data.isDrawing, data.tokenName, data.tooltip, data.tokenPropValPairs);
-                                
-                            } else {
-                                log("off the map!");
-                            }
-                            iteration += 1;
-                        }    
-                    }
-                });
-            
-            //Optional resize source token
-            if (data.resizeSourceX !== -999 && data.resizeSourceY !== -999) {
-                data.selectedToks.forEach(tok => {
-                    resizeToken(tok, data.resizeSourceIterations, data.resizeSourceDelay, tok.get("width"), tok.get("height"), data.resizeSourceX, data.resizeSourceY, data.destroySpawnWhenDone)
-                });
-            }
-            //Optional resize target token
-            if (data.resizeTargetX !== -999 && data.resizeTargetY !== -999) {
-                data.originToks.forEach(tok => {
-                    resizeToken(tok, data.resizeTargetIterations, data.resizeTargetDelay, tok.get("width"), tok.get("height"), data.resizeTargetX, data.resizeTargetY, data.destroySpawnWhenDone)
-                });
-            }
-            
-            //Optional delete source token
-            if (data.deleteSource === true) {
-                data.selectedToks.forEach(tok => {
-                    tok.remove();
-                });
-            }
-            //Optional delete target token
-            if (data.deleteTarget === true) {
-                data.originToks.forEach(tok => {
-                    tok.remove();
-                });
-            }
-            
-            
-            /////////////////////////////////////////////////////////////////////////////////
-            //Optional automatic trigger of a supplied ability "macro" when spawn is complete
-            //      Default sheet is from the selected token, 
-            //      ...but allow looking from another character sheet if supplied (e.g. "macro mule") via --sheet|charName
-            /////////////////////////////////////////////////////////////////////////////////
-            
-            validObj = 'false';
-            if (data.abilityName !== "") {  //user wants to trigger an ability after spawn
-                if (data.sheetName === "") {
-                    //Look for the ability on the first selected token. Get character sheet first.
-                    var sheetCharObj = getCharacterFromToken(data.selectedToks[0]);  
-                        validObj = validateObject(data.who, sheetCharObj, 'character', data.selectedToks[0].get("name"));
-                } else {
-                    //User sepecified ability is found on a sheet other than the first selected token. Get character sheet first.
-                    var sheetCharObj = getCharacterFromName(data.sheetName);
-                        validObj = validateObject(data.who, sheetCharObj, 'character', data.sheetName);
-                }
-                if (!(validObj === 'true')) {
-                    retVal.push(validObj);
-                    return retVal
-                }
-                
-                //Get the characterID to find the ability 
-                let sheetCharID = sheetCharObj.get("id");
-                
-                //now actually look for the ability and call it with sendChat
-                validObj = 'false';
-                let abilityObj = getAbilityFromName(sheetCharID, data.abilityName);
-                    validObj = validateObject(data.who, abilityObj, 'ability', data.abilityName);
-                    if (!(validObj === 'true')) {
-                        retVal.push(validObj);
-                        return retVal
-                    }
-                 
-                let action = abilityObj.get("action");
-                //log(action);
-                sendChat(data.who, action);
-            }
-        
-            return retVal;
-        
-        } catch(err) {
-            sendChat('SpawnAPI',`/w "${data.who}" `+ 'Unhandled exception: ' + err.message);
         }
+
+        output += `</div></div><br />`;
+        sendChat("",output);
+        outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
+    }
+
+    //related to building hex map
+    const LoadPage = () => {
+        //build Page Info and flesh out Hex Info
+        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
+        pageInfo.name = pageInfo.page.get("name");
+        pageInfo.scale = pageInfo.page.get("snapping_increment");
+        pageInfo.width = pageInfo.page.get("width") * 70;
+        pageInfo.height = pageInfo.page.get("height") * 70;
+        pageInfo.type = pageInfo.page.get("grid_type");
+
+    }
+
+    const BuildMap = () => {
+        let startTime = Date.now();
+        HexMap = {};
+
+        //define areas with lines
+        let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",});
+        _.each(paths,path => {
+            let colour = path.get("stroke").toLowerCase();
+            let type = areaColours[colour];
+            if (type) {
+                let centre = new Point(Math.round(path.get("x")), Math.round(path.get("y")));
+                let vertices = translatePoly(path);
+                MapAreas[type] = {'vertices': vertices, 'centre': centre};
+            }
+        });
+
+
+
+        let startX = HexInfo.pixelStart.x;
+        let startY = HexInfo.pixelStart.y;
+        let halfToggleX = HexInfo.halfToggleX;
+        let halfToggleY = HexInfo.halfToggleY;
+        if (pageInfo.type === "hex") {
+            for (let j = startY; j <= pageInfo.height;j+=HexInfo.ySpacing){
+                for (let i = startX;i<= pageInfo.width;i+=HexInfo.xSpacing) {
+                    let point = new Point(i,j);     
+                    let hex = new Hex(point);
+                }
+                startX += halfToggleX;
+                halfToggleX = -halfToggleX;
+            }
+        } else if (pageInfo.type === "hexr") {
+            for (let i=startX;i<=pageInfo.width;i+=HexInfo.xSpacing) {
+                for (let j=startY;j<=pageInfo.height;j+=HexInfo.ySpacing) {
+                    let point = new Point(i,j);     
+                    let hex = new Hex(point);
+                }
+                startY += halfToggleY;
+                halfToggleY = -halfToggleY;
+            }
+        }
+        AddTokens();        
+        //Objectives
+        IdentifyObjectives();
+        //terrain
+        //AddTerrain();    
+        let elapsed = Date.now()-startTime;
+        log("Hex Map Built in " + elapsed/1000 + " seconds");
     };
+
+
+    const IdentifyObjectives = () => {
+        let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        _.each(tokens,token => {
+            let name = token.get("name");
+            if (name && name.includes("Objective")) {
+                let pos = parseInt(name.replace(/\D/g, ''));
+                if (isNaN(pos) === false && pos < 6 && pos > 0) {
+                    pos -= 1;
+                    let point = new Point(token.get("left"),token.get("top"));
+                    let hexLabel = point.toCube().label();
+                    let info = {
+                        hexLabel: hexLabel,
+                        tokenID: token.get("id"),
+                    }
+                    objectiveInfo[pos] = info;
+                } 
+            }
+        })
+    }
+
+
+
+
+
+    const AddTerrain = () => {
+        //add terrain using tokens
+        let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "map",});
+        _.each(tokens,token => {
+            let name = token.get("name");
+            if (name === "Smoke" || name === "Dispersed Smoke") {
+                let centre = new Point(token.get("left"),token.get('top'));
+                let centreLabel = centre.toCube().label();
+                let hex = HexMap[centreLabel];
+                if (name === "Smoke") {
+                    hex.smoke = true;
+                } else {
+                    hex.smoke = "Dispersed";
+                }
+                hex.smokeID = token.id;
+            }
+            let terrain = TerrainInfo[name];
+            if (terrain) {
+                let centre = new Point(token.get("left"),token.get('top'));
+                let centreLabel = centre.toCube().label();
+                let hex = HexMap[centreLabel];
+                let keys = Object.keys(terrain);
+                _.each(keys,key => {
+                    hex[key] = terrain[key];
+                })        
+            }
+        })
+        AddRivers();
+        AddRoads();
+    }
+
+
+    const AddRivers = () => {
+        let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",});
+
+        _.each(paths,path => {
+            let types = {"#0000ff": "River","#000000": "Bridge"};
+            let type = types[path.get("stroke").toLowerCase()];
+            if (type) {
+                let vertices = translatePoly(path);
+                //work through pairs of vertices
+                for (let i=0;i<(vertices.length -1);i++) {
+                    let pt1 = vertices[i];
+                    let pt2 = vertices[i+1];
+                    let midPt = new Point((pt1.x + pt2.x)/2,(pt1.y + pt2.y)/2);
+                    //find nearest hex to midPt
+                    let hexLabel = midPt.label();
+                    //now run through that hexes neighbours and see what intersects with original line to identify the 2 neighbouring hexes
+                    let hex1 = HexMap[hexLabel];
+                    if (!hex1) {continue}
+                    let pt3 = hex1.centre;
+                    let neighbourCubes = hex1.cube.neighbours();
+                    for (let j=0;j<neighbourCubes.length;j++) {
+                        let k = j+3;
+                        if (k> 5) {k-=6};
+                        let hex2 = HexMap[neighbourCubes[j].label()];
+                        if (!hex2) {continue}
+                        let pt4 = hex2.centre;
+                        let intersect = lineLine(pt1,pt2,pt3,pt4);
+                        if (intersect) {
+                            if (hex1.edges[DIRECTIONS[j]] !== "Bridge") {
+                                hex1.edges[DIRECTIONS[j]] = type;
+                            }
+                            if (hex2.edges[DIRECTIONS[k]] !== "Bridge") {
+                                hex2.edges[DIRECTIONS[k]] = type;
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
     
-    const parseArgs = function(msg) {
-        msg.content = msg.content
-            .replace(/<br\/>\n/g, ' ')
-            .replace(/(\{\{(.*?)\}\})/g," $2 ")
+    const AddRoads = () => {
+        let roads = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "map",}).filter(el => {
+            return el.get("stroke").toLowerCase() === "#ffffff";
+        });
+        _.each(roads,road => {
+            let vertices = translatePoly(road);
+            for (let i=0;i<(vertices.length-1);i++) {
+                let cube1 = vertices[i].toCube();
+                let cube2 = vertices[i+1].toCube();
+                let interCubes = cube1.linedraw(cube2);
+                _.each(interCubes, cube => {
+                    HexMap[cube.label()].road = true;
+                })
+                HexMap[cube1.label()].road = true;
+                HexMap[cube2.label()].road = true;
+            }
+        })
+    }
+
+
+
+     
+    const AddTokens = () => {
+        UnitArray = {};
+        //create an array of all tokens
+        let start = Date.now();
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            layer: "objects",
+        });
+
+        let c = tokens.length;
+        let s = (1===c?'':'s');     
         
-        //Check for inline rolls for spawn qty e.g. [[1d4]] or [[ 1t[tableName] ]]
-        inlineContent = processInlinerolls(msg);
-        
-        let args = inlineContent.split(/\s+--/).map(arg=>{
-                let cmds = arg.split('|');
-                return {
-                    cmd: cmds.shift().toLowerCase().trim(),
-                    params: cmds[0]
+        tokens.forEach((token) => {
+            let character = getObj("character", token.get("represents"));   
+            if (character) {
+                let unit = new Unit(token);
+            }   
+        });
+
+
+
+
+        let elapsed = Date.now()-start;
+        log(`${c} token${s} checked in ${elapsed/1000} seconds - ` + Object.keys(UnitArray).length + " placed in Unit Array");
+
+
+
+    }
+
+    const DefineOffboard = (token) => {
+        let centre = new Point(token.get("left"),token.get('top'));
+        let halfW = token.get("width")/2;
+        let halfH = token.get("height")/2;
+        let minX = centre.x - halfW;
+        let maxX = centre.x + halfW;
+        let minY = centre.y - halfH;
+        let maxY = centre.y + halfH;
+        _.each(HexMap,hex => {
+            if (hex.centre.x < minX || hex.centre.x > maxX || hex.centre.y < minY || hex.centre.y > maxY) {
+                hex.terrain = "Offboard";
+                hex.offboard = true;
+            }
+        })
+    }
+
+
+
+
+
+
+
+    const TokensInArea = (type,areas) => {
+        //find all tokens of a type in an array of areas
+        //send back an array of same
+        let array = [];
+        if (Array.isArray(areas) === false) {
+            areas = [areas];
+        }
+        _.each(areas,area => {
+            let zone = MapAreas[area];
+            let tokens = findObjs({_pageid:  Campaign().get("playerpageid") ,_type: "graphic"});
+            _.each(tokens,token => {
+                let name = token.get("name");
+                let x = token.get("left");
+                let y = token.get("top");
+                if (x < zone.vertices[0].x || x > zone.vertices[1].x || y < zone.vertices[0].y || y > zone.vertices[1].y) {
+                    return;
                 };
-            });
-        return args;
-    };
+                log(name)
+                if (areas[0] === "Elite" || areas[0] === "Line" || areas[0] === "Green") {
+                    name = name.split(" ");
+                    if (type === "Axis" && Axis.includes(name[0])) {
+                        array.push(name);
+                    } else if (type !== "Axis" && Axis.includes(name[0]) === false) {
+                        array.push(name);
+                    }
+                }
+                if (type === "fate") {
+                    array.push(name);
+                }
+                if (type === "casualty") {
+                    array.push(name);
+                }
+            })
+        })
+        return array;
+    }
+
+    const Event = (msg) => {
+        let type = msg.content.split(";")[1];
+        let playerID = msg.playerid;
+        let side = state.CC.players[playerID];
+        if (!side) {return};
+        let player = (side === "Axis") ? 0:1;
+        let nation = state.CC.nations[player];
+        let area = side + " " + type;
+
+        RemoveLines();
+
+        let location = DeepCopy(MapAreas[area].centre);
+        let deckName = nation + " Fate Deck";
+        let deckID = DeckInfo[deckName].id;
+        let cardID = drawCard(deckID);
+        if (cardID === false || !cardID) {
+            //empty deck
+            AdvanceTime(player);
+            cardID = drawCard(deckID);
+        }
+        currentPlayer = player;
+
+        let card = MasterCardList[cardID];
+        playCardToTable(cardID, {left: location.x, top: location.y, width: 250, height: 350});
+        currentCardIDs.push(cardID);
+
+        if (type === "Event") {
+            let eventName = card.event;
+            let eventText = EventInfo[eventName];
+            SetupCard(eventName,"",nation);
+            outputCard.body.push(eventText);
+            triggerFlag = false;
+            PrintCard();
+            if (eventName === "Mission Objective") {
+                EventObjective("Mission",currentPlayer);
+            }
+            if (eventName === "Strategic Objective") {
+                EventObjective("Strategic");
+            }
+
+        } else if (type === "Roll") {
+            let whiteRoll = parseInt(card.whiteRoll);
+            let redRoll = parseInt(card.redRoll);
+            let totalRoll = whiteRoll + redRoll;
+            if (fireFlag === true) {
+                PlaySound("Small Arms");
+                fireFlag = false;
+            }
+            SetupCard("Roll","",nation);
+            //replace with graphics of dice as white or red
+            let white = DisplayDice(whiteRoll,"White",36);
+            let red = DisplayDice(redRoll,"Red",36);
+            outputCard.body.push(white + "  +  " + red);
+            outputCard.body.push("Total: " + totalRoll);
+            if (card.trigger !== false && triggerFlag === false) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push("Trigger Possible");
+                PrintCard();
+                Trigger(card.trigger,player);
+            } else {
+                triggerFlag = false;
+                PrintCard();
+            }
+        } else if (type === "Hex") {
+            let hex = card.hex;
+            SetupCard(hex,"",nation);
+            outputCard.body.push("Check Broken Weapons Also");
+            triggerFlag = false;
+            PrintCard();
+        }
+
+    }
+
+    const EventObjective = (type,player) => {
+        let rnd = state.CC.objectivesInPlay.length - 1;
+        let obj = state.CC.objectivesInPlay[rnd];
+        state.CC.objectivesInPlay.splice(rnd,1);
+        if (type === "Mission") {
+            AddObjective("Hidden",obj,player);
+        } else if (type === "Strategic") {
+            AddObjective("Open",obj);
+        }
+    }
+
+
+
+    const Trigger = (type,player) => {
+        PlaySound("Chime");
+        triggerFlag = true;
+        let nation = state.CC.nations[player];
+        SetupCard(type,"Trigger",nation);
+        if (type === "Event") {
+            outputCard.body.push("Draw an Event and resolve before resolving the Dice Roll");
+        } else if (type === "Jammed") {
+            outputCard.body.push("If the Roll is for an attack, all weapons are Jammed");
+        } else if (type === "Sniper") {
+            outputCard.body.push("Draw a Random Hex for the effect");
+        } else if (type === "Time") {
+            outputCard.body.push("Play stops temporarily while Time Advances");
+            AdvanceTime(player,true);
+        }
+        if (type !== "Time") {
+            outputCard.body.push("Resolve the previous roll once " + type + " Trigger Done");
+            PrintCard();
+        }    
+    }
+
+
+    const Order = () => {
+        RemoveLines();
+        let cardID = playedCardInfo.id;
+        currentCardIDs.push(cardID);
+        let nation = playedCardInfo.nation;
+        let side = (Axis.includes(nation)) ? "Axis":"Allies";
+        let player = (side === "Axis") ? 0:1;        
+        let type = playedCardInfo.type;
+        //'register' it so only displays once
+        let card = MasterCardList[cardID];
+        
+        if (type === "Order") {
+            let subtitle;
+            if (activePlayer === -1) {
+                activePlayer = player; //beg of game
+            }
+            if (player === activePlayer) {
+                orderNumber[player]++
+                subtitle = "Order #:" + orderNumber[player];
+            } else {
+                subtitle = "OP Fire";
+            }
+            let order = card.order;
+            SetupCard(order,subtitle,nation);
+            if (order === "Fire") {
+                fireFlag = true;
+            }
+        } else if (type === "Action") {
+            let action = card.action;
+            SetupCard(action,"Action",nation);
+            outputCard.body.push(ActionInfo[action]);
+        }
+        PrintCard();
+        triggerFlag = false;
+    }
+
+
+    const AddMarker = (msg) => {
+        let id = msg.selected[0]._id;
+        let type = msg.content.split(";")[1];
+        let token = findObjs({_type:"graphic", id: id})[0];
+        let charID,img;
+        if (type === "Veteran") {
+            charID = "-OSevl13S7Q6iSaFbutR";
+        } else if (type === "Suppress") {
+            charID = "-OSew5Cn6ReQ0Arco_HQ";
+        }
+        let char = getObj("character", charID);
+        let tokenID = summonToken(char,token.get("left") - 15,token.get('top') - 15,0,40);
+        if (tokenID) {
+            token = findObjs({_type:"graphic", id: tokenID})[0];
+            toFront(token);
+        }
+    }
+
+    const PlaceSmoke = (msg) => {
+        let id = msg.selected[0]._id;
+        let playerID = msg.playerid;
+        let side = state.CC.players[playerID];
+
+        let token = findObjs({_type:"graphic", id: id})[0];
+        let roll = randomInteger(50);
+        let level;
+        if (roll <= 30) {
+            level = Math.ceil(roll/6);
+        } else if (roll > 30) {
+            roll -= 30;
+            level = Math.ceil(roll/4) + 5;
+        }
+        let charName = "Smoke " + level;
+        let character = findObjs({_type: "character", name: charName})[0];
+        summonToken(character,token.get('left'),token.get("top"),0,160);
+        let smokeAreaName = side + " Smoke";
+        let zone = MapAreas[smokeAreaName];
+        token.set({
+            left: zone.centre.x,
+            top: zone.centre.y,
+        })
+       let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "objects",});
+        _.each(tokens,token => {
+            if (token.get("name").includes("Smoke")) {
+                token.set("disableSnapping",false);
+                toBack(token);
+            }
+        })
+    }
+
+
+
+
+
+    const Deploy = (msg) => {
+        let id = msg.selected[0]._id;
+        let mode = msg.content.split(";")[1]; 
+        let token = findObjs({_type:"graphic", id: id})[0];
+        let charID = token.get("represents");
+        let char = getObj("character", charID);
+        let name = char.get("name");
+        let nation = name.split(" ")[0];
+        let side = (Axis.includes(nation)) ? "Axis":"Allies";
+        let player = (side === "Axis") ? 0:1;
+        let type = state.CC.forceType[player]; //green, line, elite
+        let teamName = nation + " " + type + " Team";
+        let teamChar = findObjs({_type: "character", name: teamName})[0];
+        let currentSide = token.get('currentSide');
+        let number = (mode === "Deploy") ? 2:1;
+        let left = token.get("left");
+        let top = token.get('top');
+        for (let i=0;i<number;i++) {
+            if (i===1) {
+                let pt = new Point(left,top);
+                let cube = pt.toCube();
+                let hex = HexMap[cube.label()];
+                left = (2 * hex.centre.x) - left;
+                top = (2 * hex.centre.y) - top;
+                if (left === hex.centre.x && top === hex.centre.y) {
+                    left -= 50;
+                    top -= 50;
+                }
+            }
+            summonToken(teamChar,left,top,currentSide);
+        }
     
-    ////////////////////////////////////////////////////////////////////////////////////////
-    //          PRIMARY MESSAGE HANDLER
-    ////////////////////////////////////////////////////////////////////////////////////////
-    const handleInput = function(msg) {
-        try {
-            if(msg.type=="api" && msg.content.indexOf("!Spawn") === 0 ) {
-                whoDat = getObj('player',msg.playerid).get('_displayname');
-                //only a valid call if token(s) have been selected, or if the api was called from the script-generated chat button using the "memento" registry
-                if (msg.selected === undefined && msg.content.indexOf("memento") === -1 ) {
-                    sendChat('SpawnAPI',`/w "${whoDat}" `+ 'You must select a token to proceed');
+        token.remove();
+        SetupCard(mode,"",nation);
+        if (mode === "Deploy") {
+            outputCard.body.push("Any Markers such as Weapons, Suppressed or Veteran are allocated to one team");
+        } else {
+            outputCard.body.push("1 VP Is awarded to the other player");
+        }
+        PrintCard();
+
+
+    }
+
+	summonToken = function(character,left,top,currentSide,size){
+        if (!currentSide) {currentSide = 0};
+        if (!size) {size = 70};
+		character.get('defaulttoken',function(defaulttoken){
+		    const dt = JSON.parse(defaulttoken);
+            let img;
+            if (dt.sides) {
+                sides = dt.sides.split("|")
+                img = sides[currentSide] || dt.imgsrc;
+            } else {
+                img = dt.imgsrc;
+            }
+            img = tokenImage(img);
+			if(dt && img){
+				dt.imgsrc=img;
+				dt.left=left;
+				dt.top=top;
+				dt.pageid = pageInfo.page.get('id');
+                dt.layer = "objects";
+                dt.width = size;
+                dt.height = size;
+                dt.currentSide = currentSide;
+                log(dt)
+                let newToken = createObj("graphic", dt);
+                newToken.set({
+                    disableSnapping: true,
+                    disableTokenMenu: true,
+                })
+                return newToken.get("id");
+			} else {
+				sendChat('','/w gm Cannot create token for <b>'+character.get('name')+'</b>');
+			}
+		});
+	};
+
+
+    const TokenInfo = (msg) => {
+        let id = msg.selected[0]._id;
+        let token = findObjs({_type:"graphic", id: id})[0];
+        log(token)
+
+
+    }
+
+
+    const Flip = (msg) => {
+        let id = msg.selected[0]._id;
+        let token = findObjs({_type:"graphic", id: id})[0];
+        let currentSide = token.get('currentSide');
+        let tsides = token.get("sides");
+        tsides = tsides.split("|");
+        let sides = [];
+        _.each(tsides,tside => {
+            if (tside) {
+                let side = tokenImage(tside);
+                sides.push(side);
+            }
+        })        
+        newSide = (currentSide === 0) ? 1:0;
+        token.set({
+            currentSide: newSide,
+            imgsrc: sides[newSide],
+        })
+    }
+
+    const BuildDecks = () => {
+        DeckInfo = {};
+        PlayerHands = {};
+        MasterCardList = {};
+        let decks = findObjs({_type: "deck"});
+        let hands = findObjs({_type: "hand"});
+
+        log(decks)
+
+        _.each(decks,deck => {
+            let deckID = deck.get("id");
+            let deckName = deck.get("name");
+            if (deckName !== "Playing Cards") {
+                let cardIDs = deck.get("currentDeck").split(",");
+                let cards = {};
+                let nation,side,ci;
+                _.each(cardIDs,cardID => {
+                    let card = findObjs({_type: "card", id:cardID})[0];
+                    let cardName = card.get("name") || "Unknown";
+                    cards[cardID] = cardName;
+                    if (deckName.includes("German")) {
+                        ci = GermanFate[cardName];
+                        nation = "German";
+                        side = "Axis";
+                    } else if (deckName.includes("Soviet")) {
+                        ci = SovietFate[cardName];
+                        nation = "Soviet";
+                        side = "Allies";
+                    }
+
+
+            if (!ci) {
+                ci = {'order': 'Nil','action': 'Nil','event': 'Nil','hex': 'Nil','totalRoll': 12,'whiteRoll': 6,'redRoll': 6,'trigger': false,}
+            }
+
+                    MasterCardList[cardID] = {
+                        deckID: deckID,
+                        deckName: deckName,
+                        nation: nation,
+                        side: side,
+                        name: cardName,
+                        id: cardID,
+                        order: ci.order,
+                        action: ci.action,
+                        event: ci.event,
+                        hex: ci.hex,
+                        totalRoll: ci.totalRoll,
+                        whiteRoll: ci.whiteRoll,
+                        redRoll: ci.redRoll,
+                        trigger: ci.trigger,
+                    };
+
+                    MCList2[cardName] = cardID;
+                })
+                DeckInfo[deckName] = {
+                    name: deckName,
+                    id: deckID,
+                    cards: cards,
+                }
+
+
+
+            }
+        })
+        _.each(hands,hand => {
+            let handID = hand.get("id");
+            let playerID = hand.get("parentid");
+            PlayerHands[playerID] = handID;
+        })
+
+
+
+    }
+
+
+    const DrawCard = (msg) => {
+        let playerID = msg.playerid;
+        let deckType = msg.content.split(";")[1];
+        let side = state.CC.players[playerID];
+        let deckName = side + " " + deckType;
+        DrawCard2(playerID,deckName);
+    }
+
+    const DrawCard2 = (playerID,deckName) => {
+        let deck = DeckInfo[deckName];  
+        let cardID = drawCard(deck.id);
+        log(cardID)
+        if (cardID === false) {
+            return false;
+        }
+        giveCardToPlayer(cardID, playerID);
+        return true;
+    }
+
+    const DrawCards = (playerID) => {
+        //draw cards to hand size
+        let side = state.CC.players[playerID];
+        let player = (side === "Axis") ? 0:1;
+        let handSize = state.CC.handSize[player];
+        let handID = PlayerHands[playerID];
+        let hand = findObjs({_type: "hand",id: handID})[0];
+        hand = hand.get("currentHand").split(",");
+        let number = 0;
+        _.each(hand,card => {
+            if (card !== "") {number++};
+        })
+        let deckName = state.CC.nations[player] + " Fate Deck";
+        let drawNumber = handSize - number;
+        let cardsLeft = state.CC.cards[player] - drawNumber;
+        if (cardsLeft < 0) {
+            cardsLeft = 72 + cardsLeft;
+        }
+        state.CC.cards[player] = cardsLeft;
+        for (let i=0;i<drawNumber;i++) {
+            let result = DrawCard2(playerID,deckName);
+            if (result === false) {
+                //deck empty, move to approp function
+                SetupCard("Empty Deck","",state.CC.nations[player]);
+                PrintCard();
+                AdvanceTime(player);
+                DrawCard2(playerID,deckName);
+            }
+        }
+    }
+
+    const Objectives = (msg) => {
+        //!Objectives;?{Objective|1|2|3|4|5};?{Owner|Neutral|German|Soviet|US}
+        let Tag = msg.content.split(";");
+        let objNum = parseInt(Tag[1]) - 1;
+        let nation = Tag[2];
+        let img = Nations[nation].objectiveImages[objNum];
+        if (img) {
+            img = getCleanImgSrc(img);
+        }
+        let objID = objectiveInfo[objNum];
+        if (img && objID) {
+            let obj = findObjs({_type:"graphic", id: objID})[0];
+            if (obj) {
+                 obj.set({
+                    imgsrc: img,
+                })
+            }
+        }
+    }
+
+
+    const AdvanceTime = (player,trigger) => {
+        if (!trigger) {trigger = false};
+        PlaySound("Trumpet");
+        let nation = state.CC.nations[player]
+        let opponent = (player === 0) ? 1:0;
+        if (trigger === false) {
+            SetupCard("Advance Time","",nation);
+        }
+        outputCard.body.push("Advance the Time Marker");
+        outputCard.body.push("The " + nation + " Player's's deck is shuffled");
+        //get current hand
+        let playerID = state.CC.playerIDs[player];
+        let deckID = state.CC.fateDeckIDs[player];
+        let handID = PlayerHands[playerID];
+        let hand = findObjs({_type: "hand",id: handID})[0];
+        hand = hand.get("currentHand").split(",");
+        recallCards(deckID);
+        shuffleDeck(deckID);
+        //deal hand back
+        _.each(hand,cardID => {
+            giveCardToPlayer(cardID,playerID);
+        })
+
+        outputCard.body.push("The " + nation + " Player should then Roll for Sudden Death if appropriate");
+        outputCard.body.push("Rolling less than Current Time = Game Ends");
+        if (state.CC.stance[opponent] === "Defender") {
+            outputCard.body.push("The " + state.CC.nations[opponent] + " player gets 1 VP");
+        }
+        outputCard.body.push("The " + nation + " Player must remove any 1 Smoke Marker");
+        outputCard.body.push("Bring in any Reinforcements on the Time Track");
+        outputCard.body.push("Both Player may play Dig In Actions");
+        if (trigger === true) {
+            state.CC.cards[player] = 72 - hand.length;
+            outputCard.body.push("[hr]");
+            outputCard.body.push("Resolve the previous roll once Time Trigger Done");
+        }
+        PrintCard();
+        triggerFlag = true;
+    }
+
+    const Setup = (msg) => {
+        //!Setup;?{Scenario|0}
+        let scenario = parseInt(msg.content.split(";")[1]);
+        let nations = ["German","Soviet"]
+        let removeObjectives = [];
+        let secretObjectives = [["Random"],["Random"]];
+        let openObjectives = ["Random"];
+        let objectiveOwner = {1: "Neutral",2: "Neutral",3:"Neutral",4:"Neutral",5:"Neutral"};
+        let sh = [[],[]]; //cards that start in players hand
+        let scenarioName;
+
+        switch(scenario) {
+            case 0: 
+                scenarioName = "Training Day";
+                nations[1] = "American"
+                removeObjectives = ["R","W","X"];
+                openObjectives = ["J"];
+                break;
+            case 1:
+                scenarioName = "Fat Lipki";
+                break;
+            case 2: 
+                scenarioName = "Hedgerows and Hand Grenades"
+                nations[1] = "American"
+                openObjectives = ["T"];
+                objectiveOwner = {1:"German",2:"German",3:"German",4:"German",5:"German"};
+                break;
+            case 3:
+                scenarioName = "Bonfire of the NKVD"
+                openObjectives = ["Q","R","S"];
+                secretObjectives = [[],[]];
+                removeObjectives = ["V","W",'X'];
+                objectiveOwner = {1:"Soviet",2:"Soviet",3:"Soviet",4:"Soviet",5:"Soviet"};
+                sh = [["G-65"],[]];
+                break;
+            case 4: 
+                scenarioName = "Closed for Renovation"
+                nations[1] = "American"
+                openObjectives = ["Q","R"];
+                secretObjectives = [[],[]];
+                objectiveOwner = {1:"German",2:"German",3:"German",4:"German",5:"German"};
+                break;
+            case 5: 
+                scenarioName = "Cold Front";
+                openObjectives = ["W"];
+                secretObjectives = [[],[]];
+                removeObjectives = ["R","V",'X'];
+                objectiveOwner = {1:"German",2:"German",3:"German",4:"German",5:"German"};
+                break;
+            case 6:
+                scenarioName = "Paralyzed";
+                nation[1] = "American"
+                openObjectives = ["V","X"];
+                secretObjectives = [[],["Random"]];
+                removeObjectives = ["W"];
+                objectiveOwner = {1:"German",2:"German",3:"German",4:"German",5:"German"};
+                break;
+            case 7: 
+                scenarioName = "Bessarabian Nights";
+                openObjectives = ["V","X"];
+                removeObjectives = ["R","W"];
+                sh = [[],["S-31"]];
+                break;
+            case 8: 
+                scenarioName = "Breakout Dance";
+                openObjectives = ["W"];
+                secretObjectives = [[],[]];
+                objectiveOwner = {1:"Soviet",2:"German",3:"German",4:"Soviet",5:"German"};
+                break;
+            case 10: 
+                scenarioName = "Commando School";
+                openObjectives = ["W"];
+                objectiveOwner = {1:"Soviet",2:"German",3:"Soviet",4:"German",5:"Soviet"};
+                break;
+
+
+
+
+        }
+        
+        state.CC.nations = nations;
+        state.CC.scenarioName = scenarioName;
+
+        //set objective markers to owner
+        for (let i=0;i<5;i++) {
+            let owner = objectiveOwner[i+1];
+            let objImg = getCleanImgSrc(Nations[owner].objectiveImages[i]);
+            let objID = objectiveInfo[i].tokenID;
+            if (objImg && objID) {
+                let obj = findObjs({_type:"graphic", id: objID})[0];
+                if (obj) {
+                    obj.set({
+                        imgsrc: objImg,
+                    })
+                }
+            }
+        }
+        //remove objetives from 'cup'
+        _.each(removeObjectives,obj => {
+            let index = state.CC.objectivesInPlay.indexOf(obj);
+            if (index > -1) {
+                state.CC.objectivesInPlay.splice(index,1);
+            }
+        })
+        sendChat("","Objectives Placed - " + scenarioName);
+        //place open objectives
+        _.each(openObjectives,obj => {
+            if (obj === "Random") {
+                let rnd = randomInteger(state.CC.objectivesInPlay.length) - 1;
+                obj = state.CC.objectivesInPlay[rnd];
+            } 
+            let index = state.CC.objectivesInPlay.indexOf(obj);
+            if (index > -1) {
+                state.CC.objectivesInPlay.splice(index,1);
+            }
+            AddObjective("Open",obj);
+        })
+        if (openObjectives.length > 1) {
+            sendChat("","Spread out the " + openObjectives.length + " Open Objectives");
+        }
+        //place secret Objectives
+        for (let player = 0;player < 2;player++) {
+            _.each(secretObjectives[player],obj => {
+                if (obj === "Random") {
+                    let rnd = randomInteger(state.CC.objectivesInPlay.length) - 1;
+                    obj = state.CC.objectivesInPlay[rnd];
+                }
+                let index = state.CC.objectivesInPlay.indexOf(obj);
+                if (index > -1) {
+                    state.CC.objectivesInPlay.splice(index,1);
+                }
+                state.CC.hiddenObjectives[player].push(obj);
+                AddObjective("Hidden",obj,player);
+            })
+            if (secretObjectives[player].length > 1) {
+                sendChat("","Spread out the " + secretObjectives[player].length + " Secret Objectives");
+            }
+        }
+        let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "objects",});
+        _.each(tokens,token => {
+            if (token.get("name").includes("Chit")) {
+                token.set({
+                    name: "Objective",
+                    represents: "-OT9cfC9c3hSZS24F-rE",
+                })
+            }
+        })
+
+        state.CC.startingHand = [sh[0],sh[1]];
+
+
+
+
+
+
+    }
+
+    const AddObjective = (type,obj,player) => {
+            let objName = "Chit " + obj;
+            let objChar = findObjs({_type: "character", name: objName})[0];
+            let c;
+            if (type === "Open") {
+                side = 1;
+                c = MapAreas["Open"].centre;
+            } else if (type === "Hidden") {
+                side = 0;
+                c = MapAreas["Secret" + player].centre;
+            }
+            summonToken(objChar,c.x,c.y,side);
+    }
+
+
+
+    const DrawLine = (hex1,hex2) => {
+        let x1 = hex1.centre.x;
+        let x2 = hex2.centre.x;
+        let y1 = hex1.centre.y;
+        let y2 = hex2.centre.y;
+
+        let x = (x1+x2)/2;
+        let y = (y1+y2)/2;
+
+        x1 = x - x1;
+        x2 = x - x2;
+        y1 = y - y1;
+        y2 = y - y2;
+
+        let pts = [[x1,y1],[x2,y2]];
+        
+
+        let page = getObj('page',Campaign().get('playerpageid'));
+        let newLine = createObj('pathv2',{
+            layer: "foreground",
+            pageid: page.id,
+            shape: "pol",
+            stroke: '#000000',
+            stroke_width: 3,
+            fill: '#000000',
+            x: x,
+            y: y,
+            points: JSON.stringify(pts),
+        });
+
+        
+    }
+
+    const RemoveLines = () => {
+        let paths = findObjs({_pageid: Campaign().get("playerpageid"),_type: "pathv2",layer: "foreground",});
+        _.each(paths,path => {
+            path.remove();
+        })
+    }
+
+
+
+
+    const PickSides = (msg) => {
+        //!PickSides;?{Side|Axis|Allies}
+        let side = msg.content.split(";")[1];
+        let player = (side === "Axis") ? 0:1;
+        let playerID = msg.playerid;
+
+        let forceType,info;
+        state.CC.players[playerID] = side;
+        state.CC.playerIDs[player] = playerID;
+        let elite = TokensInArea(side,"Elite")[0];
+        let line = TokensInArea(side,"Line")[0];
+        let green = TokensInArea(side,"Green")[0];
+        if (elite) {
+            forceType = "Elite";
+            info = elite;
+        } else if (line) {
+            forceType = "Line";
+            info = line;
+        } else if (green) {
+            forceType = "Green";
+            info = green;
+        } else {
+            sendChat("","Need a " + side + " OB Token in the OB Display Area");
+            return;
+        }
+
+
+        let nation = info[0];
+        let obType = info[2];
+        let stances = {"Recon": 5,"Attack": 6,"Defend": 4};
+        let handSize = stances[obType] || 5;
+        let deckName = nation + " Fate Deck";
+        let deckID = DeckInfo[deckName].id;
+        state.CC.forceType[player] = forceType;
+        state.CC.stance[player] = obType;
+        state.CC.handSize[player] = handSize;
+        state.CC.fateDeckIDs[player] = deckID;
+        SetupCard(side,"",nation);
+        outputCard.body.push(PlayerInfo[playerID] + " will be controlling the " + nation + " Forces.");
+        PrintCard();
+        let startingHand = state.CC.startingHand[player];
+        _.each(startingHand,cardName => {
+            let cardID = MCList2[cardName];
+            let deckID = MasterCardList[cardID].deckID;
+            let card = drawCard(deckID,cardID);
+            if (card) {
+                giveCardToPlayer(cardID,playerID);
+            }
+        })
+        DrawCards(playerID);
+    }   
+
+
+    const ClearState = (msg) => {
+        //rebuild array of card IDs for each deck, will track which ones are played using this
+        //DeckInfo is the master array of full deck
+
+        LoadPage();
+        BuildMap();
+
+        _.each(DeckInfo,info => {
+            let deckID = info.id;
+            recallCards(deckID);
+            sendChat("","Shuffled " + info.name);
+            shuffleDeck(deckID);
+        })
+
+
+
+        state.CC = {
+            playerIDs: ["",""],
+            players: {},
+            nations: ["",""],
+            handSize: [0,0],
+            forceType: ["",""], //green, line, elite
+            stance: ["",""], //attacker, defender, recon
+            fateDeckIDs: ["",""], //ids of deck
+            objectivesInPlay: ["A","B","C","D","E","F","G","H","J","K","L","M","N","P","Q","R","S","T","U","V","W","X"],
+            hiddenObjectives: [[],[]],
+            scenarioName: "",
+            lines: [],
+            cards: [72,72],
+        }
+    
+        for (let i=0;i<5;i++) {
+            let objImg = getCleanImgSrc(Nations["Neutral"].objectiveImages[i]);
+            let objID = objectiveInfo[i].tokenID;
+            if (objImg && objID) {
+                let obj = findObjs({_type:"graphic", id: objID})[0];
+                if (obj) {
+                    obj.set({
+                        imgsrc: objImg,
+                    })
+                }
+            }
+        }
+        let tokens = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "token",layer: "objects",});
+        _.each(tokens,token => {
+            if (token.get("name").includes("Objective")) {
+               token.remove();
+            }
+        })
+
+
+
+
+        sendChat("","Cleared State/Arrays, rebuilt and shuffled Decks");
+    }
+
+    const EndRound = (msg) => {
+        let playerID = msg.playerid;
+        orderNumber[activePlayer] = 0;
+        let opponent = (activePlayer === 0) ? 1:0;
+        ClearCards();
+        DrawCards(playerID);
+        let oppNation = state.CC.nations[opponent];
+        SetupCard(oppNation + " Turn","",oppNation);
+        outputCard.body.push("Axis Cards Remaining: " + state.CC.cards[0]);
+        outputCard.body.push("Allies Cards Remaining: " + state.CC.cards[1]);
+        PrintCard();
+        ObjectiveOwnership();
+        activePlayer = opponent;
+    }
+
+    const ShowHidden = (msg) => {
+        let playerID = msg.playerid;
+        let side = state.CC.players[playerID];
+        let player = (side === "Axis") ? 0:1;
+        let hiddenObjectives = state.CC.hiddenObjectives[player];
+        SetupCard("Hidden Objectives","",state.CC.nations[player]);
+        if (hiddenObjectives.length === 0) {
+            outputCard.body.push("There are none");
+        } else {
+            _.each(hiddenObjectives,obj => {
+                outputCard.body.push("[B]" + obj + "[/b]:" + ObjectiveInfo[obj]);
+            })
+        }
+        PrintCard(playerID);
+    }
+
+    const ObjectiveOwnership = () => {
+
+        for (let i=0;i<5;i++) {
+            let objID = objectiveInfo[i].tokenID;
+            let hexLabel = objectiveInfo[i].hexLabel;
+            _.each(UnitArray,unit => {
+                let hl = unit.hexLabel;
+                if (hl === hexLabel) {
+                    let nation = unit.nation;
+                    let img = getCleanImgSrc(Nations[nation].objectiveImages[i]);
+                    let obj = findObjs({_type:"graphic", id: objID})[0];
+                    if (img && obj) {
+                        obj.set({
+                            imgsrc: img,
+                        })
+                    }
                     return;
                 }
-                
-                ////////////////////////////////////////////////////////////////////////////////////////
-                //  Container for all of the possible relevant parameters, with defaults when available
-                ////////////////////////////////////////////////////////////////////////////////////////
-                    // data object hoisted for use in functions above
-                var data = {
-                    who: whoDat,        //Who called the script
-                    spawnName: "",      //name of the target to spawn
-                    validArgs: "name, qty, targets, placement, force, offset, sheet, ability, side, size, order, light, mook, fx, bar1, bar2, bar3, expand, deleteSource, deleteTarget, resizeSource, resizeTarget, rotation, layer",    //list of valid user commands for error message
-                    qty: 1,             //how many tokens to spawn at each origin
-                    //tokenIDs and objects
-                    originToks: [],     //array of token objects to be used as reference point(s) for spawn location(s). 
-                                            //---(Default will be the selected token, but --numTargets is an optional argument that will spawn from target token(s))
-                    originIDs: [],      //array of originIDs
-                    originToksWidth: [], //used for cases where token is larger size. Will shift spawn location to perimeter
-                    originToksHeight: [], //used for cases where token is larger size. Will shift spawn location to perimeter
-                    selectedToks: [],   //array of the selected tokens
-                    selectedIDs: [],    //the selected tokenID(s)
-                    
-                    //Where the token will spawn -> (pageID, left, top)
-                        //---Defaults to selected token unless supplied by user with @{target|...}
-                        //---May be additionally modified by offset(X,Y)
-                    spawnPageID: "",     //what page to spawn.
-                    spawnX: [],         //spawn coordinates. Array to handle multiple spawns
-                    spawnY: [],         //spawn coordinates. Array to handle multiple spawns
-                    offsetX: 0,         //offset from origin token. (Note: offset is input in SQUARES and converted to pixels)
-                    offsetY: 0,
-                    forceToSquare: false,    //Forces spawn to occur in a full square. If false && origin token is even number of squares, may spawn between squares depending on offset conditions
-                    validPlacements: "stack, row, col/column, surround, grid, burst, cross",    //list of valid placement arguments for error message
-                    placement: "stack", //how to place multiple tokens:
-                                            //'stack'       = tokens stacked on top of each other
-                                            //'row'         = horizontal row of tokens
-                                            //'column/col'  = vertical column of tokens
-                                            //'surround'    = clockwise spiral placement around origin  (ignores offset)
-                                            //'grid #'      = square grid with # cols. Raster left to right
-                                            //'burst #'     = "evenly" distributed diagonal qty, starting at corners and away from origin by #
-                                            //'cross #'     = "evenly" distributed vert/horiz qty, starting directly above origin by # squares
-                    burstRad: 0,        //how far away from origin the burst placement starts
-                    crossRad: 0,        //how far away from origin the cross placement starts
-                    gridCols: 3,        //Only used for grid placement. number of tokens per row 
-                                            
-                    //Spawned token properties
-                    currentSide: -999,  //sets the side of a rollable table token
-                    sizeX: 1,          //sets the size of token (will be converted to pixels based on pege grid size)
-                    sizeY: 1,              //--Defaults to 1x1 square. (NOTE: user inputs in squares and gets converted to pixels)
-                    zOrder: "toFront",  //Default z-order
-                    lightRad: -999,     //Optional change the emitted light characteristics --> light_radius
-                    lightDim: -999,     //Optional change the emitted light characteristics --> light_dimradius
-                    mook: false,        //Will the token use "represents"? If true, will change linked attributes for all associated tokens (e.g. hp)
-                    bar1Val: "",        //bar1 overridevalue 
-                    bar1Max: "",        //bar1_max overridevalue
-                    bar1Link: false,    //Do we retain the bar1 attribute link?
-                    bar2Val: "",        //bar2 overridevalue 
-                    bar2Max: "",        //bar2_max overridevalue
-                    bar2Link: false,    //Do we retain the bar2 attribute link?
-                    bar3Val: "",        //bar3 overridevalue 
-                    bar3Max: "",        //bar3_max overridevalue
-                    bar3Link: false,    //Do we retain the bar3 attribute link?
-                    UDL: false,         //Does the page use UDL?
-                    sheetName: "",          //the char sheet in which to look for the supplied ability, defaults to the sheet tied to the first selected token 
-                    abilityName: "",        //an ability to trigger after spawning
-                    fx: "",                  //fx to trigger at the origin point(s)
-                    expandIterations: 0,    //how many animation frames to use if animated token expansion is called for
-                    expandDelay: 50,         //delay (in ms) between each frame if animated expansion is called for
-                    deleteSource: false,    //deletes the source token upon spawning new token
-                    deleteTarget: false,    //deletes the target token upon spawning new token
-                    resizeSourceX: -999,    //resizes the source token upon spawning new token
-                    resizeSourceY: -999,    //resizes the source token upon spawning new token
-                    resizeTargetX: -999,    //resizes the target token upon spawning new token
-                    resizeTargetY: -999,    //resizes the target token upon spawning new token
-                    resizeSourceIterations: 20,    //how many animation frames to use if animated source token resize is called for
-                    resizeSourceDelay: 50,         //delay (in ms) between each frame if animated source resize is called for
-                    resizeTargetIterations: 20,    //how many animation frames to use if animated target token resize is called for
-                    resizeTargetDelay: 50,         //delay (in ms) between each frame if animated target resize is called for
-                    destroySpawnWhenDone: false,   //delete the spawned token after animation is complete    
-                    angle: 0,                      //change the rotation of the spawned token
-                    userSpecifiedLayer: false,     //flag to determine how spawned token layer is defined
-                    spawnLayer: "objects",         //user can set to "object", "token", "gm", or "map"
-                    isDrawing: false,              //user can set isdrawing property of token 
-                    tokenName: "",                 //optional override for the token name - allows token name to be different than the character name 
-                    tooltip: "",                   //new tooltip token property   
-                    tokenPropValPairs: ""          //array of tokenProp:value pairs
-                };
-                
-                //Parse msg into an array of argument objects [{cmd:params}]
-                        //using helper function because we may have to do it a second time on oldMsg for the --targets case
-                let args = parseArgs(msg);
-                
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                //  Due to a bug in the API, if a @{target|...} is supplied, the API does not acknowledge msg.selected anymore.
-                //      See notes at the top of the script
-                //      This code block handles this "targets" case by creating a chat button to enable both selected(s) and target(s) 
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                
-                //First, see if there was a --targets argument
-                let targ = args.find(c=>'targets' === c.cmd);
-                if (targ) { // USER REQUESTING TARGETS CASE
-                    // if --targets was specified, find the number of targets to get and whisper a button to the caller
-                    let mid = store(msg);
-                    
-                    let splits = targ.params.split(',');
-                    let userText = "";
-                    if (splits.length > 1){          
-                        userText = splits[1].replace(/%comma%/g,",").trim();          	
-                    }
-					let num = parseInt(splits[0])||1;
-                    
-                    sendChat('',`/w "${data.who}" [Select Targets](!Spawn --memento|${mid} --targs|${range(num).map(n=>`&commat;{target|Pick ${n}|token_id}`).join(',')}) ${userText}`);
-                    
-                    
-                } else {    // NO "--TARGETS" IN MESSAGE -- could be an original call or a call from the api-generated chat button
-                    
-                    //CHECK FOR "OLD" MESSAGE -- occurs when user previously requested targets and has clicked the chat button
-                    // see if this is a button call back for getting targets
-                    let marg = args.find(c=>'memento' === c.cmd);
-                    if (marg) {  // TARGETS REQUESTED CASE
-                        let oldMsg = retrieve(parseInt(marg.params));
-                        
-                        // found the old message
-                        if(oldMsg){
-                            //get list of targets
-                            let tsarg = args.find(c=>'targs' === c.cmd);
-                            let targets = tsarg["params"].split(",");
-                            
-                            //reassign args using  the original message
-                            args = parseArgs(oldMsg);
-                            //assign targetIDs to data object (extracted from chat button message)
-                            targets.forEach((targ) => {
-                                data.originIDs.push(targ);
-                            });
-                            
-                            //assign selectedIDs to params (extracted from old message)
-                            oldMsg.selected.forEach((sel) => {
-                                data.selectedIDs.push(sel["_id"]);
-                            });
-                        } 
-                    } else {  // NO OLD MESSAGE -- this is a singular api call, using only "selected" token (no targets)  
-                        //assign selectedIDs to data object directly from the one (and only) call to the script
-                        msg.selected.forEach((sel) => {
-                            data.selectedIDs.push(sel["_id"]);
-                        });
-                    }
-                    
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////
-                    //Ok, now that we've handled all the selected/target unpleasantness, we're ready to start spawning!
-                    ///////////////////////////////////////////////////////////////////////////////////////////////////
-                    let errorMsg = processCommands(data, args) || [];
-                    if (errorMsg.length > 0) {
-                        //Spam the chat with one or more errors (could be multiple due to user input validation checks)
-                        errorMsg.forEach((errMsg) => {
-                            sendChat('SpawnAPI',`/w "${data.who}" `+ errMsg);
-                        });
-                        return;
-                    } 
-                    
-                }
+            })
+        }
+    }
+
+
+    const LOS = (msg) => {
+        RemoveLines();
+        let Tag = msg.content.split(";");
+        let shooterID = Tag[1];
+        let shooter = UnitArray[shooterID];
+        if (!shooter) {return};
+        let shooterHex = HexMap[shooter.hexLabel];
+
+        let targetID = Tag[2];
+        let target = UnitArray[targetID];
+        if (!target) {return};
+        let targetHex = HexMap[target.hexLabel];
+
+
+        let distance = shooterHex.cube.distance(targetHex.cube);
+        let interCubes = shooterHex.cube.linedraw(targetHex.cube);
+
+
+
+        //for segments will need to work out moore math as not centre to centre
+
+
+
+
+        DrawLine(shooterHex,targetHex);   
+        SetupCard("LOS","",shooter.nation);
+        outputCard.body.push("Distance: " + distance + " Hexes [" + distance * 100 + " Feet]");
+        ButtonInfo("Remove Line","!RemoveLines");
+        PrintCard();
+
+
+
+    }
+
+
+
+    const ClearCards = () => {
+        _.each(currentCardIDs,cardID => {
+            let obj = findObjs({_pageid: Campaign().get("playerpageid"),_type: "graphic",_subtype: "card",layer: "objects",cardid: cardID})[0];
+            if (obj) {
+                obj.remove();
+            }
+        })
+        currentCardIDs = [];
+    }
+
+    const EventInfo = {
+        'Shellholes': 'Place Foxholes in a Random Hex',
+        'Booby Trap': 'Place Mines in a Random Hex',
+        'Rubble': 'Place Wire in a Random Hex',
+        'Dust': 'Place Smoke in a Random Hex',
+        'Mission Objective': "One (Secret) Objective was placed in Player's Box",
+        'Strategic Objective': 'One (Open) Objective was placed in the Box',
+        'Medic': 'Rally One Broken Unit',
+        'KIA': 'Eliminate One Broken Unit',
+        'Air Support': 'Determine a Random Hex. You may Break all units in the occupied hex closest to the Random Hex',
+        'Shell Shock': 'Break the Unit Closest to a Random Hex',
+        'Elan': 'Increase your Surrender Level by One',
+        'Breeze 1': "Remove all Smoke Markers, all Blazes Spread in Direction '1'",
+        'Breeze 2': "Remove all Smoke Markers, all Blazes Spread in Direction '2'",
+        'Breeze 3': "Remove all Smoke Markers, all Blazes Spread in Direction '3'",
+        'Breeze 4': "Remove all Smoke Markers, all Blazes Spread in Direction '4'",
+        'Breeze 5': "Remove all Smoke Markers, all Blazes Spread in Direction '5'",
+        'Breeze 6': "Remove all Smoke Markers, all Blazes Spread in Direction '6'",
+        'Blaze': 'Place a Blaze Marker in a Random Hex',
+        'Field Promotion (German)': 'If not already in play, you may place Private Herzog into a Hex containing a Broken German Unit',
+        'Reconnaissance': 'Your Opponent must reveal a Secret Objective',
+        'Deploy': 'You may remove a friendly squad from the map. If you do, replace it with 2 Matching Teams',
+        'Interdiction': 'Suppress One Unit in a Hex with less than 1 Cover',
+        'Sappers': 'You may remove one Mine or Wire Marker',
+        'Battlefield Integrity': "Gain 1 VP for each of your Opponent's Eliminated Units",
+        'Suppressing Fire': 'Suppress One Enemy Unit in a Hex within both Range and LOS of a Friendly Machine Gun',
+        'Command & Control': 'Gain 1 VP for each Objective you control',
+        'Interrogation': "Look at your Opponent's Hand. You may Select one Card there and place it in their discard pile",
+        'Malfunction': 'Break the Unbroken Weapon closest to a random Hex',
+        'Walking Wounded': 'Select One Eliminated Unit. Return that unit to play in or adjacent to a random hex, Broken',
+        'Infiltration': 'Roll on the Support Table. Select an Available Unit then place it in or adjacent to a random Hex',
+        'Reinforcements': 'Roll on the Support Table. Select one unit or radio then place it along your Map Edge',
+        'Scrounge': 'Return an Eliminated Weapon to Play under your control',
+        'Battle Harden': 'One Friendly Unit becomes Veteran',
+        'Cower': "Suppress all Friendly Squads not Currently within a Friendly Leader's Command Radius",
+        'Prisoners of War': 'Eliminate one friendly unit adjacent to an Enemy Unit',
+        'Hero': 'If not already in play, place your armies Hero in a Friendly Hex. Rally up to one Broken Unit there',
+        'Fog of War': 'Each Player discards one card from their hand at random',
+        'Commissar': 'Make a roll for one Broken Soviet Unit. If greater than its current morale, eliminate it, if not, rally it',
+        'Entrench': 'You may place Foxholes in a Friendly Hex',
+        'Field Promotion (Soviet)': 'If not already in play, you may place Private Gelon into a Hex containing a broken Soviet Unit',
+
+    }
+
+    const ActionInfo = {
+        'Assault Fire': 'Make One Fire Attack with Any number of your units/weapons with boxed Firepower that are CURRENTLY activated to move.',
+        'Hand Grenades': 'Add +2 when firing at an adjacent Hex',
+        'Spray Fire': 'Play when making a Fire Attack if all firing pieces have Boxed Range. Target 2 adjacent hexes instead of 1',
+        'Crossfire': 'Add +2 When Firing at a Moving Target',
+        'Concealment': 'Play before making a Defense Roll. Reduce the Fire Attack Total by the Cover in the Targeted Hex',
+        'Hidden Unit': '(Defender Only) Play when your Opponent Discards one or more cards. Roll on your Support Table, slecting one available unit. Place it in a Set-Up Hex with no Units and at least 1 cover',
+        'Hidden Mines': "(Defender Only) Place Mines in a Hex into which a Unit just Moved or Advanced. The Mines attack immediately",
+        'Dig In': 'Play at the End of a Time Marker Advance. Place Foxholes in a Friendly-Occupied Hex',
+        'Hidden Entrenchments': '(Defender Only) Place Foxholes in a non-Building Hex into which your opponent just fired (before Defense Roll)',
+        'Hidden Pillbox': '(Defender Only) If not already in play, place the pillbox in an Objective Hex into which your Opponent just Fired (before Defense Roll)',
+        'Hidden Wire': '(Defender Only) Place Wire into a Hex into which your Opponent just Moved or Advanced',
+        'Bore Sighting': '(Defender Only) Add +2 when Firing any Weapon with a Printed FP of 5 or more',
+        'Sustained Fire': 'Add +2 when Firing a Mortar or Machine Gun. If the Fire Attack roll is "Doubles", break it',
+        'Light Wounds': 'Play when a friendly Squad is about to Break. Replace with a matching Team instead. Lose 1 VP',
+        'Smoke Grenades': 'Place Smoke in or adjacent to a Hex occupied by a friendly unit with Boxed movement that is currently activated to move',
+        'Ambush': 'Play at the Beginning of Melee. Your Opponent must break one of their participating Units',
+        'No Quarter (German)': 'Play when a German Unit survives a Melee vs Soviets. Gain 2 VP',
+        'Demolitions': 'Play when your Opponent discards one or more cards (due to Passing). Select a hex containing a friendly unit. Eliminate a Fortification there.',
+        'Marksmanship': 'Add +2 when firing with a Squad or Team',
+        'No Quarter (Soviet)': 'Play when a Soviet Unit survives a Melee. Gain 2 VP',
+    }
+
+    const ObjectiveInfo = {
+        'A': "Objective 1 = 1 VP",
+        'B': "Objective 2 = 1 VP",
+        'C': "Objective 3 = 1 VP",
+        'D': "Objective 4 = 1 VP",
+        'E': "Objective 5 = 1 VP",
+        'F': "Objective 2 = 2 VP",
+        'G': "Objective 3 = 2 VP",
+        'H': "Objective 4 = 2 VP",
+        'J': "Objective 5 = 2 VP",
+        'K': "Objective 3 = 3 VP",
+        'L': "Objective 4 = 3 VP",
+        'M': "Objective 5 = 3 VP",
+        'N': "Objective 4 = 4 VP",
+        'P': "Objective 5 = 4 VP",
+        'Q': "Objective 5 = 5 VP",
+        'R': "Objective 5 = 10 VP",
+        'S': "Each Objective = 1 VP",
+        'T': "Each Objective = 2 VP",
+        'U': "Each Objective = 3 VP",
+        'V': "Take All Objectives = Sudden Death Win",
+        'W': "Exit points are doubled",
+        'X': "Elimination points are doubled",
+    }
+
+
+
+
+
+    const playedCard = (obj) => {
+        toFront(obj);
+        let cardID = obj.get("cardid"); 
+        let ci = MasterCardList[cardID];
+        log(ci.name + " From " + ci.deckName);
+        obj.set("name",ci.name);
+        let nation = ci.deckName.replace(" Fate Deck","");
+        let side = (Axis.includes(nation)) ? "Axis":"Allies";
+        let x = obj.get("left");
+        let y = obj.get("top");
+        let zones = ["Order","Action"];
+        let flag = (ci.name.includes("Initiative")) ? true:false;
+
+        for (let i=0;i<2;i++) {
+            let type = zones[i];
+            let zone = MapAreas[side + " " + type];
+            if (x >= zone.vertices[0].x && x <= zone.vertices[1].x && y >= zone.    vertices[0].y && y <= zone.vertices[1].y) {
+                PlaceCard2(obj,type); 
+                flag = true;
+                break;
             }
         }
-        catch(err) {
-          sendChat('SpawnAPI',`/w "${data.who}" `+ 'Unhandled exception: ' + err.message);
+        if (flag === false) {
+            SetupCard(ci.name,"",nation);
+            ButtonInfo("Play To?","!PlaceCard;?{Play To|Order|Action|Discard};" + cardID);
+            PrintCard();
+        }
+
+
+
+    }
+
+    const PlaceCard = (msg) => {
+        let Tag = msg.content.split(";");
+        let type = Tag[1];
+        let cardID = Tag[2];
+        let obj = findObjs({_pageid:  Campaign().get("playerpageid"), layer: "objects", cardid: cardID})[0];
+        if (type === "Discard") {
+            obj.remove();
+        } else {          
+            PlaceCard2(obj,type);
+        }
+    }
+
+    const PlaceCard2 = (obj,type) => {
+        let cardID = obj.get("cardid"); 
+        let ci = MasterCardList[cardID];
+        let side = ci.side;
+        let nation = ci.nation;
+        let zone = MapAreas[side + " " + type];
+        obj.set({
+            left: zone.centre.x,
+            top: zone.centre.y,
+        })
+        playedCardInfo = {
+            id: cardID,
+            nation: nation,
+            type: type,
+        }
+        Order();
+    }
+
+    const Casualty = (msg) => {
+        let id = msg.selected[0]._id;
+        let token = findObjs({_type:"graphic", id: id})[0];
+        let charID = token.get("represents");
+        let char = getObj("character", charID);
+        let type = Attribute(char,"type");
+        let side = Attribute(char,"side");
+        let zoneName;
+        if (type === "Weapon") {
+            zoneName = "Weapon Casualty";
+        } else {
+            zoneName = side + " Casualty";
+        }
+        let zone = MapAreas[zoneName];
+        let y = zone.centre.y;
+        let x = zone.vertices[0].x;
+        let casualties = Math.max(0,TokensInArea("casualty",zoneName).length - 1); //-1 for casualty marker
+        x += (casualties * 74) + 40;
+        let tsides = token.get("sides");
+        tsides = tsides.split("|");
+        let sides = [];
+        _.each(tsides,tside => {
+            if (tside) {
+                let side = tokenImage(tside);
+                sides.push(side);
+            }
+        })      
+
+
+        token.set({
+            currentSide: 0,
+            imgsrc: sides[0],
+            left: x,
+            top: y,
+        })
+    }
+
+
+
+
+    const changeGraphic = (obj,prev) => {
+        RemoveLines();
+        let cardID = obj.get("cardid");
+        let ci = MasterCardList[cardID];
+        if (ci && currentCardIDs.includes(cardID) === false) {
+            playedCard(obj);
+        }
+
+        let id = obj.get("id");
+        let unit = UnitArray[id];
+
+        if (unit) {
+            let location = new Point(obj.get("left"),obj.get("top"));
+            let newHexLabel = location.toCube().label();
+            if (newHexLabel !== unit.hexLabel) {
+                let index = HexMap[unit.hexLabel].tokenIDs.indexOf(id);
+                if (index > -1) {
+                    HexMap[unit.hexLabel].tokenIDs.splice(index,1);
+                }
+                HexMap[newHexLabel].tokenIDs.push(id);
+                unit.hexLabel = newHexLabel;
+            }
+        }
+
+
+
+        //fix the token size in case accidentally changed while game running - need check that game is running
+        return
+        if (state.CC.turn === 0) {return};
+        let name = obj.get("name");
+        if (obj.get("width") !== prev.width || obj.get("height") !== prev.height) {
+            obj.set({
+                width: prev.width,
+                height: prev.height,
+            })
+        }
+
+    }
+
+    const addGraphic = (obj) => {
+        log(obj)
+        RemoveLines();
+        let cardID = obj.get("cardid");
+        let ci = MasterCardList[cardID];
+        if (ci && currentCardIDs.includes(cardID) === false) {
+            playedCard(obj);
+        }
+        let id = obj.get("id");
+        if (!UnitArray[id]) {
+            let character = getObj("character", obj.get("represents"));      
+            if (character) {
+                let unit = new Unit(obj);
+            }
+        }
+
+
+
+
+    }
+    
+    const destroyGraphic = (obj) => {
+        let name = obj.get("name");
+        log(name + " Destroyed")
+
+
+    }
+
+
+    const Align = () => {
+        let mapWidth, trackerHeight, mapHeight, colour;
+        let objs = findObjs({_pageid:  Campaign().get("playerpageid") ,_type: "graphic"});
+
+        _.each(objs,obj => {
+            let w = obj.get("width");
+            let h = obj.get("height");
+            if (obj.get("name") === "Map") {
+                obj.set({
+                    left: w/2,
+                    top: pageInfo.height/2,
+                })
+                mapWidth = w;
+                mapHeight = h;
+            }
+            if (obj.get("name") === "Trackers") {
+                let x = (pageInfo.width - mapWidth)/2 + mapWidth;
+                obj.set({
+                    left: x,
+                    top: pageInfo.height/2,
+                })
+                trackerHeight = h;
+            }
+        })
+
+        //Boxes for Radios
+        let rx = mapWidth - 100;
+        let rdy = Math.round((pageInfo.height - mapHeight)/4);
+        let rys = [pageInfo.height - rdy,rdy];
+        let boxColours = [["#000000","#36454f","#301934","#343434","#1b1212","#28282b"],["#008000","#355e3b","#40826d","#228b22","#4f7942","#023020"]];
+
+
+        for (let i=0;i<rys.length;i++) {
+            colour = boxColours[i][0];
+            let ry = rys[i];
+            createObj('pathv2',{
+                layer: "map",
+                pageid: pageInfo.page.id,
+                shape: "rec",
+                stroke: colour,
+                stroke_width: 3,
+                fill: 'transparent',
+                x: rx,
+                y: ry,
+                points: "[[0,0],[100,100]]"
+            });
+        
+            createObj('text',{
+                layer: "map",
+                pageid: pageInfo.page.id,
+                color: colour,
+                font_size: 28,
+                fill: 'transparent',
+                left: rx,
+                top: ry,
+                text: "Radio",
+                font_family: "Arial",
+            });
+        }
+
+        //Boxes for Cards
+        let gapX = Math.round((pageInfo.width - mapWidth - (5 * 250))/6);
+
+        let x = gapX + mapWidth + 125;
+        
+       let gapY = Math.round(((pageInfo.height - trackerHeight)/2 - 350)/2);
+
+        let y2 = [(pageInfo.height + trackerHeight)/2 + gapY + 175,(pageInfo.height - trackerHeight)/2 - gapY - 175];
+
+
+        let names = ["Order","Action","Event","Hex","Dice"];
+        for (let i=0;i<5;i++) {
+            for (let j=0;j<2;j++) {
+                let y = y2[j];
+                colour = boxColours[j][i+1];
+                let cX = x + i*(gapX+250);
+                createObj('pathv2',{
+                    layer: "map",
+                    pageid: pageInfo.page.id,
+                    shape: "rec",
+                    stroke: colour,
+                    stroke_width: 3,
+                    fill: 'transparent',
+                    x: cX,
+                    y: y,
+                    points: "[[0,0],[250,350]]"
+                });
+            
+                createObj('text',{
+                    layer: "map",
+                    pageid: pageInfo.page.id,
+                    color: colour,
+                    font_size: 56,
+                    fill: 'transparent',
+                    left: cX,
+                    top: y,
+                    text: names[i],
+                    font_family: "Arial",
+                });
+            }    
+        }
+    }
+
+
+
+
+
+
+
+    const handleInput = (msg) => {
+        if (msg.type !== "api") {
+            return;
+        }
+        let args = msg.content.split(";");
+        log(args);
+    
+        switch(args[0]) {
+            case '!Dump':
+                log(MasterCardList)
+                log("State");
+                log(state.CC);
+                log("Deck Info");
+                log(DeckInfo);
+                log("Map Areas");
+                log(MapAreas);
+                log("Player Hands");
+                log(PlayerHands);
+                log("Units");
+                log(UnitArray)
+                log("Objective Info")
+                log(objectiveInfo)
+                break;
+            case '!ClearState':
+                ClearState(msg);
+                break;
+            case '!EndRound':
+                EndRound(msg);
+                break;
+            case '!Flip':
+                Flip(msg);
+                break;
+            case '!PickSides':
+                PickSides(msg);
+                break;
+            case '!Event':
+                Event(msg);
+                break;
+            case '!Objectives':
+                Objectives(msg);
+                break;
+            case '!AddAbilities':
+                AddAbilities(msg);
+                break;
+            case '!AddMarker':
+                AddMarker(msg);
+                break;
+            case '!Deploy':
+                Deploy(msg);
+                break;
+            case '!TokenInfo':
+                TokenInfo(msg);
+                break;
+            case '!AdvanceTime':
+                AdvanceTime(currentPlayer);
+                break;
+            case '!Setup':
+                Setup(msg);
+                break;
+            case '!ShowHidden':
+                ShowHidden(msg);
+                break;
+            case '!PlaceSmoke':
+                PlaceSmoke(msg);
+                break;
+            case '!PlaceCard':
+                PlaceCard(msg);
+                break;
+            case '!LOS':
+                LOS(msg);
+                break;
+            case '!RemoveLines':
+                RemoveLines();
+                break;
+            case '!Casualty':
+                Casualty(msg);
+                break;
         }
     };
-    
-    const registerEventHandlers = function() {
+
+
+
+
+    const registerEventHandlers = () => {
         on('chat:message', handleInput);
+        on("add:graphic", addGraphic);
+        on('change:graphic',changeGraphic);
+        on('destroy:graphic',destroyGraphic);
+    };
+    on('ready', () => {
+        log("===> Combat Commander <===");
+        log("===> Software Version: " + version + " <===")
+        LoadPage();
+        PlayerIDs();
+        DefineHexInfo();
+        BuildMap();
+        BuildDecks(); //the master array of id and names
+        registerEventHandlers();
+        sendChat("","API Ready")
+        log("On Ready Done")
+    });
+    return {
+        // Public interface here
     };
 
-    on("ready",() => {
-        checkInstall();
-        registerEventHandlers();
-    });
+
+
+
+
+
 })();
-{ try { throw new Error(''); } catch (e) { API_Meta.Spawn.lineCount = (parseInt(e.stack.split(/\n/)[1].replace(/^.*:(\d+):.*$/, '$1'), 10) - API_Meta.Spawn.offset); } }

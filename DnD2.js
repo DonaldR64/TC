@@ -2734,6 +2734,10 @@ log(rollResults)
     const Compress = (msg) => {
         if (!msg.selected) {return};
         let id = msg.selected[0]._id;
+        Compress2(id);
+    }
+
+    const Compress2 = (id) => {
         let model = ModelArray[id];
         let tokenSize = model.token.get("width");
         dis = false;
@@ -2746,137 +2750,10 @@ log(rollResults)
         model.token.set({
             width: tokenSize,
             height: tokenSize,
+            left: model.token.get("left") + 35,
+            top: model.token.get("top") + 35,
         });
         model.token.set("status_Minus::2006420",dis);
-    }
-
-    const WildShape = (msg) => {
-        let id = msg.selected[0]._id;
-        let model = ModelArray[id];
-        let Tag = msg.content.split(";");
-        let cName = Tag[1];
-        let shape = Tag[2];
-        let shapes = {
-        "Haevan": 
-            {
-                "Human": {
-                    cID: "-Ody8dmoHKTxM6niN9LG",
-                    img: "https://files.d20.io/images/463992132/4sKX1Ac0NcxdpxAX9018ng/thumb.png?1763068152",
-                    bar1: "-OdyYc7uqKpGg597yvCO",
-                    size: 1,
-                },
-                "Brown Bear": {
-                    cID: "-Odyv5HzmAOpBiY_xqLO",
-                    img: "https://files.d20.io/images/463990089/Iqk-2aGyGG0vePsk4grc3w/thumb.png?1763066944",
-                    bar1: "-OdyvFotPve1EeYo5MkH",
-                    size: 2,
-                    hp: 34,
-                },
-                "Dire Wolf": {
-                    cID: "-OdyaMtaDE-mfvTYRU-r",
-                    img: "https://files.d20.io/images/464891291/fS-Ml9i2lwAka5on3lcqZQ/thumb.png?1763664881", 
-                    bar1: "-OdyaNgSlFfkYRS5u2_4",
-                    size: 2,     
-                    hp: 37,     
-                }
-            },
-        
-
-        }
-
-        SetupCard(model.name,"Wild Shape",model.displayScheme);
-        if (!shapes[cName][shape]) {
-            outputCard.body.push("Shape not yet in Array");
-            PrintCard();
-            return;
-        }
-        if (model.race.includes(shape.toLowerCase())) {
-            outputCard.body.push("Already in that Form");
-            PrintCard();
-            return;
-        }
-
-
-        let cID = shapes[cName][shape].cID;
-        let img = getCleanImgSrc(shapes[cName][shape].img);
-        let size = shapes[cName][shape].size;
-        let bar1Link = shapes[cName][shape].bar1;
-
-        if (shape !== "Human") {
-            let resource = parseInt(Attribute(cID,"class_resource"));
-            if (resource <= 0) {
-                outputCard.body.push("Unable to Wild Shape");
-                PrintCard();
-                return;
-            }
-        }
-
-        let newChar = getObj("character", cID);
-        if (!newChar)  {
-            sendChat("","No Char")
-            return;
-        }
-
-        let hp,hpMax,ac;
-        if (shape === "Human") {
-            ac = Attribute(cID,"ac");
-            hp = parseInt(state.DnD.wildshape[cName]["hp"]);
-            hpMax = parseInt(state.DnD.wildshape[cName]["hpMax"]);
-        } else {
-            state.DnD.wildshape[cName] = {
-                hp: model.token.get("bar1_value"),
-                hpMax: model.token.get("bar1_max"),
-            }
-            hp = shapes[cName][shape].hp;
-            hpMax = hp;
-            ac = Attribute(cID,"npc_ac");
-        }
-
-        //create token and link
-
-        let newToken = createObj("graphic", {
-            left: model.token.get("left"),
-            top: model.token.get("top"),
-            width: size * 70, 
-            height: size * 70,  
-            name: newChar.get("name"),
-            showname: true,
-            showplayers_name: true,
-            showplayers_bar1: true,
-            pageid: model.token.get("_pageid"),
-            imgsrc: img,
-            layer: "objects",
-            represents: cID,
-            bar1_link: bar1Link,
-            bar2_value: ac,
-            statusmarkers: model.token.get("statusmarkers"),
-            has_bright_light_vision: true,
-        });
-
-        newToken.set({
-            bar1_value: hp,
-            bar1_max: hpMax,
-        })
-        if (model.token.get("status_Minus::2006420") === true && shape === "Human") {
-            newToken.set("status_Minus::2006420",false);
-        }
-
-        toFront(newToken);
-        if (newToken) {
-            let newModel = new Model(newToken);
-        } else {
-            sendChat("","Error in CreateObj")
-        }
-
-        //remove old token/model
-        model.Destroy();
-
-        PlaySound("Roar");
-        outputCard.body.push("Wild Shape to " + shape);
-        PrintCard();
-
-        //use resource
-
     }
 
     const Rename = (msg) => {
@@ -2948,7 +2825,113 @@ log(rollResults)
     }
 
 
+    summonToken = function(cID,left,top,size,hp,pr,markers) {
+        if (!size) {size = 70};
+        if (!hp) {hp = 1};
+        if (!pr) {pr = -1};
+        let character = getObj("character", cID);
+        character.get('defaulttoken',function(defaulttoken){
+            const dt = JSON.parse(defaulttoken);
+            let img = dt.imgsrc;
+            img = tokenImage(img);
+            if(dt && img){
+                dt.imgsrc=img;
+                dt.left=left;
+                dt.top=top;
+                dt.pageid = pageInfo.page.get('id');
+                dt.layer = "objects";
+                dt.width = size;
+                dt.height = size;
+                dt.bar1_value = hp;
+                dt.statusmarkers = markers;
+                let newToken = createObj("graphic", dt);
+                let newModel = new Model(newToken);
+                if (pr > -1) {
+                    turnorder = JSON.parse(Campaign().get("turnorder"));
+                    turnorder.unshift({
+                        _pageid:    newToken.get("_pageid"),
+                        id:         newToken.get("id"),
+                        pr:         pr,
+                    });
+                    //assumes is that players turn, so places this init at start
+                    Campaign().set("turnorder", JSON.stringify(turnorder));
+                }
+                return newToken.get("id");
+            } else {
+                sendChat('','/w gm Cannot create token for <b>'+character.get('name')+'</b>');
+            }
+        });
+    }
 
+    const WildShape2 = (msg) => {
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let cName = Tag[1]; //character shifting FROM
+        let shape = Tag[2]; //Shape Shifting TO
+        let shapes = {
+        "Haevan": 
+            {
+                "Human": {
+                    cID: "-Ody8dmoHKTxM6niN9LG",
+                    size: 70,
+                },
+                "Brown Bear": {
+                    cID: "-Odyv5HzmAOpBiY_xqLO",
+                    size: 140,
+                    hp: 34,
+                },
+                "Dire Wolf": {
+                    cID: "-OdyaMtaDE-mfvTYRU-r",
+                    size: 140,     
+                    hp: 37,
+                }
+            },
+
+        }
+
+        SetupCard(model.name,"Wild Shape",model.displayScheme);
+
+        if (model.race.includes(shape.toLowerCase())) {
+            outputCard.body.push("Already in that Form");
+            PrintCard();
+            return;
+        }
+        if (model.token.get("status_Minus::2006420") === true) {
+            Compress2(id);
+        }
+        let markers = model.token.get("statusmarkers");
+
+
+        let cID = shapes[cName][shape].cID;
+        let size = shapes[cName][shape].size;
+        let hp = shapes[cName][shape].hp;
+        if (shape === "Human") {
+            hp = Attribute(cID,"hp");
+        }
+
+        if (shape !== "Human") {        
+            PlaySound("Growl");
+        }
+
+        let left= Math.max(model.token.get("left") - 35,35*size/70);
+        let top = Math.max(model.token.get("top") - 35,35*size/70);
+        let pr = -1;
+        if (Campaign().get("turnorder")) {
+            turnorder = JSON.parse(Campaign().get("turnorder"));
+            let item = turnorder.filter(obj => obj.id === id)[0];
+            if (item) {
+                pr = item.pr;
+            }
+        }
+
+        let newTokenID = summonToken(cID,left,top,size,hp,pr,markers);
+        outputCard.body.push("Wild Shape to " + shape);
+        PrintCard();
+
+        model.Destroy();
+
+    }
 
 
 
@@ -3039,9 +3022,6 @@ log(rollResults)
             case '!Compress':
                 Compress(msg);
                 break;
-            case '!WildShape':
-                WildShape(msg);
-                break;
             case '!ClearState':
                 ClearState();
                 break;
@@ -3072,7 +3052,9 @@ log(rollResults)
             case '!RebuildSC':
                 RebuildSC();
                 break;
-
+            case '!WildShape2':
+                WildShape2(msg);
+                break;
 
         }
     };
