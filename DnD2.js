@@ -1976,7 +1976,7 @@ log(damageResults)
         if (damageResults.save) {
             saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
         }
-        outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + damageResults.irv);
+        outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
 
         spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
         PlaySound("Smite");
