@@ -278,7 +278,7 @@
             area: 'Square',
             areaEffect: "Damage",
             tempImg: 'https://files.d20.io/images/466342179/VLWwiNSk5g-QKmRkYZ77qA/thumb.png?1764706936',
-            tempSize: 5,
+            tempSize: 10,
             sound: "Beam",
             fx: "glow-holy",
             macro: '!Spell;Moonbeam;%Level%',
