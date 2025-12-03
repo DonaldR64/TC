@@ -1645,7 +1645,7 @@ log(damageResults)
                     saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
                 }
 
-                outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + damageResults.irv);
+                outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
 
 
 
@@ -2085,7 +2085,7 @@ log(damageResults)
             let dc = caster.spellDC;
 
             if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
-                outputCard.body.push("[B]Hit![/b]")
+                outputCard.body.push("[B]" + defender.name +" is Hit![/b]")
                 let rollResults = RollDamage(spell.damage,crit); //total, diceText
     log(rollResults)
                 let damageResults = ApplyDamage(rollResults,dc,defender,spell);
@@ -2102,7 +2102,7 @@ log(damageResults)
                     outputCard.body.push(spell.note);
                 }
             } else {
-                outputCard.body.push("[B]Miss[/b]");
+                outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
             }
             FX(spell.fx,caster,defender);
         }
