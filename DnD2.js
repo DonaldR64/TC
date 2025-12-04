@@ -1336,26 +1336,24 @@ log(PCs)
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
         //replace result if already in turnorder, else add to turnorder
-        let flag = false;
-        _.each(turnorder,item => {
-            if (item.id === id) {
-                item.pr = total;
-                flag = true;
-                return;
-            }
-        })
-        if (flag === false) {
+        let item = turnorder.filter(item => item.id === id);
+        if (!item) {
             turnorder.push({
                 _pageid:    model.token.get("_pageid"),
                 id:         id,
                 pr:         total,
             });
+        } else {
+            item.pr = total;
+//check this replaces
         }
-
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
         PlaySound("Dice")
     }
+
+
+    
 
     const Check = (msg) => {
         let id;
