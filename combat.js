@@ -1,5 +1,3 @@
-//on change turnorder check with this routine
-//start this routine when macro fired also
 
 const StartCombat = () => {
     //api macro feeds in here and starts combat
@@ -29,17 +27,30 @@ const StartCombat = () => {
 
 const Combat = () => {
     if (state.DnD.combatOn === false) {return};
+    //check if stuff from prev. models turn to do - if so do that before advancing
+    if (state.DnD.lastTurnInfo) {
+        DoEndTurnThings(state.DnD.lastTurnInfo);
+        state.DnD.lastTurnInfo = {};
+    }
+    //advance
     turnorder = JSON.parse(Campaign().get("turnorder"));
     let currentTurnItem = turnorder[0];
     let id = currentTurnItem.id;
     let model = ModelArray[id];
     //ping model's token
-    
+    sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
+    SetupCard(model.name,"Turn",model.displayScheme);
+    //check for stuff that happens at start of turn
+    StartTurnThings(model);
+    PrintCard();
+    //check for stuff that happens at end of turn, place into state to come out at next inititiave
+    CheckEndTurnThings(model);
+}
 
 
-
-
-
-
-
+const EndCombat = () => {
+    //also can come here if cancel turn order ???
+    let turnorder = [];
+    Campaign().set("turnorder", JSON.stringify(turnorder));
+    state.DnD.combatOn = false;
 }

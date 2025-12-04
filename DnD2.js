@@ -916,9 +916,8 @@ log(model.name + ": " + id)
 
     const ClearState = () => {
         state.DnD = {
-            wildshape: {},
-
-
+            combatOn: false,
+            lastTurnInfo: {},
         }
         nameArray = {};
     }
