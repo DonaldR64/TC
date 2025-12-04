@@ -285,6 +285,7 @@
             moveEffect: "objects",
             emote: "A silvery beam of pale light shines down in a 5-foot- radius, 40-foot-high cylinder centered on a point within range. This lasts for 1 minute or until Concentration ends. Creatures starting their turn in the Moonbeam take damage. The Caster can move the Beam on each of their turns, 60 feet.",
             charID: '-OfVsgHiqLOZjV357ox_',
+            
         },
 
 
