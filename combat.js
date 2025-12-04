@@ -24,9 +24,8 @@ const StartCombat = () => {
     Combat();
 }
 
-
 const Combat = () => {
-    if (state.DnD.combatOn === false) {return};
+    if (!state.DnD.combatOn || state.DnD.combatOn === false) {return};
     //check if stuff from prev. models turn to do - if so do that before advancing
     if (state.DnD.lastTurnInfo) {
         DoEndTurnThings(state.DnD.lastTurnInfo);
@@ -46,7 +45,6 @@ const Combat = () => {
     //check for stuff that happens at end of turn, place into state to come out at next inititiave
     CheckEndTurnThings(model);
 }
-
 
 const EndCombat = () => {
     //also can come here if cancel turn order ???
