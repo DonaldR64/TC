@@ -85,17 +85,20 @@ const DnD = (() => {
         "Stunned": "Stunned::2006499",
         "Unconscious": "KO::2006544",
         "Dodge": "half-haze",
-        "Protection from Evil and Good": "Shield::2006495",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
+    }
+
+    const SpellMarkers = {
+        "Protection from Evil and Good": "Shield::2006495",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "yellow",
         "Sacred Weapon": "Torch-Light::2006651",
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
         "Mage Armour": "418-MA-Buff::5818082",
+
+
     }
-
-
 
 
 
@@ -358,8 +361,43 @@ const DnD = (() => {
             return weapons;
         }
 
+        CM() {
+            //create a list of any conditions 'on' a token, based on statusmarkers
+            let markers = this.token.get("statusmarkers");
+            markers = markers.split(",");
+            let sm = [];
+            let keys = Object.keys(ConditionMarkers);
+            for (let i=0;i<markers.length;i++) {
+                let marker = markers[i];
+                for (let j=0;j<keys.length;j++) {
+                    if (ConditionMarkers[keys[j]] === marker) {
+                        sm.push(keys[j]);
+                        break;
+                    }
+                }
+            }
+            sm = sm.toString() || " ";
+            return sm;
+        }
 
-
+        SM() {
+            //create a list of any spells 'on' a token, based on statusmarkers
+            let markers = this.token.get("statusmarkers");
+            markers = markers.split(",");
+            let sm = [];
+            let keys = Object.keys(SpellMarkers);
+            for (let i=0;i<markers.length;i++) {
+                let marker = markers[i];
+                for (let j=0;j<keys.length;j++) {
+                    if (SpellMarkers[keys[j]] === marker) {
+                        sm.push(keys[j]);
+                        break;
+                    }
+                }
+            }
+            sm = sm.toString() || " ";
+            return sm;
+        }
 
 
 
@@ -1137,23 +1175,9 @@ log(defender.vulnerabilities)
         
     }
 
-    const Markers = (initial) => {
-        initial = initial.split(",");
-log(initial)
-        let sm = [];
-        let keys = Object.keys(ConditionMarkers);
-        for (let i=0;i<initial.length;i++) {
-            let cond = initial[i];
-            for (let j=0;j<keys.length;j++) {
-                if (ConditionMarkers[keys[j]] === cond) {
-                    sm.push(keys[j]);
-                    break;
-                }
-            }
-        }
-        sm = sm.toString() || " ";
-        return sm;
-    }
+
+
+
 
 
     const TokenInfo = (msg) => {
@@ -1187,11 +1211,12 @@ log(PCs)
         let otherBonus = 0;
         let saveTotal,saveTip,bonusText, otherBonusText;
 
-        let sm = Markers(model.token.get("statusmarkers"));
+        let sm = model.SM();
+        let cm = mode.CM();
         let inc = ["Paralyzed","Stunned","Unconscious","incapacitated"];
         if (stat === "strength" || stat === "dexterity") {
             _.each(inc,c => {
-                if (sm.includes(c)) {
+                if (cm.includes(c)) {
                     fail = true;
                     failReason = c;
                     return;
@@ -1205,11 +1230,11 @@ log(PCs)
         }
         bonus += otherBonus;
 
-        if (sm.includes("Dodge") && stat === "dexterity") {
+        if (cm.includes("Dodge") && stat === "dexterity") {
             adv = Math.min(adv + 1,1);
             advReasons.push("Dodge");
         }
-        if (sm.includes("Restrained") && stat === "dexterity") {
+        if (cm.includes("Restrained") && stat === "dexterity") {
             adv = Math.max(adv - 1, -1);
             disAdvReasons.push("Restrained");
         }
@@ -1285,14 +1310,9 @@ log(PCs)
 
         let inc = ["Paralyzed","Stunned","Unconscious"];            
         if (model.name.includes("Wirsten") && statTLC === "dexterity") {
-            let sm = model.token.get("statusmarkers");
+            let cm = model.CM();
             //incapacitated - means skip
-            let skip = false;
-            _.each(inc,c => {
-                if (sm.includes(c)) {
-                    skip = true;
-                }
-            })
+            let skip = inc.some(r => cm.includes(r)); //condition markers includes an incapacitated marker
             if (skip === false) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push("Shield Master: You can add 2 to your Result if the Spell/Harmful Effect targets only you");
@@ -1468,8 +1488,10 @@ log(PCs)
             defender = attacker;
         }
 
-        let attMarkers = Markers(attacker.token.get("statusmarkers"));
-        let defMarkers = Markers(defender.token.get("statusmarkers"));
+        let attConditions = attacker.CM();
+        let attSpells = attacker.SM();
+        let defConditions = defender.CM();
+        let defSpells = defender.SM();
 
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
@@ -1535,12 +1557,12 @@ log(PCs)
 
         //other mods to attack bonus
         let additionalText = "";
-        if (attMarkers.includes("Bless")) {
+        if (attSpells.includes("Bless")) {
             bless = randomInteger(4);
             additionalText += "<br>inc +" + bless + " Bless";
             attackBonus += bless;
         }
-        if (attMarkers.includes("Sacred Weapon") && weapon.type === "Melee") {
+        if (attSpells.includes("Sacred Weapon") && weapon.type === "Melee") {
             attackBonus += 2;
             weapon.magic = "magic";
             additionalText += "<br>inc +2 Sacred Weapon";
@@ -1562,8 +1584,7 @@ log(PCs)
         }
 
         weapon.damage = [weapon.base + "," + weapon.damageType];
-log(attMarkers)
-        if (attMarkers.includes("Divine Favour")) {
+        if (attSpells.includes("Divine Favour")) {
             weapon.damage.push('1d4,radiant');
         }
 
@@ -1588,7 +1609,7 @@ log(attMarkers)
         let attackTotal = attackResult.roll + attackBonus;
         let tip;
         let crit = false;
-        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && inReach === true) {
+        if ((defConditions.includes("Paralyzed") || defConditions.includes("Unconscious")) && inReach === true) {
             crit = true;
         }
         let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
@@ -1710,8 +1731,11 @@ log(damageResults)
             inReach = true;
         }
 
-        let attMarkers = Markers(attacker.token.get("statusmarkers"));
-        let defMarkers = Markers(defender.token.get("statusmarkers"));
+        let attConditions = attacker.CM();
+        let attSpells = attacker.SM();
+        let defConditions = defender.CM();
+        let defSpells = defender.SM();
+
         let ids = Object.keys(ModelArray);
 
         let positive = ["Invisible","Advantage"];
@@ -1730,8 +1754,8 @@ log(damageResults)
                 let model2 = ModelArray[ids[i]];
                 if (model2.id === attacker.id) {continue};
                 if (attacker.inParty !== model2.inParty) {
-                    let sm = Markers[model2.token.get("statusmarkers")] || " ";
-                    let ignore = incapacitated.some(r=> sm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
+                    let cm = model2.CM()
+                    let ignore = incapacitated.some(r=> cm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
                     if (ignore === false) {
                         let squares = attacker.Distance(model2);
                         if (squares <= 1) {
@@ -1746,17 +1770,17 @@ log(damageResults)
 
         //Prone
         if (inReach === true) {
-            if (attMarkers.includes("Prone")) {
+            if (attConditions.includes("Prone")) {
                 //attacker at disadvantage
                 disText.push("Prone Melee Attack");
                 disadvantage = true;
             }
-            if (defMarkers.includes("Prone")) {
+            if (defConditions.includes("Prone")) {
                 advText.push("Prone Melee Defender")
                 advantage = true;
             }
         } else {
-            if (defMarkers.includes("Prone")) {
+            if (defConditions.includes("Prone")) {
                 disText.push("Prone Defender at Range");
                 disadvantage = true;
             }
@@ -1770,29 +1794,29 @@ log(damageResults)
 
         //check for conditions
         _.each(positive,cond => {
-            if (attMarkers.includes(cond)) {
+            if (attConditions.includes(cond)) {
                 advantage = true;
                 advText.push(cond);
             }
-            if (defMarkers.includes(cond)) {
+            if (defConditions.includes(cond)) {
                 disadvantage = true;
                 disText.push(cond);
             }
         })
         _.each(attNegative,cond => {
-            if (attMarkers.includes(cond)) {
+            if (attConditions.includes(cond)) {
                 disadvantage = true;
                 disText.push(cond);
             }
         })
         _.each(defNegative,cond => {
-            if (defMarkers.includes(cond)) {
+            if (defConditions.includes(cond)) {
                 advantage = true;
                 advText.push(cond);
             }
         })
         _.each(incapacitated,cond => {
-            if (defMarkers.includes(cond)) {
+            if (defConditions.includes(cond)) {
                 advantage = true;
                 advText.push(cond);
             }
@@ -1803,14 +1827,14 @@ log(damageResults)
             advantage = true;
             advText.push("Faerie Fire");
         };
-        if (defMarkers.includes("Dodge")) {
+        if (defConditions.includes("Dodge")) {
             disText.push("Defender taking Dodge Action");
             disadvantage = true;
         }
         creatTypes = ["aberation","celestial","elemental","fey","fiend","undead"];
         let other = creatTypes.some(type => attacker.type.toLowerCase().includes(type));
 
-        if (defMarkers.includes("Protection") && other === true) {
+        if (defSpells.includes("Protection") && other === true) {
             disadvantage = true;
             disText.push("Protection from Evil/Good");
         }
@@ -1822,8 +1846,10 @@ log(damageResults)
                     continue;
                 }
                 if (model2.inParty === attacker.inParty) {
+                    let cm = model.CM();
+                    let ignore = incapacitated.some(r=> cm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
                     let squares = model2.Distance(defender);
-                    if (squares <= 1) {
+                    if (squares <= 1 && ignore === false) {
                         adj = true;
                         break;
                     }
@@ -2007,7 +2033,8 @@ log(damageResults)
         let targets = spellInfo.targets;
         let spell = spellInfo.spell;
         let level = spellInfo.level;
-        let attMarkers = Markers(caster.token.get("statusmarkers"));
+        let attConditions = caster.CM();
+        let attSpells = caster.SM();
 
 
         let emote = spell.emote || " ";
@@ -2026,15 +2053,16 @@ log(damageResults)
 
         for (let i=0;i<targets.length;i++) {
             let defender = targets[i];
-            let defMarkers = Markers(defender.token.get("statusmarkers"));
             if (!defender) {log("No Target at " + targetIDs[i]);continue};
+            let defConditions = defender.CM();
+            let defSpells = defender.SM();
             let advResult = Advantage(caster,defender,spell);
 
             //attack bonuses
             let attackBonus = caster.spellAttack;
             //other mods to attack bonus
             let additionalText = "";
-            if (attMarkers.includes("Bless")) {
+            if (attSpells.includes("Bless")) {
                 bless = randomInteger(4);
                 additionalText += " +" + bless + " [Bless]";
                 attackBonus += bless;
@@ -2045,7 +2073,7 @@ log(damageResults)
 
             let tip;
             let crit = false;
-            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && caster.Distance(defender) === 1) {
+            if ((defConditions.includes("Paralyzed") || defConditions.includes("Unconscious")) && caster.Distance(defender) === 1) {
                 crit = true;
             }
 
@@ -2622,7 +2650,7 @@ log(rollResults)
         outputCard.body.push(tip + " HP Affected");
         for (let i = 0;i<targets.length; i++) {
             let target = targets[i];
-            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || Markers(target.token.get("statusmarkers")).includes("Unconscious")) {
+            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || target.CM().includes("Unconscious")) {
                 continue;
             };
             let phb = parseInt(target.token.get("bar1_value"));
@@ -2655,7 +2683,7 @@ log(rollResults)
             outputCard.body.push("As an action, you imbue your weapon with Positive Energy");
             outputCard.body.push("For 1 minute, it gains " + model.statBonus.charisma + " to Hit and is a Magical Weapon");
             outputCard.body.push("It also emits light (20 feet bright, 20 feet dim)");
-            let marker = ConditionMarkers["Sacred Weapon"];
+            let marker = SpellMarkers["Sacred Weapon"];
             model.token.set("status_" + marker,true);
         }
         if (ability === "Turn the Unholy") {
