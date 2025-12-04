@@ -1321,7 +1321,7 @@ log(PCs)
         let model = ModelArray[id];
         if (!model) {return};
         SetupCard(model.name,"Initiative",model.displayScheme);
-        let bonus = model.initBonus;
+        let bonus = model.initBonus + (model.initBonus/10);
         //later add in advantage/disadvantage for initiative here
         let advantage = 0;
         let roll = D20(advantage);
@@ -2929,7 +2929,7 @@ log(rollResults)
         model.Destroy();
 
     }
-    
+
     const StartCombat = () => {
         //api macro feeds in here and starts combat
         //add in all NPCs, sort turn order, then go to the combat routine
@@ -2941,7 +2941,7 @@ log(rollResults)
         _.each(ModelArray,model => {
             let item = turnorder.filter(item => item.id === model.id);
             if (!item) {
-                let total = D20(0) + model.initBonus;
+                let total = D20(0) + model.initBonus + (model.initBonus/10);
                 turnorder.push({
                     _pageid:    model.token.get("_pageid"),
                     id:         model.id,
@@ -2957,6 +2957,8 @@ log(rollResults)
 
     const Combat = () => {
         if (!state.DnD.combatOn || state.DnD.combatOn === false) {return};
+        turnorder = JSON.parse(Campaign().get("turnorder"));
+        if (!turnorder) {EndCombat();return};
         //check if stuff from prev. models turn to do - if so do that before advancing
         if (state.DnD.lastTurnInfo) {
             DoEndTurnThings(state.DnD.lastTurnInfo);
@@ -2976,7 +2978,6 @@ log(rollResults)
         //check for stuff that happens at end of turn, place into state to come out at next inititiave
         CheckEndTurnThings(model);
     }
-
     const EndCombat = () => {
         //also can come here if cancel turn order ???
         let turnorder = [];
