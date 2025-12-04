@@ -7,6 +7,7 @@ const DnD = (() => {
 
     let ModelArray = {};
     let nameArray = {};
+    let currentTurn = 0;
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
@@ -38,6 +39,13 @@ const DnD = (() => {
             "fontColour": "#ffffff",
             "borderColour": "#000000",
             "borderStyle": "5px ridge",
+        },
+        "Red": {
+            "backgroundColour": "#ff0000",
+            "titlefont": "Arial",
+            "fontColour": "#000000",
+            "borderColour": "#ff0000",
+            "borderStyle": "5px groove",
         },
         "Allied": {
             "backgroundColour": "#FFFFFF",
@@ -1354,8 +1362,10 @@ log(PCs)
         } else {
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
+
         //replace result if already in turnorder, else add to turnorder
-        let item = turnorder.filter(item => item.id === id);
+        let item = turnorder.filter(item => item.id === id)[0];
+
         if (!item) {
             turnorder.push({
                 _pageid:    model.token.get("_pageid"),
@@ -1364,7 +1374,6 @@ log(PCs)
             });
         } else {
             item.pr = total;
-//check this replaces
         }
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
@@ -2967,17 +2976,25 @@ log(rollResults)
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
         _.each(ModelArray,model => {
-            let item = turnorder.filter(item => item.id === model.id);
+            let item = turnorder.filter(item => item.id === model.id)[0];
             if (!item) {
-                let total = D20(0) + model.initBonus + (model.initBonus/10);
+                let total = D20(0).roll + model.initBonus + (model.initBonus/10);
                 turnorder.push({
                     _pageid:    model.token.get("_pageid"),
-                    id:         model.id,
+                    id:         model.token.get("id"),
                     pr:         total,
                 })
             }
         })
         turnorder.sort((a,b) => b.pr - a.pr);
+        turnorder.unshift({
+            _pageid:    Campaign().get("playerpageid"),
+            id:         "-1",
+            custom: "Turn",
+            pr:         1,
+            formula:    "+1",
+        })
+
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatOn = true;
         Combat();
@@ -2989,22 +3006,32 @@ log(rollResults)
         if (!turnorder) {EndCombat();return};
         //check if stuff from prev. models turn to do - if so do that before advancing
         if (state.DnD.lastTurnInfo) {
-            DoEndTurnThings(state.DnD.lastTurnInfo);
+            //DoEndTurnThings(state.DnD.lastTurnInfo);
             state.DnD.lastTurnInfo = {};
         }
         //advance
         turnorder = JSON.parse(Campaign().get("turnorder"));
         let currentTurnItem = turnorder[0];
+        if (!currentTurnItem) {EndCombat();return};
         let id = currentTurnItem.id;
         let model = ModelArray[id];
+        if (currentTurnItem.custom === "Turn") {
+            currentTurn = currentTurnItem.pr;
+        }
+
         //ping model's token
-        sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
-        SetupCard(model.name,"Turn",model.displayScheme);
-        //check for stuff that happens at start of turn
-        StartTurnThings(model);
+        if (model) {
+            sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
+            SetupCard(model.name,"Turn " + currentTurn,model.displayScheme);
+            //check for stuff that happens at start of turn
+            //StartTurnThings(model);
+            //check for stuff that happens at end of turn, place into state to come out at next inititiave
+            //CheckEndTurnThings(model);
+        } else {
+            SetupCard("Turn " + currentTurn,"","Red");
+            //Start of Turn things
+        }
         PrintCard();
-        //check for stuff that happens at end of turn, place into state to come out at next inititiave
-        CheckEndTurnThings(model);
     }
     const EndCombat = () => {
         //also can come here if cancel turn order ???
