@@ -41,6 +41,7 @@ let id = msg.selected[0]._id;
             "Brown Bear": {
                 cID: "-Odyv5HzmAOpBiY_xqLO",
                 size: 2,
+                hp: 34,
             },
             "Dire Wolf": {
                 cID: "-OdyaMtaDE-mfvTYRU-r",
@@ -67,13 +68,10 @@ let id = msg.selected[0]._id;
 log(ModelArray[newTokenID])
 
     if (shape !== "Human") {
-        //set hp to max
-
-
+        AttributeSet(cID,"hp",shapes[cName][shape].hp)
         PlaySound("Growl");
     }
 
-//initiatives
 
     outputCard.body.push("Wild Shape to " + shape);
     PrintCard();

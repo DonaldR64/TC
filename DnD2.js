@@ -100,11 +100,11 @@ const DnD = (() => {
     const SpellMarkers = {
         "Protection from Evil and Good": "Shield::2006495",
         "Bless": "Plus-1d4::2006401",
-        "Divine Favour": "yellow",
+        "Divine Favour": "Slimed-Mustard-Transparent::2006560",
         "Sacred Weapon": "Torch-Light::2006651",
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
         "Mage Armour": "418-MA-Buff::5818082",
-
+        "Slow": "Slow::2006498",
 
     }
 
@@ -2913,9 +2913,8 @@ log(rollResults)
     }
 
 
-    summonToken = function(cID,left,top,size,hp,pr,markers) {
+    summonToken = function(cID,left,top,size,pr,markers) {
         if (!size) {size = 70};
-        if (!hp) {hp = 1};
         if (!pr) {pr = -1};
         let character = getObj("character", cID);
         character.get('defaulttoken',function(defaulttoken){
@@ -2930,7 +2929,6 @@ log(rollResults)
                 dt.layer = "objects";
                 dt.width = size;
                 dt.height = size;
-                dt.bar1_value = hp;
                 dt.statusmarkers = markers;
                 let newToken = createObj("graphic", dt);
                 let newModel = new Model(newToken);
@@ -2993,13 +2991,12 @@ log(rollResults)
 
         let cID = shapes[cName][shape].cID;
         let size = shapes[cName][shape].size;
-        let hp = shapes[cName][shape].hp;
-        if (shape === "Human") {
-            hp = Attribute(cID,"hp");
-        }
 
         if (shape !== "Human") {        
             PlaySound("Growl");
+            let hp = shapes[cName][shape].hp;
+            AttributeSet(cID,"hp",hp);
+
         }
 
         let left= Math.max(model.token.get("left") - 35,35*size/70);
@@ -3013,7 +3010,7 @@ log(rollResults)
             }
         }
 
-        let newTokenID = summonToken(cID,left,top,size,hp,pr,markers);
+        let newTokenID = summonToken(cID,left,top,size,pr,markers);
         outputCard.body.push("Wild Shape to " + shape);
         PrintCard();
 
