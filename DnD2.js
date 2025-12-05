@@ -105,7 +105,7 @@ const DnD = (() => {
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
         "Mage Armour": "418-MA-Buff::5818082",
         "Slow": "Slow::2006498",
-        "Frost": "Cold::2006476",
+        "Ray of Frost": "Cold::2006476",
     }
 
 
@@ -2155,7 +2155,7 @@ log(damageResults)
                 if (spell.applyMarker) {
                     if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {
                         defender.token.set("status_"
-                             + SpellMarkers[spell.applyMarker],true);
+                             + SpellMarkers[spell.name],spell.applyMarker);
                     }
                 }
 
@@ -3176,10 +3176,10 @@ const StartTurnThings = (model) => {
     //spells on model - check markers, then check spell to see if/when save/ends
     let sm = model.SM();
     if (sm !== " ") {
-        if (sm.includes("Frost")) {
+        if (sm.includes("Ray of Frost")) {
             outputCard.body.push(model.name + " is slowed by 10ft this turn");
             model.token.set("status_"
-                 + SpellMarkers["Frost"],false);
+                 + SpellMarkers["Ray of Frost"],false);
         }
 
 

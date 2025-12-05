@@ -11,7 +11,7 @@
             cLevel: {5: '2d8', 11: '3d8'},
             damageType: "cold",
             note: "Target's Speed is reduced by 10 for a turn",
-            applyMarker: "Frost",
+            applyMarker: true,
             sound: "Laser",
             emote: "A frigid beam of blue-white light streaks toward the target",
             fx: "",
