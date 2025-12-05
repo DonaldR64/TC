@@ -105,7 +105,7 @@ const DnD = (() => {
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
         "Mage Armour": "418-MA-Buff::5818082",
         "Slow": "Slow::2006498",
-
+        "Frost": "Cold::2006476",
     }
 
 
@@ -2110,7 +2110,7 @@ log(damageResults)
             if (advResult.advText.length > 0) {
                 tip += "<br>Advantage from: " + advResult.advText.toString();
             }
-        if (advResult.disText.length > 0) {
+            if (advResult.disText.length > 0) {
                 tip += "<br>Disadvantage from: " + advResult.disText.toString();
             }
 
@@ -2152,6 +2152,13 @@ log(damageResults)
                     outputCard.body.push("[hr]");
                     outputCard.body.push(spell.note);
                 }
+                if (spell.applyMarker) {
+                    if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {
+                        defender.token.set(SpellMarkers[spell.applyMarker]);
+                    }
+                }
+
+
             } else {
                 outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
             }
@@ -3168,7 +3175,11 @@ const StartTurnThings = (model) => {
     //spells on model - check markers, then check spell to see if/when save/ends
     let sm = model.SM();
     if (sm !== " ") {
-
+        if (sm.includes("Frost")) {
+            outputCard.body.push(model.name + " is slowed by 10ft this turn");
+            model.token.set("status_"
+                 + SpellMarkers["Frost"],false);
+        }
 
 
 
