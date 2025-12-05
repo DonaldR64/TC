@@ -295,6 +295,12 @@ const DnD = (() => {
             if (token) {
                 token.remove();
             }
+            if (this.isSpell) {
+                //removes an ongoing spell in combat
+                if (state.DnD.spells[this.isSpell]) {
+                    state.DnD.spells[this.isSpell] = {};
+                }
+            }
             delete ModelArray[this.id];
         }
 
@@ -968,8 +974,11 @@ log(model.name + ": " + id)
 
     const ClearState = () => {
         state.DnD = {
-            combatOn: false,
+            combatTurn: 0,
             lastTurnInfo: {},
+            spells: {},
+
+
         }
         nameArray = {};
     }
@@ -1209,7 +1218,8 @@ log(defender.vulnerabilities)
         let char = getObj("character", token.get("represents"));    
 log(model)
 log(PCs)
-        
+log(state.DnD.spells)
+
         PrintCard();
 
     }
@@ -1384,6 +1394,7 @@ log(PCs)
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
         PlaySound("Dice")
+        Campaign().set("initiativepage",true);
     }
 
 
@@ -2244,6 +2255,35 @@ log(spell)
         SpellTarget(spellInfo);
         outputCard.body.push("Place Target then use Macro to Cast");
     }
+    if (spell.spellType === "Ongoing") {
+        spellInfo.ongoing = true;
+        ClearSpellTarget();
+        let target = SpellTarget(spellInfo);
+        if (spell.emote) {
+            outputCard.body.push(spell.emote);
+        }
+        outputCard.body.push("Move Target to Location");
+        if (state.DnD.combatTurn > 0) {
+            //track rounds. assumes concentration spell
+            let endTurn = state.DnD.combatTurn + spell.duration;
+            let info = {
+                endTurn: endTurn,
+                spellName: spell.name,
+                targetID: target.id,
+            }
+            if (state.DnD.spells[caster.id]) {
+                let oldSpellTarget = ModelArray[state.DnD.spells[caster.id].targetID];
+                if (oldSpellTarget) {
+                    oldSpellTarget.Destroy();
+                }
+            } 
+            state.DnD.spells[caster.id] = info;
+        }
+
+
+
+    }
+
 
     PrintCard();
 
@@ -2475,23 +2515,31 @@ change to find any Breath ability
             action += ";" + spellInfo.originalCasterID;
         }
         
-
         let charID = (spellInfo.spell.charID) ? spellInfo.spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
+        let gmn = "";
 
         let abilArray = findObjs({_type: "ability", _characterid: charID});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
-        AddAbility("Cast " + spellInfo.spell.name,action,charID);
-        if (isNaN(spellInfo.spell.tempSize)) {
-            if (spellInfo.spell.tempSize.includes("Level")) {
-                if (spellInfo.spell.tempSize.includes("*")) {
-                    spellInfo.spell.tempSize = parseInt(spellInfo.spell.tempSize.replace(/[^\d]/g,""));
-                    spellInfo.spell.tempSize = level * spellInfo.spell.tempSize;
+
+        if (!spellInfo.ongoing) {
+            AddAbility("Cast " + spellInfo.spell.name,action,charID);
+            if (isNaN(spellInfo.spell.tempSize)) {
+                if (spellInfo.spell.tempSize.includes("Level")) {
+                    if (spellInfo.spell.tempSize.includes("*")) {
+                        spellInfo.spell.tempSize = parseInt(spellInfo.spell.tempSize.replace(/[^\d]/g,""));
+                        spellInfo.spell.tempSize = level * spellInfo.spell.tempSize;
+                    }
                 }
             }
+        } else {
+            //ongoing area spells like Moonbeam, place info in token
+            gmn = spellInfo.spell.name + ";" + spellInfo.level + ";" + spellInfo.caster.casterLevel + ";" + spellInfo.spell.damageType + ";" + spellInfo.dc ;
         }
+
+
 
         spellInfo.spell.tempSize = (spellInfo.spell.tempSize * 70) / pageInfo.scaleNum;
 
@@ -2506,14 +2554,13 @@ change to find any Breath ability
             imgsrc: img,
             layer: "objects",
             represents: charID,
+            gmnotes: gmn,
         })
 
-
-
-        toFront(newToken);
         if (newToken) {
             toFront(newToken);
             let target = new Model(newToken);
+            target.isSpell = spellInfo.caster.id;
             return target;
         } else {
             sendChat("","Error in CreateObj")
@@ -2521,12 +2568,14 @@ change to find any Breath ability
     }
 
     const ClearSpellTarget = () => {
+        let charID = (spellInfo.spell.charID) ? spellInfo.spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
+
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
             _subtype: "token",
             layer: "objects",
-            represents: '-Oe8qdnMHHQEe4fSqqhm',
+            represents: charID,
         });
         _.each(tokens,token => {
             token.remove();
@@ -3026,6 +3075,9 @@ log(rollResults)
         } else {
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
+        Campaign().set("initiativepage",true);
+
+
         _.each(ModelArray,model => {
             let item = turnorder.filter(item => item.id === model.id)[0];
             if (!item) {
@@ -3047,12 +3099,12 @@ log(rollResults)
         })
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
-        state.DnD.combatOn = true;
+        state.DnD.combatTurn = 1;
         Combat();
     }
 
     const Combat = () => {
-        if (!state.DnD.combatOn || state.DnD.combatOn === false) {return};
+        if (!state.DnD.combatTurn || state.DnD.combatTurn === 0) {return};
         turnorder = JSON.parse(Campaign().get("turnorder"));
         if (!turnorder) {EndCombat();return};
         //check if stuff from prev. models turn to do - if so do that before advancing
@@ -3067,19 +3119,20 @@ log(rollResults)
         let id = currentTurnItem.id;
         let model = ModelArray[id];
         if (currentTurnItem.custom === "Turn") {
-            currentTurn = currentTurnItem.pr;
+            state.DnD.combatTurn = currentTurnItem.pr
         }
 
         //ping model's token
         if (model) {
+            toFront(model.token);
             sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
-            SetupCard(model.name,"Turn " + currentTurn,model.displayScheme);
+            SetupCard(model.name,"Turn " + state.DnD.combatTurn,model.displayScheme);
             //check for stuff that happens at start of turn
-            //StartTurnThings(model);
+            StartTurnThings(model);
             //check for stuff that happens at end of turn, place into state to come out at next inititiave
             //CheckEndTurnThings(model);
         } else {
-            SetupCard("Turn " + currentTurn,"","Red");
+            SetupCard("Turn " + state.DnD.combatTurn,"","Red");
             //Start of Turn things
         }
         PrintCard();
@@ -3088,8 +3141,55 @@ log(rollResults)
         //also can come here if cancel turn order ???
         let turnorder = [];
         Campaign().set("turnorder", JSON.stringify(turnorder));
-        state.DnD.combatOn = false;
+        state.DnD.combatTurn = 0;
+        Campaign().set("initiativepage",false);
+        state.DnD.spells = {};
+        state.DnD.lastTurnInfo = {};
     }
+
+const StartTurnThings = (model) => {
+    //things to check at start of models turn
+    //Moonbeam, Spirit Guardians are in Model Array
+    // Check if any spells go down and announce/cancel them
+    // Check if any spells affecting model
+    // SpellMarkers on token
+    // Area effects eg. Moonbeam
+    
+    //Spells cast by model
+    let ongoing = state.DnD.spells[model.id]
+    if (ongoing) {
+        let rdsLeft = ongoing.endTurn - state.DnD.combatTurn
+        if (rdsLeft <= 0) {
+            outputCard.body.push(ongoing.spellName + " ends");
+            let m = ModelArray[ongoing.targetID];
+            m.Destroy();
+            state.DnD.spells[model.id] = "";
+        } else {
+            outputCard.body.push(ongoing.spellName + " has " + rdsLeft + " rounds left");
+        }
+        outputCard.body.push("[hr]");
+    }
+
+    //spells on model - check markers
+    let sm = model.SM();
+    if (sm !== " ") {
+
+
+
+
+    }
+    //conditions on model - check markers, may have been removed if spell broken above
+
+
+    //check any spell areas model is in, eg Moonbeam, entangle etc
+
+    
+
+
+
+
+}
+
 
 
 

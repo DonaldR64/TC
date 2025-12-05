@@ -269,7 +269,9 @@
             level: 2,
             name: "Moonbeam",
             range: 120,
-            spellType: "Area",
+            spellType: "Ongoing",
+            duration: 10, //rounds
+            concentration: true,
             base: '2d10',
             sLevel: [0,0,"2d10","3d10","4d10","5d10","6d10"],
             damageType: "radiant",
@@ -285,7 +287,6 @@
             moveEffect: "objects",
             emote: "A silvery beam of pale light shines down in a 5-foot- radius, 40-foot-high cylinder centered on a point within range. This lasts for 1 minute or until Concentration ends. Creatures starting their turn in the Moonbeam take damage. The Caster can move the Beam on each of their turns, 60 feet.",
             charID: '-OfVsgHiqLOZjV357ox_',
-            
         },
 
 
