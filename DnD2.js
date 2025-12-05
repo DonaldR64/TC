@@ -3149,13 +3149,8 @@ log(rollResults)
 
 const StartTurnThings = (model) => {
     //things to check at start of models turn
-    //Moonbeam, Spirit Guardians are in Model Array
-    // Check if any spells go down and announce/cancel them
-    // Check if any spells affecting model
-    // SpellMarkers on token
-    // Area effects eg. Moonbeam
     
-    //Spells cast by model
+    //Spells cast by model and ongoing
     let ongoing = state.DnD.spells[model.id]
     if (ongoing) {
         let rdsLeft = ongoing.endTurn - state.DnD.combatTurn
