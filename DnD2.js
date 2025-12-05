@@ -1236,7 +1236,7 @@ log(state.DnD.spells)
         let saveTotal,saveTip,bonusText, otherBonusText;
 
         let sm = model.SM();
-        let cm = mode.CM();
+        let cm = model.CM();
         let inc = ["Paralyzed","Stunned","Unconscious","incapacitated"];
         if (stat === "strength" || stat === "dexterity") {
             _.each(inc,c => {
