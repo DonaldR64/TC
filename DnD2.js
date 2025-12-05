@@ -167,6 +167,7 @@ const DnD = (() => {
     
             this.charID = char.id;
             this.type = (aa.npc_type || " ").toLowerCase();
+            this.class = aa.class || " ";
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
             this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
@@ -335,11 +336,16 @@ const DnD = (() => {
                         if (name) {
                             let prepkey = key.replace("spellname","spellprepared");
                             let desckey = key.replace("spellname","spelldescription");
+                            let ritualkey = key.replace("spellname","spellritual");
+                            let ritual = aa[ritualkey] === "Yes" || aa[ritualkey] === "{{ritual=1}}" ? true:false;                
+            
                             let info = {
                                 name: name,
                                 prepared: prepkey,
                                 desckey: desckey,
+                                ritual: ritual,
                             }
+log(info)
                             if (spells[level]) {
                                 spells[level].push(info);
                             } else {
@@ -2156,6 +2162,12 @@ const Spell = (msg) => {
     let caster = ModelArray[casterID];
     let spellDC = caster.spellDC;
 
+    let ritual = false;
+    if (spellName.includes("Ritual")) {
+        spellName = spellName.replace("Ritual","");
+        ritual = true;
+    }
+
     if (!SpellInfo[spellName]) {
         outputCard.body.push("Error");
         PrintCard();
@@ -2166,7 +2178,7 @@ const Spell = (msg) => {
     spell.name = spellName;
 
     //check spell slots, distance
-    if (!spell.exempt && level > 0) {
+    if (!spell.exempt && ritual === false && level > 0) {
         let slotsAvailable = SpellSlots(caster,level);
         if (slotsAvailable === 0) {
             errorMsg.push("No Slots of that Level Available");
@@ -2194,6 +2206,10 @@ log(spell)
     }
 
     SetupCard(caster.name,spellName,caster.displayScheme);
+    if (ritual === true) {
+        outputCard.body.push("[B]Ritual[/b]");
+        spell.exempt = true;
+    }
 
     if (errorMsg.length > 0) {
         _.each(errorMsg,error => {
@@ -2211,6 +2227,7 @@ log(spell)
         spell: spell,
         level: level,
         dc: spellDC,
+        ritual: ritual,
     }
 
     if (spell.spellType === "DirectAttack") {
@@ -2313,6 +2330,43 @@ log("Cumulative Slots: " + cumulativeSS)
             outputCard.body.push("<br>");
             outputCard.body.push("[hr]");
         }
+        outputCard.body.push("[hr]");
+        let ritualCasters = ['artificer', 'bard', 'cleric', 'druid',
+            'wizard']
+
+        if (ritualCasters.includes(model.class)) {
+            outputCard.body.push("[B][U]Rituals[/b][/u]");
+            outputCard.body.push("Out of Combat Only");
+            for (let i=1;i<10;i++) {
+                let spells = model.spells[i];
+                let buttons = [];
+                if (!spells) {continue};
+                _.each(spells,spell => {
+                    if (spell.ritual == true) {
+                        if ((model.class === "cleric" || model.class === "druid") && (Attribute(model.charID,spell.prepared) != 1)) {
+                            return;
+                        } 
+                        let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
+                        if (SpellInfo[spell.name]) {                  
+                            macro = SpellInfo[spell.name].macro || macro;
+                            macro = macro.replace("%Level%",i);
+                            macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                            macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                            macro = macro.replace(spell.name,"Ritual" + spell.name);
+                        }
+                        buttons.push({
+                            phrase: spell.name,
+                            action: macro,
+                        })
+                    }
+                })
+                outputCard.body.push(InlineButtons(buttons));
+                outputCard.body.push("<br>");
+                outputCard.body.push("[hr]");
+            }
+        }
+
+
 
         PrintCard(); //? maybe make this a whisper to player +/- GM ?
     }
@@ -2346,7 +2400,7 @@ log(spellInfo.spell)
             outputCard.body.push(spellInfo.spell.emote);
         }
         if (spellInfo.spell.selfCM) {
-            spellInfo.caster.token.set("status_" + spellInfo.spell.marker,spellInfo.spell.selfCM);
+            spellInfo.caster.token.set("status_" + SpellMarkers[spellName],spellInfo.spell.selfCM);
         }
         if (spellInfo.spell.targetCM) {
             _.each(spellInfo.targets,target => {
@@ -2360,7 +2414,7 @@ log(spellInfo.spell)
                     outputCard.body.push(target.name + " " + tip);
                 }
                 if (saved === false) {
-                    target.token.set("status_" + spellInfo.spell.marker,spellInfo.spell.targetCM);
+                    target.token.set("status_" + SpellMarkers[spellName],spellInfo.spell.targetCM);
                 }
             })
         }
@@ -2402,7 +2456,7 @@ change to find any Breath ability
 
 
         PlaySound(spellInfo.spell.sound);
-        //Use Slot
+        //Use Slot if not ritual
 
     }
 
