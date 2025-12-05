@@ -2154,7 +2154,8 @@ log(damageResults)
                 }
                 if (spell.applyMarker) {
                     if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {
-                        defender.token.set(SpellMarkers[spell.applyMarker]);
+                        defender.token.set("status_"
+                             + SpellMarkers[spell.applyMarker],true);
                     }
                 }
 
