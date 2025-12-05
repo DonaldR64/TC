@@ -3165,7 +3165,7 @@ const StartTurnThings = (model) => {
         outputCard.body.push("[hr]");
     }
 
-    //spells on model - check markers
+    //spells on model - check markers, then check spell to see if/when save/ends
     let sm = model.SM();
     if (sm !== " ") {
 
