@@ -230,7 +230,7 @@
             area: 'Square',
             areaEffect: "Effect",
             savingThrow: "dexterity",
-            when: "self",
+            when: "action",
             conditionImmune: "restrained",
             areaTextS: " and remains free to act",
             areaTextF: " and is restrained by the webs",
