@@ -2065,6 +2065,27 @@ log(damageResults)
         }
     }
 
+    const Emote = (spell,caster) => {
+        let emotes = [];
+        if (spell.emote) {emotes.push(spell.emote)};
+        if (spell.duration) {
+            emotes.push("The Spell lasts " + spell.duration + " rounds. ");
+        }
+        if (spell.concentration === true) {
+            emotes.push("The Spell requires Concentration");
+        }
+        let final = "";
+        for (let i=0;i<emotes.length;i++) {
+            if (i>0) {final += "<br>"};
+            let emote = emotes[i];
+            emote = emote.replace(/%%Caster%%/g,caster.name);
+            final += emote;
+        }
+        return final;        
+    }
+
+
+
     const DirectAttackSpell = (spellInfo) => {
         let caster = spellInfo.caster;
         let targets = spellInfo.targets;
@@ -2073,10 +2094,7 @@ log(damageResults)
         let attConditions = caster.CM();
         let attSpells = caster.SM();
 
-
-        let emote = spell.emote || " ";
-        emote = emote.replace(/%%C%%/g,caster.name);
-        outputCard.body.push(emote);
+        outputCard.body.push(Emote(spell,caster));
 
         if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
             spell.base = spell.cLevel[caster.casterLevel];
@@ -2282,8 +2300,9 @@ log(spell)
         spellInfo.ongoing = true;
         ClearSpellTarget();
         let target = SpellTarget(spellInfo);
-        if (spell.emote) {
-            outputCard.body.push(spell.emote);
+        let emote = Emote(spell,caster);
+        if (emote) {
+            outputCard.body.push(emote);
         }
         outputCard.body.push("Move Target to Location");
         if (state.DnD.combatTurn > 0) {
@@ -2486,11 +2505,12 @@ log("Cumulative Slots: " + cumulativeSS)
     const MiscSpell = (spellInfo) => {
         let spellName = spellInfo.spell.name;
 log(spellInfo.spell)
-        if (spellInfo.spell.emote) {
+        let emote = Emote(spellInfo.spell,spellInfo.caster);
+        if (emote) {
             if (spellName === "Dragon's Breath")  {
-                spellInfo.spell.emote = spellInfo.spell.emote.replace("magical",spellInfo.spell.damageType);
+                emote = emote.replace("magical",spellInfo.spell.damageType);
             }           
-            outputCard.body.push(spellInfo.spell.emote);
+            outputCard.body.push(emote);
         }
 
         if (spellInfo.spell.marker) {
@@ -2797,12 +2817,12 @@ log(rollResults)
         } else {
             spellTarget.Destroy();
         }
-        if (spell.emote) {
-            spell.emote = spell.emote.replace(/%%C%%/g,caster.name);
-            outputCard.body.push("[hr]");
-            outputCard.body.push(spell.emote);
-        }
 
+        let emote = Emote(spell,caster);
+        if (emote) {
+            outputCard.body.push("[hr]");
+            outputCard.body.push(emote);
+        }
         PrintCard();
     }
 
