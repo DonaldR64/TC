@@ -2106,6 +2106,8 @@ log(damageResults)
         spell.damage = spell.base + "," + spell.damageType;
         spell.type = "Spell";
 
+        AddSpell(spellInfo.spell,spellInfo.caster,spellInfo.targets);
+
         for (let i=0;i<targets.length;i++) {
             let defender = targets[i];
             if (!defender) {log("No Target at " + targetIDs[i]);continue};
@@ -2194,6 +2196,9 @@ log(damageResults)
             }
             FX(spell.fx,caster,defender);
         }
+
+
+
         PlaySound(spell.sound);
     }
 
@@ -2803,7 +2808,8 @@ log(rollResults)
         }
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
-
+        
+        AddSpell(spell,caster,spellInfo.targets);
 
         if (spell.moveEffect) {
             spellTarget.token.set({
