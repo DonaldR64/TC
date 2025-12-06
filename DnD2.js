@@ -2251,6 +2251,10 @@ log(spell)
 
     spell.marker = (!spell.marker) ? (ConditionMarkers[spell.name] || "blue"):ConditionMarkers[spell.marker];
 
+    if (targets.length === 0) {
+        targets.push(caster);
+    }
+
     spellInfo = {
         caster: caster,
         targets: targets,
@@ -2457,7 +2461,6 @@ log("Cumulative Slots: " + cumulativeSS)
         }
 
 
-
         PrintCard(); //? maybe make this a whisper to player +/- GM ?
     }
 
@@ -2489,13 +2492,8 @@ log(spellInfo.spell)
             }           
             outputCard.body.push(spellInfo.spell.emote);
         }
-        if (spellInfo.spell.selfCM) {
-            spellInfo.caster.token.set("status_" + SpellMarkers[spellName],true);
-            if (spellInfo.spell.concentration === true) {
-                AddConSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.caster.id)
-            }
-        }
-        if (spellInfo.spell.targetCM) {
+
+        if (spellInfo.spell.marker) {
             _.each(spellInfo.targets,target => {
                 let saved = false
                 if (spellInfo.spell.targetSave) {
@@ -2508,12 +2506,15 @@ log(spellInfo.spell)
                 }
                 if (saved === false) {
                     target.token.set("status_" + SpellMarkers[spellName],true);
-                    if (spellInfo.spell.concentration === true) {
-                        AddConSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.caster.id)
-                    }
                 }
             })
         }
+
+        let targetIDs = [];
+        _.each(targets,target => {
+            targetIDs.push(target.id);
+        })
+        AddSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.targetIDs);
 
         if (spellName === "Cure Wounds") {
             let rolls = [];

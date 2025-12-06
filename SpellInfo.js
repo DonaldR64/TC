@@ -172,7 +172,7 @@
             macro: "!Spell;Divine Favour;1;%Selected%",
             emote: "Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.<br>Casting this only takes a Bonus Action",
             sound: "Angels",
-            selfCM: true,
+            marker: true,
         },
         "Shield of Faith": {
             level: 1,
@@ -189,7 +189,7 @@
             emote: "The creature you touch is granted Protection against certain creatures.<br>Lasts 10 minutes of Concentration",
             macro: "!Spell;Protection from Evil and Good;1;%Selected%;%Target%",
             sound: "Angels",
-            targetCM: true,
+            marker: true,
         },
         "Sanctuary": {
             level: 1,
@@ -198,7 +198,7 @@
             emote: "As a bonus action, You ward a creature within range against attack. Until the spell ends, any creature who targets the warded creature with an attack or a harmful spell must first make a W isdom saving throw. On a failed save, the creature must choose a new target or lose the attack or spell. This spell doesn’t protect the warded creature from area effects, such as the explosion of a fireball. If the warded creature makes an attack or casts a spell that affects an enemy creature, this spell ends.",
             macro: "!Spell;Sanctuary;1;%Selected%;%Target%",
             sound: "Angels",
-            targetCM: true,
+            marker: true,
         },
         "Mage Armour": {
             level: 1,
@@ -207,7 +207,7 @@
             emote: "You touch a willing creature who isn’t wearing armor, and a protective magical force surrounds it until the spell ends.The target’s base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
             macro: "!Spell;Mage Armour;1;%Selected%;%Target%",
             sound: "Angels",
-            targetCM: true,
+            marker: true,
         },
         "Web": {
             level: 2,
@@ -262,7 +262,7 @@
             spellType: "Misc",
             macro: "!Spell;Hold Person;%Level%;%Selected%;%Target%",
             sound: "Sound",
-            targetCM: true,
+            marker: true,
             marker: "Restrained",
             targetSave: "wisdom",
             emote: "The spell lasts for 1 minute, or until Concentration ends, or until the target makes a Wisdom save (can attempt end of each of its turns)",
