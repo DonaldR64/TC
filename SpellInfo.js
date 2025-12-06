@@ -65,6 +65,7 @@
             emote: "Using a pinch of fine sand, %%C%% sends creatures into a magical slumber",
             level: 1,
             range: 90,
+            duration: 10,
             spellType: "Area",
             area: 'Square',
             areaEffect: "Effect",

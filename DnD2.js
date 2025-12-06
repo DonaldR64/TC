@@ -976,8 +976,8 @@ log(model.name + ": " + id)
         state.DnD = {
             combatTurn: 0,
             lastTurnInfo: {},
-            spells: {},
-
+            conSpells: {},
+            regSpells: {},
 
         }
         nameArray = {};
@@ -2272,30 +2272,37 @@ log(spell)
         }
         outputCard.body.push("Move Target to Location");
         if (state.DnD.combatTurn > 0) {
-            //track rounds. assumes concentration spell
-            let endTurn = state.DnD.combatTurn + spell.duration;
-            let info = {
-                endTurn: endTurn,
-                spellName: spell.name,
-                targetID: target.id,
-            }
-            if (state.DnD.spells[caster.id]) {
-                let oldSpellTarget = ModelArray[state.DnD.spells[caster.id].targetID];
-                if (oldSpellTarget) {
-                    oldSpellTarget.Destroy();
-                }
-            } 
-            state.DnD.spells[caster.id] = info;
+            AddConSpell(spell,caster.id,target.id)
         }
-
-
-
     }
-
-
     PrintCard();
 
 }
+
+const AddConSpell = (spell,casterID,targetID) => {
+    if (state.DnD.combatTurn === 0) {return}
+    let endTurn = state.DnD.combatTurn + spell.duration;
+    let info = {
+        endTurn: endTurn,
+        spellName: spell.name,
+        targetID: targetID,
+    }
+    if (state.DnD.spells[casterID]) {
+       EndConSpell(spell,casterID,targetID)
+    } 
+    state.DnD.spells[caster.id] = info;
+}
+
+const EndConSpell = (spell,casterID,targetID) => {
+    let m = ModelArray[targetID];
+    if (m.isSpell === true) {
+        m.Destroy();
+    } else {
+        m.token.set("status_" + spell.name,false);
+    }
+    state.DnD.spells[casterID] = "";
+}
+
 
 
 
@@ -2448,7 +2455,10 @@ log(spellInfo.spell)
             outputCard.body.push(spellInfo.spell.emote);
         }
         if (spellInfo.spell.selfCM) {
-            spellInfo.caster.token.set("status_" + SpellMarkers[spellName],spellInfo.spell.selfCM);
+            spellInfo.caster.token.set("status_" + SpellMarkers[spellName],true);
+            if (spellInfo.spell.concentration === true) {
+                AddConSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.caster.id)
+            }
         }
         if (spellInfo.spell.targetCM) {
             _.each(spellInfo.targets,target => {
@@ -2462,7 +2472,10 @@ log(spellInfo.spell)
                     outputCard.body.push(target.name + " " + tip);
                 }
                 if (saved === false) {
-                    target.token.set("status_" + SpellMarkers[spellName],spellInfo.spell.targetCM);
+                    target.token.set("status_" + SpellMarkers[spellName],true);
+                    if (spellInfo.spell.concentration === true) {
+                        AddConSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.caster.id)
+                    }
                 }
             })
         }
@@ -2604,10 +2617,8 @@ change to find any Breath ability
         if (spell.name === "Breathe") {
             spell.damageType = Tag[4].toLowerCase();
             spell.name += " " + Capit(spell.damageType);
-log(spell)
             dc = parseInt(Tag[5]);
             originalCaster = ModelArray[Tag[6]];
-log(originalCaster.name)
             casterLevel = originalCaster.casterLevel;
             spell.fx = "breath-";
 //sound?
@@ -2661,7 +2672,7 @@ log(spell)
                 if (spell.savingThrow === "No") {
                     outputCard.body.push(target.name + spell.areaTextF);
                     if (spell.effectMarker) {
-                        target.token.set(spell.effectMarker,true);                   
+                        target.token.set(spell.effectMarker,true);               
                     } else if (spell.effectAura){
                         target.token.set({
                             aura1_radius: 1,
@@ -2669,7 +2680,6 @@ log(spell)
                             showplayers_aura1: true,
                         })
                     } 
-
                 } else {
                     if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
                         outputCard.body.push(target.name + " is Immune");
@@ -2693,6 +2703,14 @@ log(spell)
                     }
                 }
             })
+
+            if (spell.duration && spell.concentration === true) {
+                AddConSpell(spell,caster.id,targetID);
+            }
+
+
+
+            
         } else if (spell.areaEffect === "Damage") {
             if (spell.cLevel && spell.cLevel[casterLevel]) {
                 spell.base = spell.cLevel[casterLevel];
@@ -3164,8 +3182,13 @@ const StartTurnThings = (model) => {
         let rdsLeft = ongoing.endTurn - state.DnD.combatTurn
         if (rdsLeft <= 0) {
             outputCard.body.push(ongoing.spellName + " ends");
+            EndConSpell(ongoing.targetID);
             let m = ModelArray[ongoing.targetID];
-            m.Destroy();
+            if (m.isSpell === true) {
+                m.Destroy();
+            } else {
+                m.token.set("status_" + ongoing.spellName,false);
+            }
             state.DnD.spells[model.id] = "";
         } else {
             outputCard.body.push(ongoing.spellName + " has " + rdsLeft + " rounds left");
