@@ -2305,45 +2305,46 @@ log(spell)
             outputCard.body.push(emote);
         }
         outputCard.body.push("Move Target to Location");
-        if (state.DnD.combatTurn > 0) {
-            AddConSpell(spell,caster.id,target.id)
-        }
+        AddSpell(spell,caster,[target])
     }
     PrintCard();
 
 }
 
-    const EndSpell = (spell,casterID,targetIDs,spellID) => {
-        if (ModelArray[targetIDs[0]].isSpell === true) {
+    const EndSpell = (spell,caster,targets,spellID) => {
+        if (targets[0].isSpell === true) {
             //ongoing spell target, like moonbeam
-            ModelArray[targetIDs[0]].Destroy();
+            targets[0].Destroy();
         } else {
-            _.each(targetIDs,targetID => {
-                let m = ModelArray[targetID];
-                m.token.set("status_" + spell.name,false);
+            _.each(targets,target => {
+                target.token.set("status_" + spell.name,false);
             })
         }
-        if (state.DnD.conSpells[casterID].spellID === spellID) {
-            state.DnD.conSpells[casterID] = {};
+        if (state.DnD.conSpells[caster.id].spellID === spellID) {
+            state.DnD.conSpells[caster.id] = {};
         } else {
             let index = -1;
-            for (let i=0;i<state.DnD.regSpells[casterID].length;i++) {
-                if (state.DnD.regSpells[casterID][i].spellID === spellID) {
+            for (let i=0;i<state.DnD.regSpells[caster.id].length;i++) {
+                if (state.DnD.regSpells[caster.id][i].spellID === spellID) {
                     index = i;
                     break;
                 }
             }
             if (index > -1) {
-                state.DnD.regSpells[casterID].splice(index,1);
+                state.DnD.regSpells[caster.id].splice(index,1);
             }
         }
     }
 
-    const AddSpell = (spell,casterID,targetIDs,precastFlag) => {
+    const AddSpell = (spell,caster,targets,precastFlag) => {
         if (!spell.duration) {return};
         if (!precastFlag) {precastFlag = false}
         let endTurn = state.DnD.combatTurn + spell.duration;
         if (precastFlag === true) {endTurn--};
+        let targetIDs = [];
+        _.each(targets,target => {
+            targetIDs.push(target.id);
+        })
         let info = {
             endTurn: endTurn,
             spellName: spell.name,
@@ -2351,12 +2352,12 @@ log(spell)
             spellID: stringGen(),
         }
         if (spell.concentration === true) {
-            if (state.DnD.conSpells[casterID]) {
-                EndSpell(spell,casterID,targetIDs,state.DnD.conSpells[casterID].spellID);
+            if (state.DnD.conSpells[caster.id]) {
+                EndSpell(spell,caster,targets,state.DnD.conSpells[caster.id].spellID);
             } 
-            state.DnD.conSpells[casterID] = info;
+            state.DnD.conSpells[caster.id] = info;
         } else {
-            state.DnD.regSpells[casterID].push(info);
+            state.DnD.regSpells[caster.id].push(info);
         }
     }
 
@@ -2530,11 +2531,8 @@ log(spellInfo.spell)
             })
         }
 
-        let targetIDs = [];
-        _.each(targets,target => {
-            targetIDs.push(target.id);
-        })
-        AddSpell(spellInfo.spell,spellInfo.caster.id,spellInfo.targetIDs);
+
+        AddSpell(spellInfo.spell,spellInfo.caster,spellInfo.targets);
 
         if (spellName === "Cure Wounds") {
             let rolls = [];
@@ -3190,7 +3188,7 @@ log(rollResults)
             let sm = model.SM();
             _.each(sm,spellName => {
                 let spell = SpellInfo[spellName];
-                if (spell) {AddSpell(spell,model.id,[model.id],true)};
+                if (spell) {AddSpell(spell,model,[model],true)};
             })
         })
         Combat();
