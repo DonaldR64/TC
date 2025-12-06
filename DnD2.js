@@ -438,6 +438,17 @@ log(info)
 
 
     //Functions
+
+    const stringGen = () => {
+        let text = "";
+        let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < 6; i++) {
+            text += possible.charAt(Math.floor(randomInteger(possible.length)));
+        }
+        return text;
+    };
+
+
     const simpleObj = (o) => {
         let p = JSON.parse(JSON.stringify(o));
         return p;
@@ -2279,29 +2290,53 @@ log(spell)
 
 }
 
-const AddConSpell = (spell,casterID,targetID) => {
-    if (state.DnD.combatTurn === 0) {return}
-    let endTurn = state.DnD.combatTurn + spell.duration;
-    let info = {
-        endTurn: endTurn,
-        spellName: spell.name,
-        targetID: targetID,
+    const EndSpell = (spell,casterID,targetIDs,spellID) => {
+        if (ModelArray[targetIDs[0]].isSpell === true) {
+            //ongoing spell target, like moonbeam
+            ModelArray[targetIDs[0]].Destroy();
+        } else {
+            _.each(targetIDs,targetID => {
+                let m = ModelArray[targetID];
+                m.token.set("status_" + spell.name,false);
+            })
+        }
+        if (state.DnD.conSpells[casterID].spellID === spellID) {
+            state.DnD.conSpells[casterID] = {};
+        } else {
+            let index = -1;
+            for (let i=0;i<state.DnD.regSpells[casterID].length;i++) {
+                if (state.DnD.regSpells[casterID][i].spellID === spellID) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index > -1) {
+                state.DnD.regSpells[casterID].splice(index,1);
+            }
+        }
     }
-    if (state.DnD.spells[casterID]) {
-       EndConSpell(spell,casterID,targetID)
-    } 
-    state.DnD.spells[caster.id] = info;
-}
 
-const EndConSpell = (spell,casterID,targetID) => {
-    let m = ModelArray[targetID];
-    if (m.isSpell === true) {
-        m.Destroy();
-    } else {
-        m.token.set("status_" + spell.name,false);
+    const AddSpell = (spell,casterID,targetIDs,precastFlag) => {
+        if (!spell.duration) {return};
+        if (!precastFlag) {precastFlag = false}
+        let endTurn = state.DnD.combatTurn + spell.duration;
+        if (precastFlag === true) {endTurn--};
+        let info = {
+            endTurn: endTurn,
+            spellName: spell.name,
+            targetIDs: targetIDs,
+            spellID: stringGen(),
+        }
+        if (spell.concentration === true) {
+            if (state.DnD.conSpells[casterID]) {
+                EndSpell(spell,casterID,targetIDs,state.DnD.conSpells[casterID].spellID);
+            } 
+            state.DnD.conSpells[casterID] = info;
+        } else {
+            state.DnD.regSpells[casterID].push(info);
+        }
     }
-    state.DnD.spells[casterID] = "";
-}
+
 
 
 
@@ -3129,9 +3164,14 @@ log(rollResults)
         state.DnD.conSpells = {};
         state.DnD.regSpells = {};
 
-//go through models, see if any preexisting spell markers on token, if is, check if spell has a duration, if does set it into one of arrays abvoe with 1 less round - basically precast
-
-
+        //precast spells - drop duration by 1 round
+        _.each(ModelArray,model => {
+            let sm = model.SM();
+            _.each(sm,spellName => {
+                let spell = SpellInfo[spellName];
+                if (spell) {AddSpell(spell,model.id,[model.id],true)};
+            })
+        })
         Combat();
     }
 
