@@ -194,6 +194,8 @@
         },
         "Protection from Evil and Good": {
             level:1,
+            duration: 100,
+            concentration: true,
             range: 5,
             spellType: "Misc",
             emote: "The creature you touch is granted Protection against certain creatures.<br>Lasts 10 minutes of Concentration",
@@ -205,6 +207,7 @@
             level: 1,
             range: 30,
             spellType: "Misc",
+            duration: 10,
             emote: "As a bonus action, You ward a creature within range against attack. Until the spell ends, any creature who targets the warded creature with an attack or a harmful spell must first make a W isdom saving throw. On a failed save, the creature must choose a new target or lose the attack or spell. This spell doesn’t protect the warded creature from area effects, such as the explosion of a fireball. If the warded creature makes an attack or casts a spell that affects an enemy creature, this spell ends.",
             macro: "!Spell;Sanctuary;1;%Selected%;%Target%",
             sound: "Angels",
@@ -222,6 +225,8 @@
         "Web": {
             level: 2,
             range: 60,
+            duration: 600,
+            concentration: true,
             spellType: "Area",
             area: 'Square',
             areaEffect: "Effect",
@@ -241,6 +246,8 @@
         "Dragon's Breath": {
             level: 2,
             range: 5,
+            duration: 10,
+            concentration: true,
             spellType: "Misc",
             sound: "Ding",
             damageType: "fire",
@@ -269,6 +276,8 @@
         "Hold Person": {
             level: 2,
             range: 60,
+            duration: 10,
+            concentration: true,
             spellType: "Misc",
             macro: "!Spell;Hold Person;%Level%;%Selected%;%Target%",
             sound: "Sound",
@@ -282,7 +291,7 @@
             name: "Moonbeam",
             range: 120,
             spellType: "Ongoing",
-            duration: 10, //rounds
+            duration: 10,
             concentration: true,
             base: '2d10',
             sLevel: [0,0,"2d10","3d10","4d10","5d10","6d10"],
