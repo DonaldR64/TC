@@ -2808,7 +2808,7 @@ log(rollResults)
         }
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
-        
+
         AddSpell(spell,caster,spellInfo.targets);
 
         if (spell.moveEffect) {
