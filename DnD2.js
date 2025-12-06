@@ -3126,6 +3126,12 @@ log(rollResults)
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 1;
+        state.DnD.conSpells = {};
+        state.DnD.regSpells = {};
+
+//go through models, see if any preexisting spell markers on token, if is, check if spell has a duration, if does set it into one of arrays abvoe with 1 less round - basically precast
+
+
         Combat();
     }
 
