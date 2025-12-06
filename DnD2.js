@@ -2197,119 +2197,119 @@ log(damageResults)
         PlaySound(spell.sound);
     }
 
-const Spell = (msg) => {
-    
-    let Tag = msg.content.split(";");
-    let spellName = Tag[1];
-    let level = parseInt(Tag[2]);
-    let casterID = Tag[3];
-    if (!casterID) {casterID = msg.selected[0]._id};
-    let targets = [];
-    let errorMsg = [];
+    const Spell = (msg) => {
+        
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        let level = parseInt(Tag[2]);
+        let casterID = Tag[3];
+        if (!casterID) {casterID = msg.selected[0]._id};
+        let targets = [];
+        let errorMsg = [];
 
-    let caster = ModelArray[casterID];
-    let spellDC = caster.spellDC;
+        let caster = ModelArray[casterID];
+        let spellDC = caster.spellDC;
 
-    let ritual = false;
-    if (spellName.includes("Ritual")) {
-        spellName = spellName.replace("Ritual","");
-        ritual = true;
-    }
-
-    if (!SpellInfo[spellName]) {
-        outputCard.body.push("Error");
-        PrintCard();
-        return;
-    }
-
-    let spell = DeepCopy(SpellInfo[spellName]);
-    spell.name = spellName;
-
-    //check spell slots, distance
-    if (!spell.exempt && ritual === false && level > 0) {
-        let slotsAvailable = SpellSlots(caster,level);
-        if (slotsAvailable === 0) {
-            errorMsg.push("No Slots of that Level Available");
+        let ritual = false;
+        if (spellName.includes("Ritual")) {
+            spellName = spellName.replace("Ritual","");
+            ritual = true;
         }
-    }
 
-    //range check - note range check for Area checked in AreaSpell once template placed
-    let alt = 0;
-    for (let i=4;i< Tag.length;i++) {
-        let target = ModelArray[Tag[i]];
-        if (!target) {
-            let alternate = spell.alternates[alt];
-            spell[alternate] = Tag[i];
-log(spell)
-            alt++;
-        } else {
-            let squares = caster.Distance(target);
-            let distance = squares * pageInfo.scale;
-            if (distance > spell.range) {
-                errorMsg.push(target.name + " is out of Range");
-            } else {
-                targets.push(target);
+        if (!SpellInfo[spellName]) {
+            outputCard.body.push("Error");
+            PrintCard();
+            return;
+        }
+
+        let spell = DeepCopy(SpellInfo[spellName]);
+        spell.name = spellName;
+
+        //check spell slots, distance
+        if (!spell.exempt && ritual === false && level > 0) {
+            let slotsAvailable = SpellSlots(caster,level);
+            if (slotsAvailable === 0) {
+                errorMsg.push("No Slots of that Level Available");
             }
         }
-    }
 
-    SetupCard(caster.name,spellName,caster.displayScheme);
-    if (ritual === true) {
-        outputCard.body.push("[B]Ritual[/b]");
-        spell.exempt = true;
-    }
-
-    if (errorMsg.length > 0) {
-        _.each(errorMsg,error => {
-            outputCard.body.push(error);
-        });
-        PrintCard();
-        return;
-    } 
-
-    spell.marker = (!spell.marker) ? (ConditionMarkers[spell.name] || "blue"):ConditionMarkers[spell.marker];
-
-    if (targets.length === 0) {
-        targets.push(caster);
-    }
-
-    spellInfo = {
-        caster: caster,
-        targets: targets,
-        spell: spell,
-        level: level,
-        dc: spellDC,
-        ritual: ritual,
-    }
-
-    if (spell.spellType === "DirectAttack") {
-        //spells that directly attack the target
-        DirectAttackSpell(spellInfo);
-    }
-    if (spell.spellType === "Misc") {
-        MiscSpell(spellInfo);
-    }
-    if (spell.spellType === "Area") {
-        //creates a target template (depending on spell)
-        //target template will have a macro to actually cast spell
-        ClearSpellTarget();
-        SpellTarget(spellInfo);
-        outputCard.body.push("Place Target then use Macro to Cast");
-    }
-    if (spell.spellType === "Ongoing") {
-        spellInfo.ongoing = true;
-        ClearSpellTarget();
-        let target = SpellTarget(spellInfo);
-        let emote = Emote(spell,caster);
-        if (emote) {
-            outputCard.body.push(emote);
+        //range check - note range check for Area checked in AreaSpell once template placed
+        let alt = 0;
+        for (let i=4;i< Tag.length;i++) {
+            let target = ModelArray[Tag[i]];
+            if (!target) {
+                let alternate = spell.alternates[alt];
+                spell[alternate] = Tag[i];
+    log(spell)
+                alt++;
+            } else {
+                let squares = caster.Distance(target);
+                let distance = squares * pageInfo.scale;
+                if (distance > spell.range) {
+                    errorMsg.push(target.name + " is out of Range");
+                } else {
+                    targets.push(target);
+                }
+            }
         }
-        outputCard.body.push("Move Target to Location");
-        AddSpell(spell,caster,[target])
-    }
-    PrintCard();
 
-}
+        SetupCard(caster.name,spellName,caster.displayScheme);
+        if (ritual === true) {
+            outputCard.body.push("[B]Ritual[/b]");
+            spell.exempt = true;
+        }
+
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,error => {
+                outputCard.body.push(error);
+            });
+            PrintCard();
+            return;
+        } 
+
+        spell.marker = (!spell.marker) ? (ConditionMarkers[spell.name] || "blue"):ConditionMarkers[spell.marker];
+
+        if (targets.length === 0) {
+            targets.push(caster);
+        }
+
+        spellInfo = {
+            caster: caster,
+            targets: targets,
+            spell: spell,
+            level: level,
+            dc: spellDC,
+            ritual: ritual,
+        }
+
+        if (spell.spellType === "DirectAttack") {
+            //spells that directly attack the target
+            DirectAttackSpell(spellInfo);
+        }
+        if (spell.spellType === "Misc") {
+            MiscSpell(spellInfo);
+        }
+        if (spell.spellType === "Area") {
+            //creates a target template (depending on spell)
+            //target template will have a macro to actually cast spell
+            ClearSpellTarget();
+            SpellTarget(spellInfo);
+            outputCard.body.push("Place Target then use Macro to Cast");
+        }
+        if (spell.spellType === "Ongoing") {
+            spellInfo.ongoing = true;
+            ClearSpellTarget();
+            let target = SpellTarget(spellInfo);
+            let emote = Emote(spell,caster);
+            if (emote) {
+                outputCard.body.push(emote);
+            }
+            outputCard.body.push("Move Target to Location");
+            AddSpell(spell,caster,[target])
+        }
+        PrintCard();
+
+    }
 
     const EndSpell = (spell,caster,targets,spellID) => {
         if (targets[0].isSpell === true) {
