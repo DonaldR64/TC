@@ -82,6 +82,8 @@
         "Entangle": {
             level: 1,
             range: 90,
+            duration: 10,
+            concentration: true,
             spellType: "Area",
             area: 'Square',
             areaEffect: "Effect",
@@ -101,6 +103,8 @@
         "Faerie Fire": {
             level: 1,
             range: 60,
+            duration: 10,
+            concentration: true,
             spellType: "Area",
             area: "Square",
             areaEffect: "Effect",
@@ -138,6 +142,8 @@
             area: "Square",
             sound: "Woosh",
             range: 120,
+            duration: 600,
+            concentration: true,
             emote: 'It lasts for 1 hour or until Concentration ends, or a Stronger wind blows it apart',
             areaEffect: "Graphic",
             moveEffect: "map",
@@ -167,6 +173,8 @@
         },
         "Divine Favour": {
             level: 1,
+            duration: 10,
+            concentration: true,
             range: "Self",
             spellType: "Misc",
             macro: "!Spell;Divine Favour;1;%Selected%",
@@ -177,6 +185,8 @@
         "Shield of Faith": {
             level: 1,
             range: 60,
+            duration: 100,
+            concentration: true,
             spellType: "Misc",
             emote: "A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.<br>Lasts 10 minutes or Concentration",
             macro: "!Spell;Shield of Faith;1;%Selected%;%Target%",
