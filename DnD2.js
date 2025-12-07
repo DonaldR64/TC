@@ -2302,7 +2302,7 @@ log(damageResults)
             ClearSpellTarget();
             let target = SpellTarget(spellInfo);
             outputCard.body.push("Place Target then use Macro to Cast");
-            AddSpell(spell,level,caster,[target.id]);
+            //AddSpell(spell,level,caster,[target.id]);
         }
         if (spell.spellType === "Ongoing") {
             spellInfo.ongoing = true;
@@ -2322,19 +2322,22 @@ log(damageResults)
     const EndSpell = (spellID) => {
         if (!spellID) {return};
         let spellInfo = state.DnD.spellList.filter((e)=> e.spellID === spellID)[0];
+log("In End Spell")
 log(spellInfo)
-        if (!spellInfo) {return};
         let spell = SpellInfo[spellInfo.spellName];
+if(!spell) {return}
         let caster = ModelArray[spellInfo.casterID];
         let targets = spellInfo.targetIDs.map((e) => ModelArray[e]);
         let index;
-
+log(targets)
+        let sm = SpellMarkers[spell.name] || "";
         if (targets[0].isSpell === true) {
             //ongoing spell target, like moonbeam
             targets[0].Destroy();
         } else {
             _.each(targets,target => {
-                target.token.set("status_" + SpellMarkers[spell.name],false);                
+
+                target.token.set("status_" + sm,false);                
                 if (spell.cM) {
                     target.token.set("status_" + ConditionMarkers[spell.cM],false);
                 }                
@@ -2355,6 +2358,8 @@ log(spellInfo)
     }
 
     const AddSpell = (spell,spellLevel,caster,targetIDs,precastFlag) => {
+log("Add Spell")
+log(spell)
         if (!spell.duration) {return};
         if (!precastFlag) {precastFlag = false}
         let endTurn = state.DnD.combatTurn + spell.duration;
@@ -3248,7 +3253,7 @@ log(state.DnD.spellList)
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 0;
         Campaign().set("initiativepage",false);
-        state.DnD.conSpells = {};
+        state.DnD.conSpell = {};
         state.DnD.regSpells = {};
         state.DnD.spellList = [];
         state.DnD.lastTurnInfo = {};
@@ -3408,7 +3413,7 @@ return
                     names.push(model.name)
                 })
                 log(names);
-
+                log(state.DnD)
 
                 break;
             case '!SpecialAbility':

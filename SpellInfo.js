@@ -3,6 +3,7 @@
     const SpellInfo = {
 
         "Ray of Frost": {
+            name: "Ray of Frost",
             level: 0,
             spellType: "DirectAttack",
             range: 60,
@@ -19,6 +20,7 @@
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
         "Acid Splash": {
+            name: "Acid Splash",
             level: 0,
             range: 60,
             spellType: "DirectAttack",
@@ -33,6 +35,7 @@
             macro: '!Spell;Acid Splash;0;%Selected%;%Target%',
         },
         "Burning Hands": {
+            name: "Burning Hands",
             level: 1,
             range: 15,
             spellType: "Area",
@@ -50,6 +53,7 @@
             fx: "breath-fire",
         },
         "Magic Missile": {
+            name: "Magic Missile",
             level: 1,
             range: 120,
             spellType: "DirectAttack",
@@ -63,6 +67,7 @@
             fx: "missile-magic",
         },
         "Sleep": {
+            name: "Sleep",
             emote: "Using a pinch of fine sand, %%Caster%% sends creatures into a magical slumber. They remain asleep unless they take damage or are delliberately awakened",
             level: 1,
             range: 90,
@@ -80,6 +85,7 @@
             fx: "explode-magic",
         },
         "Entangle": {
+            name: "Entangle",
             level: 1,
             range: 90,
             duration: 10,
@@ -102,6 +108,7 @@
             fx: "explode-slime",
         },
         "Faerie Fire": {
+            name: "Faerie Fire",
             level: 1,
             range: 60,
             duration: 10,
@@ -119,6 +126,7 @@
             fx: 'explode-magic',
         },
         "Thunderwave": {
+            name: "Thunderwave",
             level: 1,
             range: 5,
             spellType: "Area",
@@ -136,6 +144,7 @@
             fx: 'breath-smoke',
         },
         "Fog Cloud": {
+            name: "Fog Cloud",
             level: 1,
             spellType: "Area",
             area: "Square",
@@ -151,6 +160,7 @@
             tempSize: 'Level * 40',
         },
         "Produce Flame": {
+            name: "Produce Flame",
             level: 0,
             range: 30,
             autoHit: "No",
@@ -164,6 +174,7 @@
             fx: "",
         },
         "Cure Wounds": {
+            name: "Cure Wounds",
             level: 1,
             range: 5,
             spellType: "Misc",
@@ -171,6 +182,7 @@
             macro: "!Spell;Cure Wounds;%Level%;%Selected%",
         },
         "Divine Favour": {
+            name: "Divine Favour",
             level: 1,
             duration: 10,
             concentration: true,
@@ -182,6 +194,7 @@
             marker: true,
         },
         "Shield of Faith": {
+            name: "Shield of Faith",
             level: 1,
             range: 60,
             duration: 100,
@@ -193,6 +206,7 @@
         },
         "Protection from Evil and Good": {
             level:1,
+            name: "Protection from Evil and Good",
             duration: 100,
             concentration: true,
             range: 5,
@@ -203,6 +217,7 @@
             marker: true,
         },
         "Sanctuary": {
+            name: "Sanctuary",
             level: 1,
             range: 30,
             spellType: "Misc",
@@ -213,6 +228,7 @@
             marker: true,
         },
         "Mage Armour": {
+            name: "Mage Armour",
             level: 1,
             range: 5,
             spellType: "Misc",
@@ -222,6 +238,7 @@
             marker: true,
         },
         "Web": {
+            name: "Web",
             level: 2,
             range: 60,
             duration: 600,
@@ -244,6 +261,7 @@
             fx: "",
         },
         "Dragon's Breath": {
+            name: "Dragon's Breath",
             level: 2,
             range: 5,
             duration: 10,
@@ -274,6 +292,7 @@
             fx: "breath-fire",
         },
         "Hold Person": {
+            name: "Hold Person",
             level: 2,
             range: 60,
             duration: 10,
