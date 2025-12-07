@@ -2311,7 +2311,7 @@ log(damageResults)
                 outputCard.body.push(emote);
             }
             outputCard.body.push("Move Target to Location");
-            AddSpell(spell,caster,[target])
+            AddSpell(spell,caster,[target]);
         }
         PrintCard();
 
@@ -2672,26 +2672,20 @@ log("Cumulative Slots: " + cumulativeSS)
 
         let spell = DeepCopy(SpellInfo[Tag[1]]);
 
+        //if in spell list, then check/override the default levels etc
         let ss;
         if (spell.concentration === true) {
             spellID = state.DnD.conSpell[caster.id];
             ss = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
-            spell.spellLevel = ss.spellLevel;
-            spell.casterLevel = ss.casterLevel;
-            spell.dc = ss.dc;
         } else {
-            spellID = state.DnD.regSpells.filter((e) => 
-            
-            
-            
-            )
-
-
+            let list = state.DnD.spellList.filter((e) => e.spellName === spell.name); //list of spells with that name
+            ss = list.filter((e) => state.DnD.regSpells[caster.id].includes(e.spellID))[0];
         }
-
-
-
-
+        if (ss) {
+            level = ss.spellLevel;
+            casterLevel = ss.casterLevel;
+            dc = ss.dc;
+        }
 
         if (spell.name === "Breathe") {
 //change to use spell info in state
@@ -2745,7 +2739,6 @@ log(spell)
             targets = Sleep(targets,level); //refine based on hp
         }
 
-
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
             _.each(spellInfo.targets,target => {
                 let saved = false
@@ -2775,8 +2768,6 @@ log(spell)
         }
 
         if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
-
-
             if (spell.cLevel && spell.cLevel[casterLevel]) {
                 spell.base = spell.cLevel[casterLevel];
             }
@@ -2785,7 +2776,6 @@ log(spell)
                 spell.base = spell.sLevel[level];
             }
             spell.damage = spell.base + "," + spell.damageType;
-//pull from state
 
             let rollResults = RollDamage(spell.damage,false); //total, diceText
 log(rollResults)
@@ -3253,6 +3243,7 @@ log(rollResults)
     }
 
     const StartTurnThings = (model) => {
+return
         //things to check at start of models turn
         
         //Spells cast by model and ongoing
