@@ -7,6 +7,8 @@
             spellType: "DirectAttack",
             range: 60,
             autoHit: "No",
+            when: "start",
+            targetSave: "auto",
             base: '1d8',
             cLevel: {5: '2d8', 11: '3d8'},
             damageType: "cold",
@@ -285,7 +287,7 @@
             marker: true,
             marker: "Restrained",
             targetSave: "wisdom",
-            emote: "The Target can make a Wisom Save at the end of each of its turns.",
+            emote: "The Target can make a Wisdom Save at the end of each of its turns.",
         },
         "Moonbeam": {
             level: 2,

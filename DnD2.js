@@ -3283,11 +3283,27 @@ log(rollResults)
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
         _.each(sm,spellName => {
+            let spell = SpellInfo[spellName];
+///need the dc for spell - save in the info, so need to track.get this 
             if (spellName === "Ray of Frost") {
                 outputCard.body.push(model.name + " is slowed by 10ft this turn");
                 model.token.set("status_" + SpellMarkers["Ray of Frost"],false);
             }
-            
+            if (spell.when && spell.when === "start") {
+                let spellEnds = false;
+                if (spell.targetSave === "auto") {
+                    spellEnds = true;
+                } else {
+                    let saveResult = Save(model,)
+
+
+
+                }
+
+
+
+
+            }
 
 
 
