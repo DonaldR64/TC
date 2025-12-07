@@ -987,7 +987,7 @@ log(model.name + ": " + id)
         state.DnD = {
             combatTurn: 0,
             lastTurnInfo: {},
-            conSpells: {},
+            conSpell: {},
             regSpells: {},
 
         }
@@ -2316,17 +2316,17 @@ log(damageResults)
 
     }
 
-    const EndSpell = (spell,caster,targets,spellID) => {
+    const EndSpell = (spellName,caster,targets,spellID) => {
         if (targets[0].isSpell === true) {
             //ongoing spell target, like moonbeam
             targets[0].Destroy();
         } else {
             _.each(targets,target => {
-                target.token.set("status_" + spell.name,false);
+                target.token.set("status_" + spellName,false);
             })
         }
-        if (state.DnD.conSpells[caster.id].spellID === spellID) {
-            state.DnD.conSpells[caster.id] = {};
+        if (state.DnD.conSpell[caster.id].spellID === spellID) {
+            state.DnD.conSpell[caster.id] = {};
         } else {
             let index = -1;
             for (let i=0;i<state.DnD.regSpells[caster.id].length;i++) {
@@ -2357,14 +2357,22 @@ log(damageResults)
             spellID: stringGen(),
         }
         if (spell.concentration === true) {
-            if (state.DnD.conSpells[caster.id]) {
-                EndSpell(spell,caster,targets,state.DnD.conSpells[caster.id].spellID);
+            if (state.DnD.conSpell[caster.id]) {
+                EndSpell(spell.name,caster,targets,state.DnD.conSpell[caster.id].spellID);
             } 
-            state.DnD.conSpells[caster.id] = info;
+            state.DnD.conSpell[caster.id] = info;
         } else {
             state.DnD.regSpells[caster.id].push(info);
         }
     }
+
+    const SpellCheck = () => {
+
+
+
+
+    }
+
 
 
 
@@ -3186,7 +3194,7 @@ log(rollResults)
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 1;
-        state.DnD.conSpells = {};
+        state.DnD.conSpell = {};
         state.DnD.regSpells = {};
 
         //precast spells - drop duration by 1 round
@@ -3244,52 +3252,79 @@ log(rollResults)
         state.DnD.lastTurnInfo = {};
     }
 
-const StartTurnThings = (model) => {
-    //things to check at start of models turn
-    
-    //Spells cast by model and ongoing
-    let ongoing = state.DnD.spells[model.id]
-    if (ongoing) {
-        let rdsLeft = ongoing.endTurn - state.DnD.combatTurn
-        if (rdsLeft <= 0) {
-            outputCard.body.push(ongoing.spellName + " ends");
-            EndConSpell(ongoing.targetID);
-            let m = ModelArray[ongoing.targetID];
-            if (m.isSpell === true) {
-                m.Destroy();
+    const StartTurnThings = (model) => {
+        //things to check at start of models turn
+        
+        //Spells cast by model and ongoing
+        let conSpell = state.DnD.conSpell[model.id];
+        if (conSpell) {
+            let rdsLeft = conSpell.endTurn - state.DnD.combatTurn;
+            if (rdsLeft <= 0) {
+                outputCard.body.push(conSpell.spellName + " ends");
+                let targets = conSpell.targetIDs.map((id) => ModelArray[id]);
+                EndSpell(conSpell.spellName,model,targets,conSpell.spellID);
             } else {
-                m.token.set("status_" + ongoing.spellName,false);
+                outputCard.body.push(conSpell.spellName + " has " + rdsLeft + " rounds left");
             }
-            state.DnD.spells[model.id] = "";
-        } else {
-            outputCard.body.push(ongoing.spellName + " has " + rdsLeft + " rounds left");
+            outputCard.body.push("[hr]");
         }
-        outputCard.body.push("[hr]");
-    }
-
-    //spells on model - check markers, then check spell to see if/when save/ends
-    let sm = model.SM();
-    if (sm !== " ") {
-        if (sm.includes("Ray of Frost")) {
-            outputCard.body.push(model.name + " is slowed by 10ft this turn");
-            model.token.set("status_"
-                 + SpellMarkers["Ray of Frost"],false);
+        let regSpells = state.DnD.regSpells[model.id];
+        if (regSpells) {
+            _.each(regSpells,regSpell => {
+                let rdsLeft = regSpell.endTurn - state.DnD.combatTurn;
+                if (rdsLeft <= 0) {
+                    outputCard.body.push(regSpell.spellName + " ends");
+                    let targets = regSpell.targetIDs.map((id) => ModelArray[id]);
+                    EndSpell(regSpell.spellName,model,targets,regSpell.spellID);
+                }
+            })
         }
 
+        //spells on model - check markers, then check spell to see if/when save/ends
+        let sm = model.SM().split(',');
+        _.each(sm,spellName => {
+            if (spellName === "Ray of Frost") {
+                outputCard.body.push(model.name + " is slowed by 10ft this turn");
+                model.token.set("status_" + SpellMarkers["Ray of Frost"],false);
+            }
+            
+
+
+
+
+
+        })
+
+
+
+
+        if (sm !== " ") {
+            if (sm.includes("Ray of Frost")) {
+                outputCard.body.push(model.name + " is slowed by 10ft this turn");
+                model.token.set("status_"
+                    + SpellMarkers["Ray of Frost"],false);
+            }
+
+
+
+
+
+
+
+
+
+        }
+        //conditions on model - check markers, may have been removed if spell broken above
+
+
+        //check any spell areas model is in, eg Moonbeam, entangle etc
+
+        
+
+
 
 
     }
-    //conditions on model - check markers, may have been removed if spell broken above
-
-
-    //check any spell areas model is in, eg Moonbeam, entangle etc
-
-    
-
-
-
-
-}
 
 
 
