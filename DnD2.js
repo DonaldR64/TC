@@ -89,7 +89,7 @@ const DnD = (() => {
         "Petrified": "Petrified-or-Stone-2::2006594",
         "Poisoned": "Poison::2006492",
         "Prone": "Prone::2006547",
-        "Restrained": "Restrained-or-Webbed::2006494",
+        "Restrained": "Cage::1431882",
         "Stunned": "Stunned::2006499",
         "Unconscious": "KO::2006544",
         "Dodge": "half-haze",
@@ -98,7 +98,7 @@ const DnD = (() => {
     }
 
     const SpellMarkers = {
-        "Protection from Evil and Good": "Cursed-Green::2006510",
+        "Protection from Evil and Good": "Good Evil::1432039",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "Slimed-Mustard-Transparent::2006560",
         "Sacred Weapon": "Torch-Light::2006651",
@@ -107,6 +107,9 @@ const DnD = (() => {
         "Slow": "Slow::2006498",
         "Ray of Frost": "Cold::2006476",
         "Shield of Faith": "Shield::2006495",
+        "Faerie Fire": "Effect Faerie Glow::1431945",
+        "Web": "Restrained-or-Webbed::2006494",
+        "Entangle": "Effect Entangled Vine Grow::1431943",
     }
 
 
@@ -2528,23 +2531,24 @@ log("Cumulative Slots: " + cumulativeSS)
             }           
             outputCard.body.push(emote);
         }
-/////
-        if (spellInfo.spell.marker) {
-            _.each(spellInfo.targets,target => {
-                let saved = false
-                if (spellInfo.spell.targetSave) {
-                    let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
-                    saved = saveResult.save;
-                    noun = "Fails";
-                    if (saved === true) {noun = "Saves"};
-                    let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
-                    outputCard.body.push(target.name + " " + tip);
+
+        _.each(spellInfo.targets,target => {
+            let saved = false
+            if (spellInfo.spell.targetSave) {
+                let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
+                saved = saveResult.save;
+                noun = "Fails";
+                if (saved === true) {noun = "Saves"};
+                let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+                outputCard.body.push(target.name + " " + tip);
+            }
+            if (saved === false) {
+                target.token.set("status_" + SpellMarkers[spellName],true);
+                if (spellInfo.spell.cM) {
+                    target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
                 }
-                if (saved === false) {
-                    target.token.set("status_" + SpellMarkers[spellName],true);
-                }
-            })
-        }
+            }
+        })
 
         let targetIDs = spellInfo.targets.map((e) => e.id);
 
@@ -2566,21 +2570,9 @@ log("Cumulative Slots: " + cumulativeSS)
         if (spellName === "Dragon's Breath") {
             let target = spellInfo.targets[0];
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spellInfo.level + ";" + spellInfo.spell.damageType + ";" + spellInfo.caster.spellDC + ";" + spellInfo.caster.id;
-/*
-change to find any Breath ability
-            let ability = findObjs({_type: "ability", _characterid: target.charID, name: "Breathe " + Capit(spellInfo.spell.damageType)})[0]
-            if (ability) {
-                ability.remove();
-            }
-*/
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
 
-        if (SpellMarkers[spellName]) {
-            _.each(spellInfo.targets,target => {
-                target.token.set("status_" + SpellMarkers[spellName]);
-            })
-        }
 
         PlaySound(spellInfo.spell.sound);
         //Use Slot if not ritual
@@ -2680,7 +2672,29 @@ change to find any Breath ability
 
         let spell = DeepCopy(SpellInfo[Tag[1]]);
 
+        let ss;
+        if (spell.concentration === true) {
+            spellID = state.DnD.conSpell[caster.id];
+            ss = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
+            spell.spellLevel = ss.spellLevel;
+            spell.casterLevel = ss.casterLevel;
+            spell.dc = ss.dc;
+        } else {
+            spellID = state.DnD.regSpells.filter((e) => 
+            
+            
+            
+            )
+
+
+        }
+
+
+
+
+
         if (spell.name === "Breathe") {
+//change to use spell info in state
             spell.damageType = Tag[4].toLowerCase();
             spell.name += " " + Capit(spell.damageType);
             dc = parseInt(Tag[5]);
@@ -2731,53 +2745,38 @@ log(spell)
             targets = Sleep(targets,level); //refine based on hp
         }
 
-//effect AND damage - ? 
 
-        if (spell.areaEffect === "Effect") {
-            _.each(targets,target => {
-                if (spell.savingThrow === "No") {
-                    outputCard.body.push(target.name + spell.areaTextF);
-                    if (spell.effectMarker) {
-                        target.token.set(spell.effectMarker,true);               
-                    } else if (spell.effectAura){
-                        target.token.set({
-                            aura1_radius: 1,
-                            aura1_color: spell.effectAura,
-                            showplayers_aura1: true,
-                        })
-                    } 
-                } else {
-                    if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
-                        outputCard.body.push(target.name + " is Immune");
-                    } else {
-                        let saveResult = Save(target,dc,spell.savingThrow);
-                        let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
-                        if (saveResult.save === true) {
-                            outputCard.body.push(target.name + " " +  '[saves]' + tip + spell.areaTextS);
-                        } else {
-                            outputCard.body.push(target.name + " " + '[fails]' + tip + spell.areaTextF);
-                           if (spell.effectMarker) {
-                                target.token.set(spell.effectMarker,true);                   
-                            } else if (spell.effectAura){
-                                target.token.set({
-                                    aura1_radius: 1,
-                                    aura1_color: spell.effectAura,
-                                    showplayers_aura1: true,
-                                })
-                            } 
-                        }
+        if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
+            _.each(spellInfo.targets,target => {
+                let saved = false
+                if (spellInfo.spell.conditionImmune && target.conditionImmunities.includes(spellInfo.spell.conditionImmune)) {
+                    saved = true;
+                    outputCard.body.push(target.name + " is Immune");
+                }
+                if (spellInfo.spell.targetSave) {
+                    let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
+                    saved = saveResult.save;
+                    let noun = "Fails";
+                    let phrase = spellInfo.spell.failText;
+                    if (saved === true) {
+                        noun = "Saves"
+                        phrase = spellInfo.spell.saveText;
+                    };
+                    let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+                    outputCard.body.push(target.name + " " + tip + phrase);
+                }
+                if (saved === false) {
+                    target.token.set("status_" + SpellMarkers[spellName],true);
+                    if (spellInfo.spell.cM) {
+                        target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
                     }
                 }
-            })
+            })            
+        }
 
-            if (spell.duration && spell.concentration === true) {
-                AddConSpell(spell,caster.id,targetID);
-            }
-
+        if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
 
 
-            
-        } else if (spell.areaEffect === "Damage") {
             if (spell.cLevel && spell.cLevel[casterLevel]) {
                 spell.base = spell.cLevel[casterLevel];
             }
@@ -2786,6 +2785,8 @@ log(spell)
                 spell.base = spell.sLevel[level];
             }
             spell.damage = spell.base + "," + spell.damageType;
+//pull from state
+
             let rollResults = RollDamage(spell.damage,false); //total, diceText
 log(rollResults)
             tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
