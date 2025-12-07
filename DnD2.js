@@ -301,9 +301,10 @@ const DnD = (() => {
             }
             if (this.isSpell) {
                 //removes an ongoing spell in combat
-                if (state.DnD.spells[this.isSpell]) {
-                    state.DnD.spells[this.isSpell] = {};
-                }
+                let spellID = state.DnD.spellList.filter((e) => {
+                    e.spellName === this.name && e.casterID === this.isSpell
+                })[0];
+                if (spellID) {EndSpell(spellID)};
             }
             delete ModelArray[this.id];
         }
@@ -1865,7 +1866,7 @@ log(damageResults)
         })
 
         //specials, spells etc
-        if (defender.token.get("aura1_color").toLowerCase() === "#ff00ff" && defender.token.get("aura1_radius") > 0) {
+        if (defSpells.includes("Faerie Fire")) {
             advantage = true;
             advText.push("Faerie Fire");
         };
@@ -2113,7 +2114,7 @@ log(damageResults)
 
         let targetIDs = targets.map((e) => e.id);
 
-        AddSpell(spellInfo.spell,spellInfo.level,spellInfo.caster,targetIDs);
+        AddSpell(spellInfo.spell,level,spellInfo.caster,targetIDs);
 
         for (let i=0;i<targets.length;i++) {
             let defender = targets[i];
@@ -2192,8 +2193,8 @@ log(damageResults)
                     if (spell.cM) {
                         defender.token.set("status_" + ConditionMarkers[spell.cM],true);
                     }
-                    if (SpellMarkers[spellName]) {
-                        defender.token.set("status_" + SpellMarkers[spellName],true);
+                    if (SpellMarkers[spell.name]) {
+                        defender.token.set("status_" + SpellMarkers[spell.name],true);
                     }
                 }
             } else {
@@ -2299,8 +2300,9 @@ log(damageResults)
             //creates a target template (depending on spell)
             //target template will have a macro to actually cast spell
             ClearSpellTarget();
-            SpellTarget(spellInfo);
+            let target = SpellTarget(spellInfo);
             outputCard.body.push("Place Target then use Macro to Cast");
+            AddSpell(spell,level,caster,[target.id]);
         }
         if (spell.spellType === "Ongoing") {
             spellInfo.ongoing = true;
@@ -2311,14 +2313,17 @@ log(damageResults)
                 outputCard.body.push(emote);
             }
             outputCard.body.push("Move Target to Location");
-            AddSpell(spell,caster,[target]);
+            AddSpell(spell,level,caster,[target.id]);
         }
         PrintCard();
 
     }
 
     const EndSpell = (spellID) => {
+        if (!spellID) {return};
         let spellInfo = state.DnD.spellList.filter((e)=> e.spellID === spellID)[0];
+log(spellInfo)
+        if (!spellInfo) {return};
         let spell = SpellInfo[spellInfo.spellName];
         let caster = ModelArray[spellInfo.casterID];
         let targets = spellInfo.targetIDs.map((e) => ModelArray[e]);
@@ -2354,12 +2359,11 @@ log(damageResults)
         if (!precastFlag) {precastFlag = false}
         let endTurn = state.DnD.combatTurn + spell.duration;
         if (precastFlag === true) {endTurn--};
-        let targetIDs = targets.map((e) => e.id);
         let spellID = stringGen();
         let ss = {
             spellID: spellID,
             spellName: spell.name,
-            casterID: casterID,
+            casterID: caster.id,
             targetIDs: targetIDs,
             spellLevel: spellLevel,
             casterLevel: caster.casterLevel,
@@ -2369,12 +2373,12 @@ log(damageResults)
         state.DnD.spellList.push(ss);
 
         if (spell.concentration === true) {
-            if (state.DnD.conSpell[casterID]) {
-                EndSpell(spellID);
+            if (state.DnD.conSpell[caster.id]) {
+                EndSpell(state.DnD.conSpell[caster.id]);
             } 
-            state.DnD.conSpell[casterID] = spellID;
+            state.DnD.conSpell[caster.id] = spellID;
         } else {
-            state.DnD.regSpells[casterID].push(spellID);
+            state.DnD.regSpells[caster.id].push(spellID);
         }
     }
 
@@ -2714,6 +2718,7 @@ log("Cumulative Slots: " + cumulativeSS)
                     break;
             }
         }
+log("Spell")
 log(spell)
 
         SetupCard(caster.name,spell.name,caster.displayScheme);
@@ -2738,9 +2743,8 @@ log(spell)
         if (spell.name === "Sleep") {
             targets = Sleep(targets,level); //refine based on hp
         }
-
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
-            _.each(spellInfo.targets,target => {
+            _.each(targets,target => {
                 let saved = false
                 if (spellInfo.spell.conditionImmune && target.conditionImmunities.includes(spellInfo.spell.conditionImmune)) {
                     saved = true;
@@ -2759,7 +2763,7 @@ log(spell)
                     outputCard.body.push(target.name + " " + tip + phrase);
                 }
                 if (saved === false) {
-                    target.token.set("status_" + SpellMarkers[spellName],true);
+                    target.token.set("status_" + SpellMarkers[spellInfo.spell.name],true);
                     if (spellInfo.spell.cM) {
                         target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
                     }
@@ -2807,7 +2811,8 @@ log(rollResults)
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
 
-        AddSpell(spell,caster,spellInfo.targets);
+        let targetIDs = spellInfo.targets.map((e) => e.id);
+        AddSpell(spell,level,caster,targetIDs);
 
         if (spell.moveEffect) {
             spellTarget.token.set({
@@ -2826,6 +2831,9 @@ log(rollResults)
             outputCard.body.push(emote);
         }
         PrintCard();
+
+log(state.DnD.spellList)
+
     }
 
 
@@ -3192,7 +3200,9 @@ log(rollResults)
             let sm = model.SM();
             _.each(sm,spellName => {
                 let spell = SpellInfo[spellName];
-                if (spell) {AddSpell(spell,model,[model],true)};
+                if (spell) {
+                    AddSpell(spell,spell.level,model,[model.id],true)
+                };
             })
         })
         Combat();
@@ -3238,7 +3248,9 @@ log(rollResults)
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 0;
         Campaign().set("initiativepage",false);
-        state.DnD.spells = {};
+        state.DnD.conSpells = {};
+        state.DnD.regSpells = {};
+        state.DnD.spellList = [];
         state.DnD.lastTurnInfo = {};
     }
 
