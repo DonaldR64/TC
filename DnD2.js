@@ -2684,7 +2684,7 @@ log("Cumulative Slots: " + cumulativeSS)
         //if in spell list, then check/override the default levels etc
         let ss;
         if (spell.concentration === true) {
-            spellID = state.DnD.conSpell[caster.id];
+            let spellID = state.DnD.conSpell[caster.id];
             ss = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
         } else {
             let list = state.DnD.spellList.filter((e) => e.spellName === spell.name); //list of spells with that name
@@ -2751,26 +2751,26 @@ log(spell)
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
             _.each(targets,target => {
                 let saved = false
-                if (spellInfo.spell.conditionImmune && target.conditionImmunities.includes(spellInfo.spell.conditionImmune)) {
+                if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
                     saved = true;
                     outputCard.body.push(target.name + " is Immune");
                 }
-                if (spellInfo.spell.targetSave) {
-                    let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
+                if (saved === false && spell.savingThrow) {
+                    let saveResult = Save(target,dc,spell.savingThrow,0);
                     saved = saveResult.save;
                     let noun = "Fails";
-                    let phrase = spellInfo.spell.failText;
+                    let phrase = spell.failText;
                     if (saved === true) {
                         noun = "Saves"
-                        phrase = spellInfo.spell.saveText;
+                        phrase = spell.saveText;
                     };
                     let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                     outputCard.body.push(target.name + " " + tip + phrase);
                 }
                 if (saved === false) {
-                    target.token.set("status_" + SpellMarkers[spellInfo.spell.name],true);
-                    if (spellInfo.spell.cM) {
-                        target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
+                    target.token.set("status_" + SpellMarkers[spell.name],true);
+                    if (spell.cM) {
+                        target.token.set("status_" + ConditionMarkers[spell.cM],true);
                     }
                 }
             })            
@@ -2816,7 +2816,7 @@ log(rollResults)
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
 
-        let targetIDs = spellInfo.targets.map((e) => e.id);
+        let targetIDs = targets.map((e) => e.id);
         AddSpell(spell,level,caster,targetIDs);
 
         if (spell.moveEffect) {
