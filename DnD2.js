@@ -108,8 +108,12 @@ const DnD = (() => {
         "Ray of Frost": "Cold::2006476",
         "Shield of Faith": "Shield::2006495",
         "Faerie Fire": "Effect Faerie Glow::1431945",
-        "Web": "Restrained-or-Webbed::2006494",
+        "Web": "Effect Web Spider Climb::1432012",
         "Entangle": "Effect Entangled Vine Grow::1431943",
+        "Hold Person": "Effect Control Hypno::1431929",
+
+
+
     }
 
 
@@ -3293,7 +3297,7 @@ log(state.DnD.spellList)
         //Spells cast by model and ongoing
         
 
-        
+
 
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
