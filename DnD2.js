@@ -2330,6 +2330,14 @@ if(!spell) {return}
         let targets = spellInfo.targetIDs.map((e) => ModelArray[e]);
         let index;
 log(targets)
+
+        if (spellInfo.spellTargetID) {
+            let m = ModelArray[spellInfo.spellTargetID];
+            if (m) {
+                m.Destroy();
+            }
+        }
+
         let sm = SpellMarkers[spell.name] || "";
         if (targets[0].isSpell === true) {
             //ongoing spell target, like moonbeam
@@ -2345,19 +2353,23 @@ log(targets)
         }
         if (spellInfo.concentration === true) {
             state.DnD.conSpell[caster.id] = {};
+            outputCard.body.push("[" + spell.name + " Ends]");
         } else {
             index = state.DnD.regSpells[caster.id].indexOf(spell.id);
             if (index > -1) {
                 state.DnD.regSpells[caster.id].splice(index,1);
             }
         }
-        index = state.DnD.spellList.indexOf(spell.id);
+        index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
         if (index > -1) {
             state.DnD.spellList.splice(index,1);
         }
+
+
+
     }
 
-    const AddSpell = (spell,spellLevel,caster,targetIDs,precastFlag) => {
+    const AddSpell = (spell,spellLevel,caster,targetIDs,precastFlag,spellTargetID) => {
 log("Add Spell")
 log(spell)
         if (!spell.duration) {return};
@@ -2374,6 +2386,7 @@ log(spell)
             casterLevel: caster.casterLevel,
             dc: caster.spellDC,
             concentration: spell.concentration || false,
+            spellTargetID: spellTargetID || "",
         }
         state.DnD.spellList.push(ss);
 
@@ -2383,6 +2396,9 @@ log(spell)
             } 
             state.DnD.conSpell[caster.id] = spellID;
         } else {
+            if (!state.DnD.regSpells[caster.id]) {
+                state.DnD.regSpells[caster.id] = [];
+            }
             state.DnD.regSpells[caster.id].push(spellID);
         }
     }
@@ -2750,22 +2766,23 @@ log(spell)
         }
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
             _.each(targets,target => {
-                let saved = false
+                let saved = false;
+                let noun = "Fails";
+                let tip = "";
+                let phrase = spell.failText;
                 if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
                     saved = true;
                     outputCard.body.push(target.name + " is Immune");
+                    return;
                 }
                 if (saved === false && spell.savingThrow) {
                     let saveResult = Save(target,dc,spell.savingThrow,0);
                     saved = saveResult.save;
-                    let noun = "Fails";
-                    let phrase = spell.failText;
                     if (saved === true) {
                         noun = "Saves"
                         phrase = spell.saveText;
                     };
-                    let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
-                    outputCard.body.push(target.name + " " + tip + phrase);
+                    tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                 }
                 if (saved === false) {
                     target.token.set("status_" + SpellMarkers[spell.name],true);
@@ -2773,6 +2790,7 @@ log(spell)
                         target.token.set("status_" + ConditionMarkers[spell.cM],true);
                     }
                 }
+                outputCard.body.push(target.name + tip + phrase);
             })            
         }
 
@@ -2817,7 +2835,7 @@ log(rollResults)
         PlaySound(spell.sound);
 
         let targetIDs = targets.map((e) => e.id);
-        AddSpell(spell,level,caster,targetIDs);
+        AddSpell(spell,level,caster,targetIDs,false,spellTarget.id);
 
         if (spell.moveEffect) {
             spellTarget.token.set({
@@ -3253,6 +3271,17 @@ log(state.DnD.spellList)
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 0;
         Campaign().set("initiativepage",false);
+        for (let i=0;i<state.DnD.spellList.length;i++) {
+            let item = state.DnD.spellList[i];
+            if (item.spellID) {
+                EndSpell(item.spellID);
+            }
+        }
+
+        sendChat("API","/w GM End Combat")
+
+
+        state.DnD.combatTurn = 0;
         state.DnD.conSpell = {};
         state.DnD.regSpells = {};
         state.DnD.spellList = [];
