@@ -7,7 +7,6 @@ const DnD = (() => {
 
     let ModelArray = {};
     let nameArray = {};
-    let currentTurn = 0;
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
 
@@ -2569,13 +2568,14 @@ log("Cumulative Slots: " + cumulativeSS)
 
         _.each(spellInfo.targets,target => {
             let saved = false
-            if (spellInfo.spell.targetSave) {
-                let saveResult = Save(target,spellInfo.dc,spellInfo.spell.targetSave,0);
+            let text = spellInfo.spell.failText || "";
+            if (spellInfo.spell.savingThrow) {
+                let saveResult = Save(target,spellInfo.dc,spellInfo.spell.savingThrow,0);
                 saved = saveResult.save;
                 noun = "Fails";
                 if (saved === true) {noun = "Saves"};
                 let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
-                outputCard.body.push(target.name + " " + tip);
+                outputCard.body.push(target.name + " " + tip + text);
             }
             if (saved === false) {
                 target.token.set("status_" + SpellMarkers[spellName],true);
@@ -2583,6 +2583,9 @@ log("Cumulative Slots: " + cumulativeSS)
                     target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
                 }
             }
+
+
+
         })
 
         let targetIDs = spellInfo.targets.map((e) => e.id);
@@ -3299,54 +3302,48 @@ log(state.DnD.spellList)
     }
 
     const StartTurnThings = (model) => {
+        //check any spell areas model is in, eg Moonbeam, entangle etc
+
+
+
         //Spells cast by model and ongoing - check duration
-        //con spell
         let spellID = state.DnD.conSpell[model.id];
         if (spellID) {
             CheckDuration(spellID);
         }
-        //other spells
         let spellIDs = state.DnD.regSpells;
         _.each(spellIDs,spellID => {
             CheckDuration(spellID);
         })
 
-/*
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
-        _.each(sm,spellName => {
-            let spell = SpellInfo[spellName];
-            if (spellName === "Ray of Frost") {
-                outputCard.body.push(model.name + " is slowed by 10ft this turn");
-                model.token.set("status_" + SpellMarkers["Ray of Frost"],false);
-            }
-            if (spell.when && spell.when === "start") {
-                let spellEnds = false;
-                if (spell.targetSave === "auto") {
-                    spellEnds = true;
-                } else {
-                    let saveResult = Save(model,)
+            _.each(sm,spellName => {
+                let spell = SpellInfo[spellName];
+                if (spell && spell.when) {
+                    if (spell.when === "start") {
+                        SpellCheck(spell,model);
+                    }
+                    if (spell.when === "end") {
+                        state.DnD.lastTurnInfo.model = model;
+                        if (state.DnD.lastTurnInfo.spells) {
+                            state.DnD.lastTurnInfo.spells.push(spell)
+                        } else {
+                            state.DnD.lastTurnInfo.spells = [spell]
+                        }
+                    }
+                    if (spell.when === "action") {
+                        //NPC - auto as action
+                        //PC - put out a call for action
 
 
-
+                    }
                 }
+            })
 
+    log("lastTurnInfo")
+    log(state.DnD.lastTurnInfo)
 
-
-
-            }
-
-
-
-
-
-        })
-*/
-
-        //conditions on model - check markers, may have been removed if spell broken above
-
-
-        //check any spell areas model is in, eg Moonbeam, entangle etc
 
         
 
@@ -3355,9 +3352,32 @@ log(state.DnD.spellList)
 
     }
 
+    const FindSpellInfo = (spellName,modelID) => {
+        let info = state.DnD.spellList.filter((e) => {
+            e.spellName === spellName && e.targetIDs.includes(modelID)
+        })[0];
+        return info
+    }
 
-
-
+    const SpellCheck = (spell,model) => {
+        let spellInfo = FindSpellInfo(spell.name,model.id);
+        let spellEnds = (spell.savingThrow === "auto") ? true:false;
+        let text = "";
+        if (spell.savingThrow && spell.savingThrow !== "auto") {
+            let saveResult = Save(model,spellInfo.dc,spell.savingThrow);
+            saved = saveResult.save;
+            noun = "Failed Save";
+            if (saved === true) {noun = "Saves"};
+            if (noun === "Saves") {spellEnds = true};
+            let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+            text += spell.name + ": " + tip;
+        }
+        if (spellEnds === true) {
+            model.token.set("status_" + SpellMarkers[spell.name],false);
+            text += spell.saveText;
+        }
+        outputCard.body.push(text);
+    }
 
 
 
