@@ -113,7 +113,6 @@ const DnD = (() => {
         "Hold Person": "Effect Control Hypno::1431929",
 
 
-
     }
 
 
@@ -3295,6 +3294,9 @@ log(state.DnD.spellList)
     const StartTurnThings = (model) => {
         //things to check at start of models turn
         //Spells cast by model and ongoing
+        
+
+
         
 
 
