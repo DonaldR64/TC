@@ -359,7 +359,6 @@ const DnD = (() => {
                                 desckey: desckey,
                                 ritual: ritual,
                             }
-log(info)
                             if (spells[level]) {
                                 spells[level].push(info);
                             } else {
@@ -2408,9 +2407,10 @@ log(spell)
     }
 
     const CheckDuration = (spellID) => {
-        let spellInfo = state.DnD.spellList.filter((e) => e.spellID === spellID);
-        if (spellInfo.endTurn >= state.DnD.combatTurn) {
-            outputCard.body.push(spellInfo.spellName + " ends");
+        let spellInfo = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
+log("In Check Duration")
+log(spellInfo)
+        if (parseInt(state.DnD.combatTurn) >= parseInt(spellInfo.endTurn)) {
             EndSpell(spellID);
         }
     }
@@ -3299,7 +3299,6 @@ log(state.DnD.spellList)
     }
 
     const StartTurnThings = (model) => {
-        //things to check at start of models turn
         //Spells cast by model and ongoing - check duration
         //con spell
         let spellID = state.DnD.conSpell[model.id];
