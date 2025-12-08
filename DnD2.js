@@ -3289,33 +3289,11 @@ log(state.DnD.spellList)
     }
 
     const StartTurnThings = (model) => {
-return
         //things to check at start of models turn
-        
         //Spells cast by model and ongoing
-        let conSpell = state.DnD.conSpell[model.id];
-        if (conSpell) {
-            let rdsLeft = conSpell.endTurn - state.DnD.combatTurn;
-            if (rdsLeft <= 0) {
-                outputCard.body.push(conSpell.spellName + " ends");
-                let targets = conSpell.targetIDs.map((id) => ModelArray[id]);
-                EndSpell(conSpell.spellName,model,targets,conSpell.spellID);
-            } else {
-                outputCard.body.push(conSpell.spellName + " has " + rdsLeft + " rounds left");
-            }
-            outputCard.body.push("[hr]");
-        }
-        let regSpells = state.DnD.regSpells[model.id];
-        if (regSpells) {
-            _.each(regSpells,regSpell => {
-                let rdsLeft = regSpell.endTurn - state.DnD.combatTurn;
-                if (rdsLeft <= 0) {
-                    outputCard.body.push(regSpell.spellName + " ends");
-                    let targets = regSpell.targetIDs.map((id) => ModelArray[id]);
-                    EndSpell(regSpell.spellName,model,targets,regSpell.spellID);
-                }
-            })
-        }
+        
+
+        
 
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
