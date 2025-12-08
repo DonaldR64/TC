@@ -2383,6 +2383,7 @@ log(spell)
         let ss = {
             spellID: spellID,
             spellName: spell.name,
+            endTurn: endTurn,
             casterID: caster.id,
             targetIDs: targetIDs,
             spellLevel: spellLevel,
@@ -2406,7 +2407,13 @@ log(spell)
         }
     }
 
-
+    const CheckDuration = (spellID) => {
+        let spellInfo = state.DnD.spellList.filter((e) => e.spellID === spellID);
+        if (spellInfo.endTurn >= state.DnD.combatTurn) {
+            outputCard.body.push(spellInfo.spellName + " ends");
+            EndSpell(spellID);
+        }
+    }
 
 
 
@@ -3293,19 +3300,23 @@ log(state.DnD.spellList)
 
     const StartTurnThings = (model) => {
         //things to check at start of models turn
-        //Spells cast by model and ongoing
-        
+        //Spells cast by model and ongoing - check duration
+        //con spell
+        let spellID = state.DnD.conSpell[model.id];
+        if (spellID) {
+            CheckDuration(spellID);
+        }
+        //other spells
+        let spellIDs = state.DnD.regSpells;
+        _.each(spellIDs,spellID => {
+            CheckDuration(spellID);
+        })
 
-
-        
-
-
-
+/*
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
         _.each(sm,spellName => {
             let spell = SpellInfo[spellName];
-///need the dc for spell - save in the info, so need to track.get this 
             if (spellName === "Ray of Frost") {
                 outputCard.body.push(model.name + " is slowed by 10ft this turn");
                 model.token.set("status_" + SpellMarkers["Ray of Frost"],false);
@@ -3331,26 +3342,8 @@ log(state.DnD.spellList)
 
 
         })
+*/
 
-
-
-
-        if (sm !== " ") {
-            if (sm.includes("Ray of Frost")) {
-                outputCard.body.push(model.name + " is slowed by 10ft this turn");
-                model.token.set("status_"
-                    + SpellMarkers["Ray of Frost"],false);
-            }
-
-
-
-
-
-
-
-
-
-        }
         //conditions on model - check markers, may have been removed if spell broken above
 
 
