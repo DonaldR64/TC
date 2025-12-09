@@ -2439,6 +2439,7 @@ log(spellInfo)
     const DoEndTurnThings = (lastTurnInfo) => {
         let model = lastTurnInfo.model;
         let spells = lastTurnInfo.spells;
+        if (!model || !spells) {return};
         SetupCard(model.name,"",model.displayScheme);
         _.each(spells,spell => {
             SpellCheck(spell,model);
@@ -3293,7 +3294,7 @@ log(state.DnD.spellList)
         if (!turnorder) {EndCombat();return};
         //check if stuff from prev. models turn to do - if so do that before advancing
         if (state.DnD.lastTurnInfo) {
-            //DoEndTurnThings(state.DnD.lastTurnInfo);
+            DoEndTurnThings(state.DnD.lastTurnInfo);
             state.DnD.lastTurnInfo = {};
         }
         //advance
@@ -3311,10 +3312,7 @@ log(state.DnD.spellList)
             toFront(model.token);
             sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
             SetupCard(model.name,"Turn " + state.DnD.combatTurn,model.displayScheme);
-            //check for stuff that happens at start of turn
             StartTurnThings(model);
-            //check for stuff that happens at end of turn, place into state to come out at next inititiave
-            //CheckEndTurnThings(model);
         } else {
             SetupCard("Turn " + state.DnD.combatTurn,"","Red");
             //Start of Turn things
@@ -3399,6 +3397,7 @@ log(state.DnD.spellList)
         let spellInfo = FindSpellInfo(spell.name,model.id);
 log("Pre")
 log(spellInfo)
+return
         let spellEnds = (spell.savingThrow === "auto") ? true:false;
         let text = "";
         if (spell.savingThrow && spell.savingThrow !== "auto") {
