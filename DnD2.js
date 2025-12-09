@@ -2416,6 +2416,27 @@ log(spellInfo)
         }
     }
 
+    const EffectCheck = (model) => {
+        //ongoing spell or similar effects - represented by a model
+        let damageSpells = ["Moonbeam"]
+        _.each(ModelArray,m => {
+            if (damageSpells.includes(m.name) && m.id !== model.id) {
+                if (Venn(m.Squares(),model.Squares()) === true) {
+                    
+
+
+                }
+            }
+        })
+
+
+
+
+
+
+    }
+
+
 
 
 
@@ -3302,8 +3323,6 @@ log(state.DnD.spellList)
         }
 
         sendChat("API","/w GM End Combat")
-
-
         state.DnD.combatTurn = 0;
         state.DnD.conSpell = {};
         state.DnD.regSpells = {};
@@ -3313,9 +3332,7 @@ log(state.DnD.spellList)
 
     const StartTurnThings = (model) => {
         //check any spell areas model is in, eg Moonbeam, entangle etc
-
-
-
+        EffectCheck(model);
         //Spells cast by model and ongoing - check duration
         let spellID = state.DnD.conSpell[model.id];
         if (spellID) {
@@ -3325,7 +3342,6 @@ log(state.DnD.spellList)
         _.each(spellIDs,spellID => {
             CheckDuration(spellID);
         })
-
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.SM().split(',');
             _.each(sm,spellName => {
@@ -3351,8 +3367,6 @@ log(state.DnD.spellList)
                 }
             })
 
-    log("lastTurnInfo")
-    log(state.DnD.lastTurnInfo)
 
 
         
