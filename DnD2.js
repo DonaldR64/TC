@@ -2422,7 +2422,7 @@ log(spellInfo)
         _.each(ModelArray,m => {
             if (damageSpells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
-                    
+
 
 
                 }
@@ -2435,6 +2435,18 @@ log(spellInfo)
 
 
     }
+
+    const DoEndTurnThings = (lastTurnInfo) => {
+        let model = lastTurnInfo.model;
+        let spells = lastTurnInfo.spells;
+        SetupCard(model.name,"",model.displayScheme);
+        _.each(spells,spell => {
+            SpellCheck(spell,model);
+        })
+        PrintCard();
+    }
+
+
 
 
 
