@@ -112,7 +112,7 @@ const DnD = (() => {
 
     }
 
-    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated"];
+    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep"];
     const Restrained = ["Restrained","Web","Entangle","Hold Person"];
 
 
@@ -2071,8 +2071,7 @@ log(damageResults)
         let targets = spellInfo.targets;
         let spell = spellInfo.spell;
         let level = spellInfo.level;
-        let attConditions = caster.CM();
-        let attSpells = caster.SM();
+        let attMarkers = caster.Markers();
 
         outputCard.body.push(Emote(spell,caster));
 
@@ -2093,15 +2092,14 @@ log(damageResults)
         for (let i=0;i<targets.length;i++) {
             let defender = targets[i];
             if (!defender) {continue};
-            let defConditions = defender.CM();
-            let defSpells = defender.SM();
+            let defMarkers = defender.Markers();
             let advResult = Advantage(caster,defender,spell);
 
             //attack bonuses
             let attackBonus = caster.spellAttack;
             //other mods to attack bonus
             let additionalText = "";
-            if (attSpells.includes("Bless")) {
+            if (attMarkers.includes("Bless")) {
                 bless = randomInteger(4);
                 additionalText += " +" + bless + " [Bless]";
                 attackBonus += bless;
@@ -2112,7 +2110,7 @@ log(damageResults)
 
             let tip;
             let crit = false;
-            if ((defConditions.includes("Paralyzed") || defConditions.includes("Unconscious")) && caster.Distance(defender) === 1) {
+            if ((findCommon(Incapacitated,defMarkers).length > 0) && caster.Distance(defender) === 1) {
                 crit = true;
             }
 
@@ -2130,7 +2128,7 @@ log(damageResults)
             tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
 
             let ac = defender.ac;
-            if (defSpells.includes("Shield of Faith")) {
+            if (defMarkers.includes("Shield of Faith")) {
                 ac += 2;
             }
             let cover = CheckCover(defender);
@@ -2164,26 +2162,17 @@ log(damageResults)
                     outputCard.body.push(spell.note);
                 }
                 if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
-                    if (spell.cM) {
-                        defender.token.set("status_" + ConditionMarkers[spell.cM],true);
-                    }
-                    if (SpellMarkers[spell.name]) {
-                        defender.token.set("status_" + SpellMarkers[spell.name],true);
-                    }
+                    defender.token.set("status_" + Markers[spell.name],true);
                 }
             } else {
                 outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
             }
             FX(spell.fx,caster,defender);
         }
-
-
-
         PlaySound(spell.sound);
     }
 
     const Spell = (msg) => {
-        
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
         let level = parseInt(Tag[2]);
@@ -2207,7 +2196,6 @@ log(damageResults)
         }
 
         let spell = DeepCopy(SpellInfo[spellName]);
-        spell.name = spellName;
 
         //check spell slots, distance
         if (!spell.exempt && ritual === false && level > 0) {
@@ -2277,7 +2265,6 @@ log(damageResults)
             ClearSpellTarget();
             let target = SpellTarget(spellInfo);
             outputCard.body.push("Place Target then use Macro to Cast");
-            //AddSpell(spell,level,caster,[target.id]);
         }
         if (spell.spellType === "Ongoing") {
             spellInfo.ongoing = true;
@@ -2291,7 +2278,6 @@ log(damageResults)
             AddSpell(spell,level,caster,[target.id]);
         }
         PrintCard();
-
     }
 
     const EndSpell = (spellID) => {
@@ -2313,17 +2299,13 @@ log(targets)
             }
         }
 
-        let sm = SpellMarkers[spell.name] || "";
+        let sm = Markers[spell.name] || [];
         if (targets[0].isSpell === true) {
             //ongoing spell target, like moonbeam
             targets[0].Destroy();
         } else {
             _.each(targets,target => {
-
-                target.token.set("status_" + sm,false);                
-                if (spell.cM) {
-                    target.token.set("status_" + ConditionMarkers[spell.cM],false);
-                }                
+                target.token.set("status_" + sm,false);                              
             })
         }
         if (spellInfo.concentration === true) {
@@ -2339,8 +2321,6 @@ log(targets)
         if (index > -1) {
             state.DnD.spellList.splice(index,1);
         }
-
-
 
     }
 
@@ -2414,9 +2394,13 @@ log(spellInfo)
         let spells = lastTurnInfo.spells;
         if (!model || !spells) {return};
         SetupCard(model.name,"",model.displayScheme);
-        _.each(spells,spell => {
-            SpellCheck(spell,model);
-        })
+        for (let i=0;i<spells.length;i++) {
+            let spell = spells[i];
+            if (spell) {
+                log(spell)
+                //SpellCheck(spell,model);
+            }
+        }
         PrintCard();
     }
 
@@ -2589,14 +2573,8 @@ log("Cumulative Slots: " + cumulativeSS)
             }
             if (saved === false) {
                 someoneFailed = true;
-                target.token.set("status_" + SpellMarkers[spellName],true);
-                if (spellInfo.spell.cM) {
-                    target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
-                }
+                target.token.set("status_" + Markers[spellName],true);
             }
-
-
-
         })
 
         let targetIDs = spellInfo.targets.map((e) => e.id);
@@ -2604,7 +2582,6 @@ log("Cumulative Slots: " + cumulativeSS)
         if (someoneFailed === true) {
             AddSpell(spellInfo.spell,spellInfo.level,spellInfo.caster,targetIDs);
         }
-
 
         if (spellName === "Cure Wounds") {
             let rolls = [];
@@ -2624,7 +2601,6 @@ log("Cumulative Slots: " + cumulativeSS)
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spellInfo.level + ";" + spellInfo.spell.damageType + ";" + spellInfo.caster.spellDC + ";" + spellInfo.caster.id;
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
-
 
         PlaySound(spellInfo.spell.sound);
         //Use Slot if not ritual
@@ -2812,13 +2788,7 @@ log(spell)
                     tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                 }
                 if (saved === false) {
-                    target.token.set("status_" + SpellMarkers[spell.name],true);
-    log(SpellMarkers[spell.name])
-/* 
-                    if (spell.cM) {
-                        target.token.set("status_" + ConditionMarkers[spell.cM],true);
-                    }
-*/
+                    target.token.set("status_" + Markers[spell.name],true);
                 }
                 outputCard.body.push(target.name + tip + phrase);
             })            
@@ -2907,7 +2877,7 @@ log(state.DnD.spellList)
         outputCard.body.push(tip + " HP Affected");
         for (let i = 0;i<targets.length; i++) {
             let target = targets[i];
-            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || target.CM().includes("Unconscious")) {
+            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || findCommon(Incapacitated,target.Markers()).length > 0) {
                 continue;
             };
             let phb = parseInt(target.token.get("bar1_value"));
@@ -2940,7 +2910,7 @@ log(state.DnD.spellList)
             outputCard.body.push("As an action, you imbue your weapon with Positive Energy");
             outputCard.body.push("For 1 minute, it gains " + model.statBonus.charisma + " to Hit and is a Magical Weapon");
             outputCard.body.push("It also emits light (20 feet bright, 20 feet dim)");
-            let marker = SpellMarkers["Sacred Weapon"];
+            let marker = Markers["Sacred Weapon"];
             model.token.set("status_" + marker,true);
         }
         if (ability === "Turn the Unholy") {
@@ -2966,7 +2936,7 @@ log(state.DnD.spellList)
                         } else {
                             outputCard.body.push(model.name + " " + '[fails]'
                                 + tip + " and Flees!");
-                            model.token.set("status_" + ConditionMarkers["Frightened"],true);
+                            model.token.set("status_" + Markers["Frightened"],true);
                         }
                     }
                 }
@@ -2985,8 +2955,6 @@ log(state.DnD.spellList)
         let itemName = Tag[1];
 
         SetupCard(model.name,itemName,model.displayScheme);
-
-
 
         if (itemName === "Potion of Healing") {
             let total = 0;
@@ -3055,17 +3023,6 @@ log(state.DnD.spellList)
         }
     }
 
-    const RebuildSC = () => {
-        let macro = findObjs({type: 'macro',name: 'Set-Condition'})[0];
-        let text = "!SetCondition;?{Condition";
-        let list = Object.keys(ConditionMarkers);
-        _.each(list,condition => {
-            text += "|" + condition;
-        })
-        text += "};?{Status|On|Off|Clear All}";
-        macro.set("action",text);
-        sendChat("","Rebuilt")
-    }
 
     const CheckCover = (defender) => {
         let cover = "None";
@@ -3182,7 +3139,6 @@ log(state.DnD.spellList)
         }
         let markers = model.token.get("statusmarkers");
 
-
         let cID = shapes[cName][shape].cID;
         let size = shapes[cName][shape].size;
 
@@ -3190,7 +3146,6 @@ log(state.DnD.spellList)
             PlaySound("Growl");
             let hp = shapes[cName][shape].hp;
             AttributeSet(cID,"hp",hp);
-
         }
 
         let left= Math.max(model.token.get("left") - 35,35*size/70);
@@ -3222,7 +3177,6 @@ log(state.DnD.spellList)
         }
         Campaign().set("initiativepage",true);
 
-
         _.each(ModelArray,model => {
             let item = turnorder.filter(item => item.id === model.id)[0];
             if (!item) {
@@ -3250,12 +3204,12 @@ log(state.DnD.spellList)
 
         //precast spells - drop duration by 1 round
         _.each(ModelArray,model => {
-            let sm = model.SM();
-            _.each(sm,spellName => {
-                let spell = SpellInfo[spellName];
+            let markers = model.Markers();
+            _.each(markers,marker => {
+                let spell = SpellInfo(marker);
                 if (spell) {
-                    AddSpell(spell,spell.level,model,[model.id],true)
-                };
+                    AddSpell(spell,spell.level,model,[model.id],true);
+                }
             })
         })
         Combat();
@@ -3293,7 +3247,6 @@ log(state.DnD.spellList)
         PrintCard();
     }
     const EndCombat = () => {
-        //also can come here if cancel turn order ???
         let turnorder = [];
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 0;
@@ -3326,29 +3279,27 @@ log(state.DnD.spellList)
             CheckDuration(spellID);
         })
         //spells on model - check markers, then check spell to see if/when save/ends
-        let sm = model.SM().split(',');
-            _.each(sm,spellName => {
-                let spell = SpellInfo[spellName];
-                if (spell && spell.when) {
-                    if (spell.when === "start") {
-                        SpellCheck(spell,model);
-                    }
-                    if (spell.when === "end") {
-                        state.DnD.lastTurnInfo.model = model;
-                        if (state.DnD.lastTurnInfo.spells) {
-                            state.DnD.lastTurnInfo.spells.push(spell)
-                        } else {
-                            state.DnD.lastTurnInfo.spells = [spell]
-                        }
-                    }
-                    if (spell.when === "action") {
-                        //NPC - auto as action
-                        //PC - put out a call for action
-
-
+        let sm = model.Markers();
+        for (let i=0;i<sm.length;i++) {
+            let spell = SpellInfo[sm[i]];
+            if (spell && spell.when) {
+                if (spell.when === "start") {
+                    SpellCheck(spell,model);
+                }
+                if (spell.when === "end") {
+                    state.DnD.lastTurnInfo.model = model;
+                    if (state.DnD.lastTurnInfo.spells) {
+                        state.DnD.lastTurnInfo.spells.push(spell)
+                    } else {
+                        state.DnD.lastTurnInfo.spells = [spell]
                     }
                 }
-            })
+                if (spell.when === "action") {
+                    //NPC - auto as action
+                    //PC - put out a call for action
+                }
+            }
+        }
 
 
 
@@ -3370,7 +3321,6 @@ log(state.DnD.spellList)
         let spellInfo = FindSpellInfo(spell.name,model.id);
 log("Pre")
 log(spellInfo)
-return
         let spellEnds = (spell.savingThrow === "auto") ? true:false;
         let text = "";
         if (spell.savingThrow && spell.savingThrow !== "auto") {
@@ -3383,7 +3333,7 @@ return
             text += spell.name + ": " + tip;
         }
         if (spellEnds === true) {
-            model.token.set("status_" + SpellMarkers[spell.name],false);
+            model.token.set("status_" + Markers[spell.name],false);
             text += spell.saveText;
             if (spellInfo) {
                 let index = spellInfo.targetIDs.indexOf(model.id);
@@ -3515,9 +3465,6 @@ log(spellInfo)
                 break;
             case '!Rename':
                 Rename(msg);
-                break;
-            case '!RebuildSC':
-                RebuildSC();
                 break;
             case '!WildShape2':
                 WildShape2(msg);
