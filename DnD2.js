@@ -1775,9 +1775,6 @@ log(damageResults)
         let attNegative = ["Blind","Frightened","Poison","Disadvantage"];
         let defNegative = ["Blind","Disadvantage"];
 
-
-
-
         let advantage = false;
         let advText = [];
         let disadvantage = false;
@@ -1789,7 +1786,7 @@ log(damageResults)
                 let model2 = ModelArray[ids[i]];
                 if (model2.id === attacker.id) {continue};
                 if (attacker.inParty !== model2.inParty) {
-                    if (findCommonElements(model2.Markers(),Incapacitated).length === 0) {
+                    if (findCommon(model2.Markers(),Incapacitated).length === 0) {
                         let squares = attacker.Distance(model2);
                         if (squares <= 1) {
                             disadvantage = true;
@@ -1826,13 +1823,13 @@ log(damageResults)
         }
 
         //check for conditions, spells etc
-        let attPos = findCommonElements(positive,attMarkers);
-        let attNeg = findCommonElements(attNegative,attMarkers);
-        attNeg = attNeg.concat(findCommonElements(Restrained,attMarkers));
+        let attPos = findCommon(positive,attMarkers);
+        let attNeg = findCommon(attNegative,attMarkers);
+        attNeg = attNeg.concat(findCommon(Restrained,attMarkers));
 
-        let defPos = findCommonElements(positive,defMarkers);
-        let defNeg = findCommonElements(defNegative,defMarkers);
-        defNeg = defNeg.concat(findCommonElements(Incapacitated,defMarkers),findCommonElements(Restrained,defMarkers))
+        let defPos = findCommon(positive,defMarkers);
+        let defNeg = findCommon(defNegative,defMarkers);
+        defNeg = defNeg.concat(findCommon(Incapacitated,defMarkers),findCommon(Restrained,defMarkers))
 
         if (attPos.length > 0) {
             advantage = true;
@@ -1852,11 +1849,11 @@ log(damageResults)
         }
 
         //specials, spells etc
-        if (defSpells.includes("Faerie Fire")) {
+        if (defMarkers.includes("Faerie Fire")) {
             advantage = true;
             advText.push("Faerie Fire");
         };
-        if (defConditions.includes("Dodge")) {
+        if (defMarkers.includes("Dodge")) {
             disText.push("Defender taking Dodge Action");
             disadvantage = true;
         }
@@ -1875,7 +1872,7 @@ log(damageResults)
                     continue;
                 }
                 if (model2.inParty === attacker.inParty) {
-                    if (findCommonElements(model2.Markers(),Incapacitated).length === 0 && model2.Distance(defender) <= 1) {
+                    if (findCommon(model2.Markers(),Incapacitated).length === 0 && model2.Distance(defender) <= 1) {
                         advantage = true;
                         advText.push("Pack Tactics");
                         break;
@@ -2011,7 +2008,6 @@ log(damageResults)
         }
         SetupCard(attacker.name,sub,attacker.displayScheme);
 
-
         let damage = dice + "d8,radiant";
         let rollResults = RollDamage(damage,critical);
         let damageResults = ApplyDamage(rollResults,attacker.spellDC,defender);
@@ -2069,8 +2065,6 @@ log(damageResults)
         }
         return final;        
     }
-
-
 
     const DirectAttackSpell = (spellInfo) => {
         let caster = spellInfo.caster;
