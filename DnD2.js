@@ -95,7 +95,7 @@ const DnD = (() => {
         "Dodge": "half-haze",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
-        //spells
+        //spells and abilities
         "Protection from Evil and Good": "Good_Evil::1432039",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "Slimed-Mustard-Transparent::2006560",
@@ -1528,10 +1528,8 @@ log(state.DnD.spells)
             defender = attacker;
         }
 
-        let attConditions = attacker.CM();
-        let attSpells = attacker.SM();
-        let defConditions = defender.CM();
-        let defSpells = defender.SM();
+        let attMarkers = attacker.Markers();
+        let defMarkers = defender.Markers();
 
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
@@ -1581,7 +1579,6 @@ log(state.DnD.spells)
             return;
         }
 
-
         //damage bonuses, add into weaponInfo.base for Damage routine
         //stat
         if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
@@ -1597,18 +1594,16 @@ log(state.DnD.spells)
 
         //other mods to attack bonus
         let additionalText = "";
-        if (attSpells.includes("Bless")) {
+        if (attMarkers.includes("Bless")) {
             bless = randomInteger(4);
             additionalText += "<br>inc +" + bless + " Bless";
             attackBonus += bless;
         }
-        if (attSpells.includes("Sacred Weapon") && weapon.type === "Melee") {
+        if (attMarkers.includes("Sacred Weapon") && weapon.type === "Melee") {
             attackBonus += 2;
             weapon.magic = "magic";
             additionalText += "<br>inc +2 Sacred Weapon";
         }
-
-
 
         //Magic Items
         if (extra !== "Non-Magic" && extra !== "No") {
@@ -1624,7 +1619,7 @@ log(state.DnD.spells)
         }
 
         weapon.damage = [weapon.base + "," + weapon.damageType];
-        if (attSpells.includes("Divine Favour")) {
+        if (attMarkers.includes("Divine Favour")) {
             weapon.damage.push('1d4,radiant');
         }
 
@@ -1649,7 +1644,8 @@ log(state.DnD.spells)
         let attackTotal = attackResult.roll + attackBonus;
         let tip;
         let crit = false;
-        if ((defConditions.includes("Paralyzed") || defConditions.includes("Unconscious")) && inReach === true) {
+
+        if ((findCommon(defMarkers,Incapacitated).length > 0) && inReach === true) {
             crit = true;
         }
         let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
@@ -1757,7 +1753,7 @@ log(damageResults)
         PrintCard();
     }
 
-
+////
     const Advantage = (attacker,defender,damageInfo) => {
         let inReach = false;
 
