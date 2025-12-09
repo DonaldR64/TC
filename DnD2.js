@@ -97,7 +97,7 @@ const DnD = (() => {
     }
 
     const SpellMarkers = {
-        "Protection from Evil and Good": "Good Evil::1432039",
+        "Protection from Evil and Good": "Good_Evil::1432039",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "Slimed-Mustard-Transparent::2006560",
         "Sacred Weapon": "Torch-Light::2006651",
@@ -106,10 +106,10 @@ const DnD = (() => {
         "Slow": "Slow::2006498",
         "Ray of Frost": "Cold::2006476",
         "Shield of Faith": "Shield::2006495",
-        "Faerie Fire": "Effect Faerie Glow::1431945",
-        "Web": "Effect Web Spider Climb::1432012",
-        "Entangle": "Effect Entangled Vine Grow::1431943",
-        "Hold Person": "Effect Control Hypno::1431929",
+        "Faerie Fire": "Effect_Faerie_Glow::1431945",
+        "Web": "Effect_Web_Spider_Climb::1432012",
+        "Entangle": "Effect_Entangled_Vine_Grow::1431943",
+        "Hold Person": "Effect_Control_Hypno::1431929",
 
 
     }
@@ -1154,7 +1154,7 @@ log(defender.vulnerabilities)
 
         //Saving Throws
         let save;
-        if (savingThrow && savingThrow !== "No" && immune === false) {
+        if (savingThrow && savingThrow !== "No" && immune === false && savingThrow !== "auto") {
             let result = Save(defender,dc,savingThrow,adv); //save, saveTotal, tip
             if (saveTip !== "") {saveTip += "<br>"}
             if (result.save === true) {
@@ -1234,7 +1234,7 @@ log(defender.vulnerabilities)
             outputCard.body.push("Square: " + square.x + "/" + square.y)
         })
         let char = getObj("character", token.get("represents"));    
-log(model)
+log(token.get("statusmarkers"))
 log(PCs)
 log(state.DnD.spells)
 
@@ -2288,6 +2288,7 @@ log(damageResults)
             spell: spell,
             level: level,
             ritual: ritual,
+            dc: caster.spellDC,
         }
 
         if (spell.spellType === "DirectAttack") {
@@ -2397,6 +2398,7 @@ log(spell)
                 EndSpell(state.DnD.conSpell[caster.id]);
             } 
             state.DnD.conSpell[caster.id] = spellID;
+            outputCard.body.push(caster.name + " is now Concentrating on this Spell")
         } else {
             if (!state.DnD.regSpells[caster.id]) {
                 state.DnD.regSpells[caster.id] = [];
@@ -2565,6 +2567,7 @@ log("Cumulative Slots: " + cumulativeSS)
             }           
             outputCard.body.push(emote);
         }
+        let someoneFailed = false;
 
         _.each(spellInfo.targets,target => {
             let saved = false
@@ -2578,6 +2581,7 @@ log("Cumulative Slots: " + cumulativeSS)
                 outputCard.body.push(target.name + " " + tip + text);
             }
             if (saved === false) {
+                someoneFailed = true;
                 target.token.set("status_" + SpellMarkers[spellName],true);
                 if (spellInfo.spell.cM) {
                     target.token.set("status_" + ConditionMarkers[spellInfo.spell.cM],true);
@@ -2590,7 +2594,10 @@ log("Cumulative Slots: " + cumulativeSS)
 
         let targetIDs = spellInfo.targets.map((e) => e.id);
 
-        AddSpell(spellInfo.spell,spellInfo.level,spellInfo.caster,targetIDs);
+        if (someoneFailed === true) {
+            AddSpell(spellInfo.spell,spellInfo.level,spellInfo.caster,targetIDs);
+        }
+
 
         if (spellName === "Cure Wounds") {
             let rolls = [];
@@ -2799,9 +2806,12 @@ log(spell)
                 }
                 if (saved === false) {
                     target.token.set("status_" + SpellMarkers[spell.name],true);
+    log(SpellMarkers[spell.name])
+/* 
                     if (spell.cM) {
                         target.token.set("status_" + ConditionMarkers[spell.cM],true);
                     }
+*/
                 }
                 outputCard.body.push(target.name + tip + phrase);
             })            
@@ -3361,6 +3371,8 @@ log(state.DnD.spellList)
 
     const SpellCheck = (spell,model) => {
         let spellInfo = FindSpellInfo(spell.name,model.id);
+log("Pre")
+log(spellInfo)
         let spellEnds = (spell.savingThrow === "auto") ? true:false;
         let text = "";
         if (spell.savingThrow && spell.savingThrow !== "auto") {
@@ -3375,7 +3387,18 @@ log(state.DnD.spellList)
         if (spellEnds === true) {
             model.token.set("status_" + SpellMarkers[spell.name],false);
             text += spell.saveText;
+            if (spellInfo) {
+                let index = spellInfo.targetIDs.indexOf(model.id);
+                if (index > -1) {
+                    spellInfo.targetIDs.splice(index,1);
+                    if (spellInfo.targetIDs.length === 0) {
+                        EndSpell(spellInfo.spellID);
+                    }
+                }
+            }
         }
+log("Post")
+log(spellInfo)
         outputCard.body.push(text);
     }
 
