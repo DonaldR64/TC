@@ -76,7 +76,8 @@ const DnD = (() => {
         },
     }
 
-    const ConditionMarkers = {
+    const Markers = {
+        //conditions
         "Blind": "Blind-::2006481",
         "Charmed": "Charmed::2006504",
         "Deaf": "Deaf::2006484",
@@ -94,9 +95,7 @@ const DnD = (() => {
         "Dodge": "half-haze",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
-    }
-
-    const SpellMarkers = {
+        //spells
         "Protection from Evil and Good": "Good_Evil::1432039",
         "Bless": "Plus-1d4::2006401",
         "Divine Favour": "Slimed-Mustard-Transparent::2006560",
@@ -111,8 +110,10 @@ const DnD = (() => {
         "Entangle": "Effect_Entangled_Vine_Grow::1431943",
         "Hold Person": "Effect_Control_Hypno::1431929",
 
-
     }
+
+    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated"];
+    const Restrained = ["Restrained","Web","Entangle","Hold Person"];
 
 
 
@@ -387,44 +388,18 @@ const DnD = (() => {
             return weapons;
         }
 
-        CM() {
-            //create a list of any conditions 'on' a token, based on statusmarkers
-            let markers = this.token.get("statusmarkers");
-            markers = markers.split(",");
-            let sm = [];
-            let keys = Object.keys(ConditionMarkers);
-            for (let i=0;i<markers.length;i++) {
-                let marker = markers[i];
-                for (let j=0;j<keys.length;j++) {
-                    if (ConditionMarkers[keys[j]] === marker) {
-                        sm.push(keys[j]);
-                        break;
-                    }
+        Markers() {
+            let statusmarkers = this.token.get("statusmarkers");
+            statusmarkers = statusmarkers.split(",");
+            let markers = [];
+            _.each(statusmarkers,marker => {
+                let m = getKeyByValue(Markers,marker);
+                if (m) {
+                    markers.push(m);
                 }
-            }
-            sm = sm.toString() || " ";
-            return sm;
+            })
+            return markers;
         }
-
-        SM() {
-            //create a list of any spells 'on' a token, based on statusmarkers
-            let markers = this.token.get("statusmarkers");
-            markers = markers.split(",");
-            let sm = [];
-            let keys = Object.keys(SpellMarkers);
-            for (let i=0;i<markers.length;i++) {
-                let marker = markers[i];
-                for (let j=0;j<keys.length;j++) {
-                    if (SpellMarkers[keys[j]] === marker) {
-                        sm.push(keys[j]);
-                        break;
-                    }
-                }
-            }
-            sm = sm.toString() || " ";
-            return sm;
-        }
-
 
 
 
@@ -444,6 +419,17 @@ const DnD = (() => {
 
 
     //Functions
+
+    const findCommon = (array1,array2) => {
+        let set2 = new Set(array2);
+        let common = array1.filter(item => set2.has(item));
+        return common;
+    }
+
+
+    const getKeyByValue = (object, value) => {
+        return Object.keys(object).find(key => object[key] === value);
+    };
 
     const stringGen = () => {
         let text = "";
@@ -564,6 +550,8 @@ const DnD = (() => {
         let venn = a2.some(r=> a1.includes(r))
         return venn;
     }
+
+
 
     const AOETargets = (target) => {
         let temp = [];
@@ -891,7 +879,7 @@ log(model.name + ": " + id)
 
 
     //an array of the PCs and any other tokens on page
-    //will need to rebuild on page change or when add a token
+    //will need to rebuild on page change
     const BuildArrays = () => {
         ModelArray = {};
         nameArray = {};
@@ -1200,12 +1188,11 @@ log(defender.vulnerabilities)
             return;
         }
         let condition = Tag[1];
-        let marker = ConditionMarkers[condition];
+        let marker = Marker[condition];
         let status = Tag[2];
         if (!marker) {
             return;
         }
-
         if (status === "On") {
             model.token.set("status_" + marker,true);
         } else if (status === "Off") {
@@ -1234,9 +1221,16 @@ log(defender.vulnerabilities)
             outputCard.body.push("Square: " + square.x + "/" + square.y)
         })
         let char = getObj("character", token.get("represents"));    
+        let markers = model.Markers();
+        outputCard.body.push(markers.toString());
+        if (markers.includes("Web")) {
+            outputCard.body.push("Has Web");
+        }
+
 log(token.get("statusmarkers"))
 log(PCs)
 log(state.DnD.spells)
+
 
         PrintCard();
 
@@ -1244,8 +1238,10 @@ log(state.DnD.spells)
 
     const Save = (model,dc,stat,adv) => {
         let saved = false;
-        if (!adv) {adv = 0;}
+        adv = (adv > 0) ? true:false;
+        disadv = (adv < 0) ? true:false;
         let fail = false; //auto fail
+
         let advReasons = [];
         let disAdvReasons = [];
         let failReason = "";
@@ -1253,34 +1249,37 @@ log(state.DnD.spells)
         let otherBonus = 0;
         let saveTotal,saveTip,bonusText, otherBonusText;
 
-        let sm = model.SM();
-        let cm = model.CM();
-        let inc = ["Paralyzed","Stunned","Unconscious","incapacitated"];
-        if (stat === "strength" || stat === "dexterity") {
-            _.each(inc,c => {
-                if (cm.includes(c)) {
-                    fail = true;
-                    failReason = c;
-                    return;
-                }
-            })
+        let markers = model.Markers();
+
+        let incapacitated = (findCommon(markers,Incapacitated).length > 0) ? true:false;
+        let restrained = (findCommon(markers,Restrained).length > 0) ? true:false;
+
+
+        if ((stat === "strength" || stat === "dexterity") && incapacitated === true) {
+            fail = true;
+            failReason = "Incapacitated";
         }
 
-        if (sm.includes("Bless")) {
+        if (markers.includes("Bless")) {
             otherBonus = randomInteger(4);
             otherBonusText = "Including " + otherBonus + " [Bless d4]";
         }
         bonus += otherBonus;
 
-        if (cm.includes("Dodge") && stat === "dexterity") {
-            adv = Math.min(adv + 1,1);
+        if (markers.includes("Dodge") && stat === "dexterity") {
+            adv = true;
             advReasons.push("Dodge");
         }
-        if (cm.includes("Restrained") && stat === "dexterity") {
-            adv = Math.max(adv - 1, -1);
+        if (stat === "dexterity" && restrained === true) {
+            disadv = true;
             disAdvReasons.push("Restrained");
         }
-        let saveRollResult = D20(adv);
+
+        let finalAdv = 0;
+        if (adv === true && disadv === false) {finalAdv = 1};
+        if (adv === true && disadv === true) {finalAdv = 0};
+        if (adv === false && disadv === true) {finalAdv = -1};
+        let saveRollResult = D20(finalAdv);
         
         if (dc === false) {
             //display result in chat immediately
@@ -1350,12 +1349,9 @@ log(state.DnD.spells)
 
         Save(model,false,statTLC,advantage);
 
-        let inc = ["Paralyzed","Stunned","Unconscious"];            
         if (model.name.includes("Wirsten") && statTLC === "dexterity") {
-            let cm = model.CM();
-            //incapacitated - means skip
-            let skip = inc.some(r => cm.includes(r)); //condition markers includes an incapacitated marker
-            if (skip === false) {
+            let inc = findCommon(model.Markers(),Incapacitated);
+            if (inc.length === 0) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push("Shield Master: You can add 2 to your Result if the Spell/Harmful Effect targets only you");
                 outputCard.body.push("If you save and would take 1/2 Damage, you can use your Reaction to take No Damage, interposing your Shield");
