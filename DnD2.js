@@ -1753,7 +1753,6 @@ log(damageResults)
         PrintCard();
     }
 
-////
     const Advantage = (attacker,defender,damageInfo) => {
         let inReach = false;
 
@@ -1767,17 +1766,17 @@ log(damageResults)
             inReach = true;
         }
 
-        let attConditions = attacker.CM();
-        let attSpells = attacker.SM();
-        let defConditions = defender.CM();
-        let defSpells = defender.SM();
+        let attMarkers = attacker.Markers();
+        let defMarkers = defender.Markers();
 
         let ids = Object.keys(ModelArray);
 
         let positive = ["Invisible","Advantage"];
-        let attNegative = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
+        let attNegative = ["Blind","Frightened","Poison","Disadvantage"];
         let defNegative = ["Blind","Disadvantage"];
-        let incapacitated = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
+
+
+
 
         let advantage = false;
         let advText = [];
@@ -1790,33 +1789,31 @@ log(damageResults)
                 let model2 = ModelArray[ids[i]];
                 if (model2.id === attacker.id) {continue};
                 if (attacker.inParty !== model2.inParty) {
-                    let cm = model2.CM()
-                    let ignore = incapacitated.some(r=> cm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
-                    if (ignore === false) {
+                    if (findCommonElements(model2.Markers(),Incapacitated).length === 0) {
                         let squares = attacker.Distance(model2);
                         if (squares <= 1) {
                             disadvantage = true;
                             disText.push("Adjacent to Enemy")
                             break;
                         }
-                    } 
+                    }
                 }
             }
         }
 
         //Prone
         if (inReach === true) {
-            if (attConditions.includes("Prone")) {
+            if (attMarkers.includes("Prone")) {
                 //attacker at disadvantage
                 disText.push("Prone Melee Attack");
                 disadvantage = true;
             }
-            if (defConditions.includes("Prone")) {
+            if (defMarkers.includes("Prone")) {
                 advText.push("Prone Melee Defender")
                 advantage = true;
             }
         } else {
-            if (defConditions.includes("Prone")) {
+            if (defMarkers.includes("Prone")) {
                 disText.push("Prone Defender at Range");
                 disadvantage = true;
             }
@@ -1828,35 +1825,31 @@ log(damageResults)
             disadvantage = true;
         }
 
-        //check for conditions
-        _.each(positive,cond => {
-            if (attConditions.includes(cond)) {
-                advantage = true;
-                advText.push(cond);
-            }
-            if (defConditions.includes(cond)) {
-                disadvantage = true;
-                disText.push(cond);
-            }
-        })
-        _.each(attNegative,cond => {
-            if (attConditions.includes(cond)) {
-                disadvantage = true;
-                disText.push(cond);
-            }
-        })
-        _.each(defNegative,cond => {
-            if (defConditions.includes(cond)) {
-                advantage = true;
-                advText.push(cond);
-            }
-        })
-        _.each(incapacitated,cond => {
-            if (defConditions.includes(cond)) {
-                advantage = true;
-                advText.push(cond);
-            }
-        })
+        //check for conditions, spells etc
+        let attPos = findCommonElements(positive,attMarkers);
+        let attNeg = findCommonElements(attNegative,attMarkers);
+        attNeg = attNeg.concat(findCommonElements(Restrained,attMarkers));
+
+        let defPos = findCommonElements(positive,defMarkers);
+        let defNeg = findCommonElements(defNegative,defMarkers);
+        defNeg = defNeg.concat(findCommonElements(Incapacitated,defMarkers),findCommonElements(Restrained,defMarkers))
+
+        if (attPos.length > 0) {
+            advantage = true;
+            advText = advText.concat(attPos);
+        }
+        if (attNeg.length > 0) {
+            disadvantage = true;
+            disText = disText.concat(attNeg);
+        }
+        if (defPos.length > 0) {
+            disadvantage = true;
+            disText = disText.concat(defPos);
+        }
+        if (defNeg.length > 0) {
+            advantage = true;
+            advText = advText.concat(defNeg);
+        }
 
         //specials, spells etc
         if (defSpells.includes("Faerie Fire")) {
@@ -1870,7 +1863,7 @@ log(damageResults)
         creatTypes = ["aberation","celestial","elemental","fey","fiend","undead"];
         let other = creatTypes.some(type => attacker.type.toLowerCase().includes(type));
 
-        if (defSpells.includes("Protection") && other === true) {
+        if (defMarkers.includes("Protection") && other === true) {
             disadvantage = true;
             disText.push("Protection from Evil/Good");
         }
@@ -1882,18 +1875,12 @@ log(damageResults)
                     continue;
                 }
                 if (model2.inParty === attacker.inParty) {
-                    let cm = model.CM();
-                    let ignore = incapacitated.some(r=> cm.includes(r)); //returns true if model 2 has a statusmarker in the incapacitated bunch
-                    let squares = model2.Distance(defender);
-                    if (squares <= 1 && ignore === false) {
-                        adj = true;
+                    if (findCommonElements(model2.Markers(),Incapacitated).length === 0 && model2.Distance(defender) <= 1) {
+                        advantage = true;
+                        advText.push("Pack Tactics");
                         break;
                     }
                 }
-            }
-            if (adj === true) {
-                advantage = true;
-                advText.push("Pack Tactics");
             }
         }
 
