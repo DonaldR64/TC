@@ -2371,12 +2371,12 @@ log(spellInfo)
 
     const EffectCheck = (model) => {
         //ongoing spell or similar effects - represented by a model
-        let damageSpells = ["Moonbeam"]
+        let spells = ["Moonbeam","Web"]
         _.each(ModelArray,m => {
-            if (damageSpells.includes(m.name) && m.id !== model.id) {
+            if (spells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
-
-
+sendChat("","In " + m.name)
+//run as if area spell, for web - if makes save should clear it
 
                 }
             }
@@ -2389,17 +2389,14 @@ log(spellInfo)
 
     }
 
-    const DoEndTurnThings = (lastTurnInfo) => {
-        let model = lastTurnInfo.model;
-        let spells = lastTurnInfo.spells;
-        if (!model || !spells) {return};
+    const EndModelsRound = (lastTurnInfo) => {
+        let model = ModelArray[lastTurnInfo.modelID];
+        let spellIDs = lastTurnInfo.spellIDs;
+        if (!model || !spellIDs) {return};
         SetupCard(model.name,"",model.displayScheme);
-        for (let i=0;i<spells.length;i++) {
-            let spell = spells[i];
-            if (spell) {
-                log(spell)
-                //SpellCheck(spell,model);
-            }
+        for (let i=0;i<spellIDs.length;i++) {
+            let spellID = spellIDs[i];
+            SpellCheck(spell,model);
         }
         PrintCard();
     }
@@ -3206,7 +3203,7 @@ log(state.DnD.spellList)
         _.each(ModelArray,model => {
             let markers = model.Markers();
             _.each(markers,marker => {
-                let spell = SpellInfo(marker);
+                let spell = SpellInfo[marker];
                 if (spell) {
                     AddSpell(spell,spell.level,model,[model.id],true);
                 }
@@ -3221,7 +3218,7 @@ log(state.DnD.spellList)
         if (!turnorder) {EndCombat();return};
         //check if stuff from prev. models turn to do - if so do that before advancing
         if (state.DnD.lastTurnInfo) {
-            DoEndTurnThings(state.DnD.lastTurnInfo);
+            EndModelsRound(state.DnD.lastTurnInfo);
             state.DnD.lastTurnInfo = {};
         }
         //advance
@@ -3239,7 +3236,7 @@ log(state.DnD.spellList)
             toFront(model.token);
             sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
             SetupCard(model.name,"Turn " + state.DnD.combatTurn,model.displayScheme);
-            StartTurnThings(model);
+            StartModelsRound(model);
         } else {
             SetupCard("Turn " + state.DnD.combatTurn,"","Red");
             //Start of Turn things
@@ -3266,37 +3263,63 @@ log(state.DnD.spellList)
         state.DnD.lastTurnInfo = {};
     }
 
-    const StartTurnThings = (model) => {
+    const StartModelsRound = (model) => {
         //check any spell areas model is in, eg Moonbeam, entangle etc
+log("Start Models Round")
+
         EffectCheck(model);
         //Spells cast by model and ongoing - check duration
-        let spellID = state.DnD.conSpell[model.id];
-        if (spellID) {
+        let spellIDs = [];
+        if (state.DnD.conSpell[model.id]) {
+            spellIDs.push(state.DnD.conSpell[model.id]);
+        }
+        let arr2 = state.DnD.regSpells;
+        if (arr2.length > 0) {
+            spellIDs.concat(arr2);
+        }
+log("Own Spell IDs")
+log(spellIDs)
+        for (let i=0;i<spellIDs.length;i++) {
+            let spellID = spellIDs[i];
             CheckDuration(spellID);
         }
-        let spellIDs = state.DnD.regSpells;
-        _.each(spellIDs,spellID => {
-            CheckDuration(spellID);
-        })
         //spells on model - check markers, then check spell to see if/when save/ends
         let sm = model.Markers();
         for (let i=0;i<sm.length;i++) {
+log("Marker on Model")
+log(sm[i]);
             let spell = SpellInfo[sm[i]];
+            if (!spell) {continue};
+            let spellInfo = FindSpellInfo(spell.name,model.id);
+log("Assoc Spell Info")
+log(spellInfo)
+            if (!spellInfo) {continue};
+            let spellID = spellInfo.spellID;
             if (spell && spell.when) {
                 if (spell.when === "start") {
-                    SpellCheck(spell,model);
+                    SpellCheck(spellID,model);
                 }
                 if (spell.when === "end") {
-                    state.DnD.lastTurnInfo.model = model;
-                    if (state.DnD.lastTurnInfo.spells) {
-                        state.DnD.lastTurnInfo.spells.push(spell)
+                    state.DnD.lastTurnInfo.modelID = model.id;
+                    if (state.DnD.lastTurnInfo.spellIDs) {
+                        state.DnD.lastTurnInfo.spellIDs.push(spespellIDll)
                     } else {
-                        state.DnD.lastTurnInfo.spells = [spell]
+                        state.DnD.lastTurnInfo.spellIDs = [spellID]
                     }
                 }
-                if (spell.when === "action") {
-                    //NPC - auto as action
-                    //PC - put out a call for action
+                if (spell.when === "action" && spell.savingThrow && spell.savingThrow !== "auto") {
+                    if (model.isParty === true) {
+                        outputCard.body.push("The character is affected by " + spell.name);
+                        outputCard.body.push("As an action, the character may take a " + Capit(spell.savingThrow)) + " Save with a DC of " + spellInfo.dc;
+                    } else {
+                        outputCard.body.push("The character is affected by " + spell.name + " and uses its action to try and break the Spell");
+                        SpellCheck(spellID,model)
+                    }
+
+
+
+
+
                 }
             }
         }
@@ -3317,11 +3340,13 @@ log(state.DnD.spellList)
         return info
     }
 
-    const SpellCheck = (spell,model) => {
-        let spellInfo = FindSpellInfo(spell.name,model.id);
+    const SpellCheck = (spellID,model) => {
+        let spellInfo = state.DnD.spellList[spellID];
+        let spell = SpellInfo(spellInfo.spellName);
 log("Pre")
 log(spellInfo)
         let spellEnds = (spell.savingThrow === "auto") ? true:false;
+
         let text = "";
         if (spell.savingThrow && spell.savingThrow !== "auto") {
             let saveResult = Save(model,spellInfo.dc,spell.savingThrow);
