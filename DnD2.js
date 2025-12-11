@@ -1926,7 +1926,7 @@ log(damageResults)
                 originalCasterID: Tag[6],
                 damageType: Tag[4],
             }
-            ClearSpellTarget();
+            ClearSpellTarget(spell);
             SpellTarget(spellInfo);
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
@@ -2047,7 +2047,8 @@ log(damageResults)
         }
     }
 
-    const Emote = (spell,caster) => {
+    const Emote = (spell) => {
+        let caster = ModelArray[spell.casterID];
         let emotes = [];
         if (spell.emote) {emotes.push(spell.emote)};
         if (spell.duration) {
@@ -2066,14 +2067,13 @@ log(damageResults)
         return final;        
     }
 
-    const DirectAttackSpell = (spellInfo) => {
-        let caster = spellInfo.caster;
-        let targets = spellInfo.targets;
-        let spell = spellInfo.spell;
-        let level = spellInfo.level;
+    const DirectAttackSpell = (spell) => {
+        let caster = ModelArray[spell.casterID];
+        let targetIDs = spell.targetIDs;
+        let level = spell.castlevel;
         let attMarkers = caster.Markers();
 
-        outputCard.body.push(Emote(spell,caster));
+        outputCard.body.push(Emote(spell));
 
         if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
             spell.base = spell.cLevel[caster.casterLevel];
@@ -2085,12 +2085,11 @@ log(damageResults)
         spell.damage = spell.base + "," + spell.damageType;
         spell.type = "Spell";
 
-        let targetIDs = targets.map((e) => e.id);
 
-        AddSpell(spellInfo.spell,level,spellInfo.caster,targetIDs);
+        AddSpell(spell); //adds only if has duration
 
-        for (let i=0;i<targets.length;i++) {
-            let defender = targets[i];
+        for (let i=0;i<targetIDs.length;i++) {
+            let defender = ModelArray[targetIDs[i]];
             if (!defender) {continue};
             let defMarkers = defender.Markers();
             let advResult = Advantage(caster,defender,spell);
@@ -2144,7 +2143,7 @@ log(damageResults)
                 }
             }
 
-            let dc = caster.spellDC;
+            let dc = spell.dc;
 
             if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
                 outputCard.body.push("[B]" + defender.name +" is Hit![/b]")
@@ -2178,7 +2177,7 @@ log(damageResults)
         let level = parseInt(Tag[2]);
         let casterID = Tag[3];
         if (!casterID) {casterID = msg.selected[0]._id};
-        let targets = [];
+        let targetIDs = [];
         let errorMsg = [];
 
         let caster = ModelArray[casterID];
@@ -2212,7 +2211,6 @@ log(damageResults)
             if (!target) {
                 let alternate = spell.alternates[alt];
                 spell[alternate] = Tag[i];
-    log(spell)
                 alt++;
             } else {
                 let squares = caster.Distance(target);
@@ -2220,7 +2218,8 @@ log(damageResults)
                 if (distance > spell.range) {
                     errorMsg.push(target.name + " is out of Range");
                 } else {
-                    targets.push(target);
+                    targetIDs.push(Tag[i]);
+                    //targets.push(target);
                 }
             }
         }
@@ -2239,43 +2238,41 @@ log(damageResults)
             return;
         } 
 
-        if (targets.length === 0) {
-            targets.push(caster);
+        if (targetIDs.length === 0) {
+            targetIDs.push(caster.id);
         }
 
-        spellInfo = {
-            caster: caster,
-            targets: targets,
-            spell: spell,
-            level: level,
-            ritual: ritual,
-            dc: caster.spellDC,
-        }
+
+        spell.casterID = casterID;
+        spell.targetIDs = targetIDs;
+        spell.castLevel = level;
+        spell.isRitual = ritual;
+        spell.dc = caster.spellDC;
 
         if (spell.spellType === "DirectAttack") {
             //spells that directly attack the target
-            DirectAttackSpell(spellInfo);
+            DirectAttackSpell(spell);
         }
         if (spell.spellType === "Misc") {
-            MiscSpell(spellInfo);
+            MiscSpell(spell);
         }
         if (spell.spellType === "Area") {
             //creates a target template (depending on spell)
             //target template will have a macro to actually cast spell
-            ClearSpellTarget();
-            let target = SpellTarget(spellInfo);
+            ClearSpellTarget(spell);
+            let target = SpellTarget(spell);
             outputCard.body.push("Place Target then use Macro to Cast");
         }
         if (spell.spellType === "Ongoing") {
             spellInfo.ongoing = true;
-            ClearSpellTarget();
-            let target = SpellTarget(spellInfo);
-            let emote = Emote(spell,caster);
+            ClearSpellTarget(spell);
+            let target = SpellTarget(spell);
+            let emote = Emote(spell);
             if (emote) {
                 outputCard.body.push(emote);
             }
             outputCard.body.push("Move Target to Location");
-            AddSpell(spell,level,caster,[target.id]);
+            AddSpell(spell);
         }
         PrintCard();
     }
@@ -2324,47 +2321,35 @@ log(targets)
 
     }
 
-    const AddSpell = (spell,spellLevel,caster,targetIDs,precastFlag,spellTargetID) => {
-log("Add Spell")
-log(spell)
+    const AddSpell = (spell,precastFlag) => {
         if (!spell.duration) {return};
         if (!precastFlag) {precastFlag = false}
-        let endTurn = state.DnD.combatTurn + spell.duration;
-        if (precastFlag === true) {endTurn--};
-        let spellID = stringGen();
-        let ss = {
-            spellID: spellID,
-            spellName: spell.name,
-            endTurn: endTurn,
-            casterID: caster.id,
-            targetIDs: targetIDs,
-            spellLevel: spellLevel,
-            casterLevel: caster.casterLevel,
-            dc: caster.spellDC,
-            concentration: spell.concentration || false,
-            spellTargetID: spellTargetID || "",
-        }
-        state.DnD.spellList.push(ss);
+        spell.endTurn = state.DnD.combatTurn + spell.duration;
+        if (precastFlag === true) {spell.endTurn--};
+        spell.spellID = stringGen();
 
+        state.DnD.spellList.push(spell);
+log("In Add Spell")
+log(spell)
         if (spell.concentration === true) {
-            if (state.DnD.conSpell[caster.id]) {
-                EndSpell(state.DnD.conSpell[caster.id]);
+            if (state.DnD.conSpell[spell.caster.id]) {
+                EndSpell(state.DnD.conSpell[spell.caster.id]);
             } 
-            state.DnD.conSpell[caster.id] = spellID;
-            outputCard.body.push(caster.name + " is now Concentrating on this Spell")
+            state.DnD.conSpell[spell.caster.id] = spell.spellID;
+            outputCard.body.push(ModelArray[spell.casterID].name + " is now Concentrating on this Spell")
         } else {
-            if (!state.DnD.regSpells[caster.id]) {
-                state.DnD.regSpells[caster.id] = [];
+            if (!state.DnD.regSpells[spell.caster.id]) {
+                state.DnD.regSpells[spell.caster.id] = [];
             }
-            state.DnD.regSpells[caster.id].push(spellID);
+            state.DnD.regSpells[spell.caster.id].push(spell.spellID);
         }
     }
 
     const CheckDuration = (spellID) => {
-        let spellInfo = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
+        let spell = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
 log("In Check Duration")
 log(spellInfo)
-        if (parseInt(state.DnD.combatTurn) >= parseInt(spellInfo.endTurn)) {
+        if (parseInt(state.DnD.combatTurn) >= parseInt(spell.endTurn)) {
             EndSpell(spellID);
         }
     }
@@ -2546,22 +2531,22 @@ log("Cumulative Slots: " + cumulativeSS)
 
 
 
-    const MiscSpell = (spellInfo) => {
-        let spellName = spellInfo.spell.name;
-        let emote = Emote(spellInfo.spell,spellInfo.caster);
+    const MiscSpell = (spell) => {
+        let emote = Emote(spell);
         if (emote) {
-            if (spellName === "Dragon's Breath")  {
+            if (spell.name === "Dragon's Breath")  {
                 emote = emote.replace("magical",spellInfo.spell.damageType);
             }           
             outputCard.body.push(emote);
         }
         let someoneFailed = false;
 
-        _.each(spellInfo.targets,target => {
+        _.each(spell.targetIDs,targetID => {
             let saved = false
-            let text = spellInfo.spell.failText || "";
-            if (spellInfo.spell.savingThrow) {
-                let saveResult = Save(target,spellInfo.dc,spellInfo.spell.savingThrow,0);
+            let target = ModelArray[targetID];
+            let text = spell.failText || "";
+            if (spell.savingThrow) {
+                let saveResult = Save(target,spell.dc,spell.spell.savingThrow,0);
                 saved = saveResult.save;
                 noun = "Fails";
                 if (saved === true) {noun = "Saves"};
@@ -2570,57 +2555,54 @@ log("Cumulative Slots: " + cumulativeSS)
             }
             if (saved === false) {
                 someoneFailed = true;
-                target.token.set("status_" + Markers[spellName],true);
+                target.token.set("status_" + Markers[spell.name],true);
             }
         })
 
-        let targetIDs = spellInfo.targets.map((e) => e.id);
-
         if (someoneFailed === true) {
-            AddSpell(spellInfo.spell,spellInfo.level,spellInfo.caster,targetIDs);
+            AddSpell(spell);
         }
 
-        if (spellName === "Cure Wounds") {
+        if (spell.name === "Cure Wounds") {
             let rolls = [];
-            let bonus = Math.max(0,(spellInfo.caster.spellDC - 10));
+            let bonus = Math.max(0,(spell.dc - 10));
             let total = bonus;
-            for (i=0;i<spellInfo.level;i++) {
+            for (i=0;i<spell.castLevel;i++) {
                 let roll = randomInteger(8);
                 rolls.push(roll);
                 total += roll;
             }
-            let tip ="Roll: [" + rolls.toString() + "] + " + bonus + "<br>[" + spellInfo.level + "d8+" + bonus + "]"; 
+            let tip ="Roll: [" + rolls.toString() + "] + " + bonus + "<br>[" + spell.castLevel + "d8+" + bonus + "]"; 
             tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
             outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
         }
-        if (spellName === "Dragon's Breath") {
-            let target = spellInfo.targets[0];
-            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spellInfo.level + ";" + spellInfo.spell.damageType + ";" + spellInfo.caster.spellDC + ";" + spellInfo.caster.id;
+        if (spell.name === "Dragon's Breath") {
+            let target = ModelArray[spell.targetIDs[0]];
+            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.castLevel + ";" + spell.damageType + ";" + spell.dc + ";" + spell.caster.id;
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
 
-        PlaySound(spellInfo.spell.sound);
+        PlaySound(spell.sound);
         //Use Slot if not ritual
 
     }
 
 
 
-    const SpellTarget = (spellInfo) => {
-        img = getCleanImgSrc(spellInfo.spell.tempImg);
-        let action = "!AreaSpell;" + spellInfo.spell.name + ";" + spellInfo.caster.id + ";" + spellInfo.level;
-        if (spellInfo.damageType) {
-            action += ";" + spellInfo.damageType;
+    const SpellTarget = (spell) => {
+        img = getCleanImgSrc(spell.tempImg);
+        let action = "!AreaSpell;" + spell.name + ";" + spell.casterID + ";" + spell.castLevel;
+        if (spell.damageType) {
+            action += ";" + spell.damageType;
         }
-        if (spellInfo.dc) {
-            action += ";" + spellInfo.dc;
+        if (spell.dc) {
+            action += ";" + spell.dc;
         }
-        if (spellInfo.originalCasterID) {
-            action += ";" + spellInfo.originalCasterID;
+        if (spell.originalCasterID) {
+            action += ";" + spell.originalCasterID;
         }
         
-        let charID = (spellInfo.spell.charID) ? spellInfo.spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
-        let gmn = "";
+        let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
 
         let abilArray = findObjs({_type: "ability", _characterid: charID});
         //clear old abilities
@@ -2628,51 +2610,47 @@ log("Cumulative Slots: " + cumulativeSS)
             abilArray[a].remove();
         } 
 
-        if (!spellInfo.ongoing) {
-            AddAbility("Cast " + spellInfo.spell.name,action,charID);
-            if (isNaN(spellInfo.spell.tempSize)) {
-                if (spellInfo.spell.tempSize.includes("Level")) {
-                    if (spellInfo.spell.tempSize.includes("*")) {
-                        spellInfo.spell.tempSize = parseInt(spellInfo.spell.tempSize.replace(/[^\d]/g,""));
-                        spellInfo.spell.tempSize = level * spellInfo.spell.tempSize;
+        if (!spell.ongoing) {
+            AddAbility("Cast " + spell.name,action,charID);
+            if (isNaN(spell.tempSize)) {
+                if (spell.tempSize.includes("Level")) {
+                    if (spell.tempSize.includes("*")) {
+                        spell.tempSize = parseInt(spell.tempSize.replace(/[^\d]/g,""));
+                        spell.tempSize = level * spell.tempSize;
                     }
                 }
             }
-        } else {
-            //ongoing area spells like Moonbeam, place info in token
-            gmn = spellInfo.spell.name + ";" + spellInfo.level + ";" + spellInfo.caster.casterLevel + ";" + spellInfo.spell.damageType + ";" + spellInfo.dc ;
-        }
+        } 
 
+        spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
-
-        spellInfo.spell.tempSize = (spellInfo.spell.tempSize * 70) / pageInfo.scaleNum;
+        let tok = ModelArray[spell.casterID];
 
         let newToken = createObj("graphic", {
-            left: spellInfo.caster.token.get("left"),
-            top: spellInfo.caster.token.get("top"),
+            left: tok.get("left"),
+            top: tok.get("top"),
             disableTokenMenu: true,
-            width: spellInfo.spell.tempSize, 
-            height: spellInfo.spell.tempSize,  
-            name: spellInfo.spell.name || "",
-            pageid: spellInfo.caster.token.get("_pageid"),
+            width: spell.tempSize, 
+            height: spell.tempSize,  
+            name: spell.name || "",
+            pageid: tok.get("_pageid"),
             imgsrc: img,
             layer: "objects",
             represents: charID,
-            gmnotes: gmn,
         })
 
         if (newToken) {
             toFront(newToken);
             let target = new Model(newToken);
-            target.isSpell = spellInfo.caster.id;
+            target.isSpell = spell.casterID;
             return target;
         } else {
             sendChat("","Error in CreateObj")
         }
     }
 
-    const ClearSpellTarget = () => {
-        let charID = (spellInfo.spell.charID) ? spellInfo.spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
+    const ClearSpellTarget = (spell) => {
+        let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
 
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
@@ -2845,7 +2823,7 @@ log(rollResults)
             spellTarget.Destroy();
         }
 
-        let emote = Emote(spell,caster);
+        let emote = Emote(spell);
         if (emote) {
             outputCard.body.push("[hr]");
             outputCard.body.push(emote);
