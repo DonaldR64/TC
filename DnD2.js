@@ -2276,13 +2276,13 @@ log(damageResults)
             outputCard.body.push("Place Target then use Macro to Cast");
         }
         if (spell.spellType === "Ongoing") {
-            spell.ongoing = true;
             ClearSpellTarget(spell);
             let target = SpellTarget(spell);
             let emote = Emote(spell);
             if (emote) {
                 outputCard.body.push(emote);
             }
+            spell.ongoingID = target.id;
             outputCard.body.push("Move Target to Location");
             AddSpell(spell);
             target.token.set("gmnotes",spell.spellID);
@@ -2298,13 +2298,6 @@ log(spell)
         if(!spell) {return}
         let caster = ModelArray[spell.casterID];
         let index;
-        if (spell.spellTargetID) {
-            let m = ModelArray[spell.spellTargetID];
-            if (m) {
-                m.Destroy();
-            }
-        }
-
         let sm = Markers[spell.name] || "";
         _.each(spell.targetIDs,targetID => {
             let target = ModelArray[targetID];
@@ -2313,13 +2306,12 @@ log(spell)
             }
         })
 
+        if (spell.ongoingID) {
+            let spellModel = ModelArray[spell.ongoingID];
+            spellModel.Destroy();
+        }
 
-        let targetZero = ModelArray[spell.targetIDs[0]];
-        if (targetZero && targetZero.isSpell && targetZero.isSpell === true) {
-            //ongoing spell target, like moonbeam
-            targetZero.Destroy();
-        }   
-        
+
         if (spell.concentration === true) {
             state.DnD.conSpell[caster.id] = "";
             outputCard.body.push("[" + spell.name + " Ends]");
@@ -2682,7 +2674,7 @@ log("Cumulative Slots: " + cumulativeSS)
             abilArray[a].remove();
         } 
 
-        if (!spell.ongoing) {
+        if (spell.spellType !== "Ongoing") {
             AddAbility("Cast " + spell.name,action,charID);
             if (isNaN(spell.tempSize)) {
                 if (spell.tempSize.includes("Level")) {
