@@ -2361,9 +2361,12 @@ log(spell)
         }
     }
 
-    const EffectCheck = (model) => {
+    const EffectCheck = (model,mid = false) => {
         //ongoing spell or similar effects - represented by a model
         let spells = ["Moonbeam","Web"];
+        if (spells.includes(model.name)) {
+            return;
+        }
         _.each(ModelArray,m => {
             if (spells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
@@ -2374,12 +2377,18 @@ log(spell)
                         return;
                     }
                     //area = damage or effect
+                    if (mid === true) {
+                        SetupCard(model.name,"Movement",model.displayScheme);
+                    }
                     if (spell.effect.includes("Damage")) {
                         let rollResults = SD1(spell);
                         SpellDamage(rollResults,spell,model);
                     }
                     if (spell.effect.includes("Effect")) {
                         SpellEffect(spell,model);
+                    }
+                    if (mid === true) {
+                        PrintCard();
                     }
                 }
             }
@@ -3397,6 +3406,12 @@ log(state.DnD.spellList)
                 addGraphic(tok);
             }
         }
+        //check if entered area effect such as Moonbeam, Web
+        if (model && (tok.get("left") !== prev.left || tok.get("top") !== prev.top) && state.DnD.combatTurn > 0) {
+
+            EffectCheck(model,true);
+        }
+
     }
 
     const addGraphic = (obj) => {
