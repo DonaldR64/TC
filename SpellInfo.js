@@ -314,7 +314,7 @@
             damageType: "radiant",
             savingThrow: "constitution",
             saveEffect: "Half Damage",
-            area: 'Square',
+            area: 'special',
             areaEffect: "Damage",
             tempImg: 'https://files.d20.io/images/466342179/VLWwiNSk5g-QKmRkYZ77qA/thumb.png?1764706936',
             tempSize: 10,

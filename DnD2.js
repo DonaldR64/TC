@@ -2364,7 +2364,10 @@ log(spell)
                 if (Venn(m.Squares(),model.Squares()) === true) {
                     let spellID = m.token.get("gmnotes").toString();
                     let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
-                    
+
+log(spell)
+                    //area = damage or effect
+
 
 
 
