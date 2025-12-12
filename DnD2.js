@@ -2362,9 +2362,9 @@ log(spell)
         _.each(ModelArray,m => {
             if (spells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
-                    let spellID = m.token.get("gmnotes").toStrin();
-
-
+                    let spellID = m.token.get("gmnotes").toString();
+                    let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                    
 
 
 

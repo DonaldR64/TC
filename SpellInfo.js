@@ -322,7 +322,7 @@
             fx: "glow-holy",
             macro: '!Spell;Moonbeam;%Level%',
             moveEffect: "objects",
-            emote: "A silvery beam of pale light shines down in a 5-foot- radius, 40-foot-high cylinder centered on a point within range. Creatures starting their turn in the Moonbeam take damage. The Caster can move the Beam on each of their turns up to 60 feet.",
+            emote: "A silvery beam of pale light shines down in a 5-foot- radius, 40-foot-high cylinder centered on a point within range. Creatures entering or starting their turn in the Moonbeam take damage. The Caster can move the Beam on each of their turns up to 60 feet.",
             charID: '-OfVsgHiqLOZjV357ox_',
         },
 
