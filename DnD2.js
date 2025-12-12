@@ -2279,37 +2279,39 @@ log(damageResults)
 
     const EndSpell = (spellID) => {
         if (!spellID) {return};
-        let spellInfo = state.DnD.spellList.filter((e)=> e.spellID === spellID)[0];
+        let spell = state.DnD.spellList.find((e)=> e.spellID === spellID);
 log("In End Spell")
-log(spellInfo)
-        let spell = SpellInfo[spellInfo.spellName];
-if(!spell) {return}
-        let caster = ModelArray[spellInfo.casterID];
-        let targets = spellInfo.targetIDs.map((e) => ModelArray[e]);
+log(spell)
+        if(!spell) {return}
+        let caster = ModelArray[spell.casterID];
         let index;
-log(targets)
-
-        if (spellInfo.spellTargetID) {
-            let m = ModelArray[spellInfo.spellTargetID];
+        if (spell.spellTargetID) {
+            let m = ModelArray[spell.spellTargetID];
             if (m) {
                 m.Destroy();
             }
         }
 
-        let sm = Markers[spell.name] || [];
-        if (targets[0].isSpell === true) {
+        let sm = Markers[spell.name] || "";
+        _.each(spell.targetIDs,targetID => {
+            let target = ModelArray[targetID];
+            if (target) {
+                target.token.set("status_" + sm,false); 
+            }
+        })
+
+
+        let targetZero = ModelArray[spell.targetIDs[0]];
+        if (targetZero && targetZero.isSpell && targetZero.isSpell === true) {
             //ongoing spell target, like moonbeam
-            targets[0].Destroy();
-        } else {
-            _.each(targets,target => {
-                target.token.set("status_" + sm,false);                              
-            })
-        }
-        if (spellInfo.concentration === true) {
-            state.DnD.conSpell[caster.id] = {};
+            targetZero.Destroy();
+        }   
+        
+        if (spell.concentration === true) {
+            state.DnD.conSpell[caster.id] = "";
             outputCard.body.push("[" + spell.name + " Ends]");
         } else {
-            index = state.DnD.regSpells[caster.id].indexOf(spell.id);
+            index = state.DnD.regSpells[caster.id].indexOf(spell.spellID);
             if (index > -1) {
                 state.DnD.regSpells[caster.id].splice(index,1);
             }
@@ -2332,29 +2334,30 @@ log(targets)
 log("In Add Spell")
 log(spell)
         if (spell.concentration === true) {
-            if (state.DnD.conSpell[spell.caster.id]) {
-                EndSpell(state.DnD.conSpell[spell.caster.id]);
+            if (state.DnD.conSpell[spell.casterID]) {
+                EndSpell(state.DnD.conSpell[spell.casterID]);
             } 
-            state.DnD.conSpell[spell.caster.id] = spell.spellID;
+            state.DnD.conSpell[spell.casterID] = spell.spellID;
             outputCard.body.push(ModelArray[spell.casterID].name + " is now Concentrating on this Spell")
         } else {
-            if (!state.DnD.regSpells[spell.caster.id]) {
-                state.DnD.regSpells[spell.caster.id] = [];
+            if (!state.DnD.regSpells[spell.casterID]) {
+                state.DnD.regSpells[spell.casterID] = [];
             }
-            state.DnD.regSpells[spell.caster.id].push(spell.spellID);
+            state.DnD.regSpells[spell.casterID].push(spell.spellID);
         }
     }
 
     const CheckDuration = (spellID) => {
-        let spell = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
+        let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
 log("In Check Duration")
-log(spellInfo)
+log(spell)
         if (parseInt(state.DnD.combatTurn) >= parseInt(spell.endTurn)) {
             EndSpell(spellID);
         }
     }
 
     const EffectCheck = (model) => {
+        return
         //ongoing spell or similar effects - represented by a model
         let spells = ["Moonbeam","Web"]
         _.each(ModelArray,m => {
@@ -2381,7 +2384,7 @@ sendChat("","In " + m.name)
         SetupCard(model.name,"",model.displayScheme);
         for (let i=0;i<spellIDs.length;i++) {
             let spellID = spellIDs[i];
-            SpellCheck(spell,model);
+            SpellCheck(spellID,model);
         }
         PrintCard();
     }
@@ -2544,9 +2547,10 @@ log("Cumulative Slots: " + cumulativeSS)
         _.each(spell.targetIDs,targetID => {
             let saved = false
             let target = ModelArray[targetID];
+            if (!target) {return};
             let text = spell.failText || "";
             if (spell.savingThrow) {
-                let saveResult = Save(target,spell.dc,spell.spell.savingThrow,0);
+                let saveResult = Save(target,spell.dc,spell.savingThrow,0);
                 saved = saveResult.save;
                 noun = "Fails";
                 if (saved === true) {noun = "Saves"};
@@ -3243,8 +3247,7 @@ log(state.DnD.spellList)
 
     const StartModelsRound = (model) => {
         //check any spell areas model is in, eg Moonbeam, entangle etc
-log("Start Models Round")
-
+log("Start Models Round: " + model.name)
         EffectCheck(model);
         //Spells cast by model and ongoing - check duration
         let spellIDs = [];
@@ -3262,27 +3265,25 @@ log(spellIDs)
             CheckDuration(spellID);
         }
         //spells on model - check markers, then check spell to see if/when save/ends
-        let sm = model.Markers();
-        for (let i=0;i<sm.length;i++) {
+        let spellNames = model.Markers(); //could also be conditions, will screen out below
+        for (let i=0;i<spellNames.length;i++) {
 log("Marker on Model")
-log(sm[i]);
-            let spell = SpellInfo[sm[i]];
+            let spellName = spellNames[i];
+log(spellName)
+            let spell = FindSpell(spellName,model.id);
             if (!spell) {continue};
-            let spellInfo = FindSpellInfo(spell.name,model.id);
-log("Assoc Spell Info")
-log(spellInfo)
-            if (!spellInfo) {continue};
-            let spellID = spellInfo.spellID;
+log("Spell Found")
+log(spell)
             if (spell && spell.when) {
                 if (spell.when === "start") {
-                    SpellCheck(spellID,model);
+                    SpellCheck(spell.spellID,model);
                 }
                 if (spell.when === "end") {
                     state.DnD.lastTurnInfo.modelID = model.id;
                     if (state.DnD.lastTurnInfo.spellIDs) {
-                        state.DnD.lastTurnInfo.spellIDs.push(spespellIDll)
+                        state.DnD.lastTurnInfo.spellIDs.push(spell.spellID);
                     } else {
-                        state.DnD.lastTurnInfo.spellIDs = [spellID]
+                        state.DnD.lastTurnInfo.spellIDs = [spell.spellID];
                     }
                 }
                 if (spell.when === "action" && spell.savingThrow && spell.savingThrow !== "auto") {
@@ -3291,7 +3292,7 @@ log(spellInfo)
                         outputCard.body.push("As an action, the character may take a " + Capit(spell.savingThrow)) + " Save with a DC of " + spellInfo.dc;
                     } else {
                         outputCard.body.push("The character is affected by " + spell.name + " and uses its action to try and break the Spell");
-                        SpellCheck(spellID,model)
+                        SpellCheck(spell.spellID,model)
                     }
 
 
@@ -3311,23 +3312,27 @@ log(spellInfo)
 
     }
 
-    const FindSpellInfo = (spellName,modelID) => {
-        let info = state.DnD.spellList.filter((e) => {
-            e.spellName === spellName && e.targetIDs.includes(modelID)
-        })[0];
-        return info
+    const FindSpell = (spellName,modelID) => {
+        let spell;
+        for (let i=0;i<state.DnD.spellList.length;i++) {
+            if (state.DnD.spellList[i].name === spellName && state.DnD.spellList[i].targetIDs.includes(modelID)) {
+                spell = state.DnD.spellList[i];
+                break;
+            }
+        }
+        return spell;
     }
 
     const SpellCheck = (spellID,model) => {
-        let spellInfo = state.DnD.spellList[spellID];
-        let spell = SpellInfo(spellInfo.spellName);
+        let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+log("In Spell Check")
 log("Pre")
-log(spellInfo)
+log(spell)
         let spellEnds = (spell.savingThrow === "auto") ? true:false;
 
         let text = "";
         if (spell.savingThrow && spell.savingThrow !== "auto") {
-            let saveResult = Save(model,spellInfo.dc,spell.savingThrow);
+            let saveResult = Save(model,spell.dc,spell.savingThrow);
             saved = saveResult.save;
             noun = "Failed Save";
             if (saved === true) {noun = "Saves"};
@@ -3338,18 +3343,18 @@ log(spellInfo)
         if (spellEnds === true) {
             model.token.set("status_" + Markers[spell.name],false);
             text += spell.saveText;
-            if (spellInfo) {
-                let index = spellInfo.targetIDs.indexOf(model.id);
+            if (spell) {
+                let index = spell.targetIDs.indexOf(model.id);
                 if (index > -1) {
-                    spellInfo.targetIDs.splice(index,1);
-                    if (spellInfo.targetIDs.length === 0) {
-                        EndSpell(spellInfo.spellID);
+                    spell.targetIDs.splice(index,1);
+                    if (spell.targetIDs.length === 0) {
+                        EndSpell(spellID);
                     }
                 }
             }
         }
 log("Post")
-log(spellInfo)
+log(spell)
         outputCard.body.push(text);
     }
 
