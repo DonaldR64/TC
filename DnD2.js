@@ -3354,7 +3354,7 @@ log(spell)
             }
         }
 log("Post")
-log(spell)
+log(state.DnD.spellList)
         outputCard.body.push(text);
     }
 
