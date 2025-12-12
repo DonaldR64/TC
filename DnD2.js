@@ -112,8 +112,8 @@ const DnD = (() => {
 
     }
 
-    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep"];
-    const Restrained = ["Restrained","Web","Entangle","Hold Person"];
+    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
+    const Restrained = ["Restrained","Web","Entangle"];
 
 
 
@@ -980,7 +980,6 @@ log(model.name + ": " + id)
     const ClearState = () => {
         state.DnD = {
             combatTurn: 0,
-            lastTurnInfo: {},
             conSpell: {},
             regSpells: {},
             spellList: [],
@@ -2264,7 +2263,7 @@ log(damageResults)
             outputCard.body.push("Place Target then use Macro to Cast");
         }
         if (spell.spellType === "Ongoing") {
-            spellInfo.ongoing = true;
+            spell.ongoing = true;
             ClearSpellTarget(spell);
             let target = SpellTarget(spell);
             let emote = Emote(spell);
@@ -2357,7 +2356,6 @@ log(spell)
     }
 
     const EffectCheck = (model) => {
-        return
         //ongoing spell or similar effects - represented by a model
         let spells = ["Moonbeam","Web"]
         _.each(ModelArray,m => {
@@ -2553,7 +2551,10 @@ log("Cumulative Slots: " + cumulativeSS)
                 let saveResult = Save(target,spell.dc,spell.savingThrow,0);
                 saved = saveResult.save;
                 noun = "Fails";
-                if (saved === true) {noun = "Saves"};
+                if (saved === true) {
+                    noun = "Saves"
+                    text = spell.saveText;
+                };
                 let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                 outputCard.body.push(target.name + " " + tip + text);
             }
@@ -3198,11 +3199,6 @@ log(state.DnD.spellList)
         if (!state.DnD.combatTurn || state.DnD.combatTurn === 0) {return};
         turnorder = JSON.parse(Campaign().get("turnorder"));
         if (!turnorder) {EndCombat();return};
-        //check if stuff from prev. models turn to do - if so do that before advancing
-        if (state.DnD.lastTurnInfo) {
-            EndModelsRound(state.DnD.lastTurnInfo);
-            state.DnD.lastTurnInfo = {};
-        }
         //advance
         turnorder = JSON.parse(Campaign().get("turnorder"));
         let currentTurnItem = turnorder[0];
@@ -3212,19 +3208,19 @@ log(state.DnD.spellList)
         if (currentTurnItem.custom === "Turn") {
             state.DnD.combatTurn = currentTurnItem.pr
         }
-
         //ping model's token
         if (model) {
             toFront(model.token);
             sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
             SetupCard(model.name,"Turn " + state.DnD.combatTurn,model.displayScheme);
-            StartModelsRound(model);
+            ModelsRound(model);
         } else {
             SetupCard("Turn " + state.DnD.combatTurn,"","Red");
             //Start of Turn things
         }
         PrintCard();
     }
+
     const EndCombat = () => {
         let turnorder = [];
         Campaign().set("turnorder", JSON.stringify(turnorder));
@@ -3242,10 +3238,9 @@ log(state.DnD.spellList)
         state.DnD.conSpell = {};
         state.DnD.regSpells = {};
         state.DnD.spellList = [];
-        state.DnD.lastTurnInfo = {};
     }
 
-    const StartModelsRound = (model) => {
+    const ModelsRound = (model) => {
         //check any spell areas model is in, eg Moonbeam, entangle etc
 log("Start Models Round: " + model.name)
         EffectCheck(model);
@@ -3264,7 +3259,21 @@ log(spellIDs)
             let spellID = spellIDs[i];
             CheckDuration(spellID);
         }
-        //spells on model - check markers, then check spell to see if/when save/ends
+        if (state.DnD.conSpell[model.id]) {
+            let spellID = state.DnD.conSpell[model.id];
+            let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+            if (spell) {
+                outputCard.body.push("Concentrating on " + spell.name)
+            }
+        }
+
+
+
+
+
+
+
+        //spells on model based on markers, then check spell to see if/when save/ends
         let spellNames = model.Markers(); //could also be conditions, will screen out below
         for (let i=0;i<spellNames.length;i++) {
 log("Marker on Model")
@@ -3272,31 +3281,35 @@ log("Marker on Model")
 log(spellName)
             let spell = FindSpell(spellName,model.id);
             if (!spell) {continue};
-log("Spell Found")
-log(spell)
             if (spell && spell.when) {
-                if (spell.when === "start") {
-                    SpellCheck(spell.spellID,model);
-                }
-                if (spell.when === "end") {
-                    state.DnD.lastTurnInfo.modelID = model.id;
-                    if (state.DnD.lastTurnInfo.spellIDs) {
-                        state.DnD.lastTurnInfo.spellIDs.push(spell.spellID);
-                    } else {
-                        state.DnD.lastTurnInfo.spellIDs = [spell.spellID];
+                let spellEnds;
+                if (model.isParty === true) {
+                    outputCard.body.push("The character is affected by " + spell.name + ", requiring a " + Capit(spell.savingThrow) + " Save with a DC of " + spellInfo.dc);
+                    if (spell.when === "action") {
+                        outputCard.body.push("The Character can use its Action to make the Save");
                     }
-                }
-                if (spell.when === "action" && spell.savingThrow && spell.savingThrow !== "auto") {
-                    if (model.isParty === true) {
-                        outputCard.body.push("The character is affected by " + spell.name);
-                        outputCard.body.push("As an action, the character may take a " + Capit(spell.savingThrow)) + " Save with a DC of " + spellInfo.dc;
-                    } else {
-                        outputCard.body.push("The character is affected by " + spell.name + " and uses its action to try and break the Spell");
-                        SpellCheck(spell.spellID,model)
+                    if (spell.when === "endAll" || spell.when === "end") {
+                        outputCard.body.push("The Save occurs at the end of its round");
                     }
+                    if (spell.when === "start") {
+                        outputCard.body.push("The Save is made at the start of the Character's round");
+                    }
+                } else {
+                    spellEnds = SpellCheck(spell.spellID,model);
+log("Spell Ends " + spell.when + " => " + spellEnds)
 
-
-
+                    if (spell.when === "start" && spellEnds === true) {
+                        outputCard.body.push(model.name + " can act normally");
+                    }
+                    if (spell.when === "action") {
+                        outputCard.body.push(model.name + " has used its Action but may Move if able");
+                    }
+                    if (spell.when === "endAll") {
+                        outputCard.body.push(model.name + "'s turn is over");
+                    }
+                    if (spell.when === "end") {
+                        //// ????
+                    }
 
 
                 }
@@ -3356,6 +3369,7 @@ log(spell)
 log("Post")
 log(state.DnD.spellList)
         outputCard.body.push(text);
+        return spellEnds;
     }
 
 

@@ -293,7 +293,7 @@
             range: 60,
             duration: 10,
             concentration: true,
-            when: "end",
+            when: "endAll",
             spellType: "Misc",
             macro: "!Spell;Hold Person;%Level%;%Selected%;%Target%",
             sound: "Sound",
