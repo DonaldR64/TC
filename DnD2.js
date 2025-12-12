@@ -2248,6 +2248,19 @@ log(damageResults)
         spell.isRitual = ritual;
         spell.dc = caster.spellDC;
 
+        let casterLevel = caster.casterLevel;
+        if (spell.cLevel && spell.cLevel[casterLevel]) {
+            spell.base = spell.cLevel[casterLevel];
+        }
+        if (level > spell.level) {
+            spell.base = spell.sLevel[level];
+        }
+        spell.damage = spell.base + "," + spell.damageType;
+
+
+
+
+
         if (spell.spellType === "DirectAttack") {
             //spells that directly attack the target
             DirectAttackSpell(spell);
@@ -2358,15 +2371,20 @@ log(spell)
 
     const EffectCheck = (model) => {
         //ongoing spell or similar effects - represented by a model
-        let spells = ["Moonbeam","Web"]
+        let spells = ["Moonbeam","Web"];
         _.each(ModelArray,m => {
             if (spells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
                     let spellID = m.token.get("gmnotes").toString();
-                    let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                    let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
+                    if(!spell) {
+                        log("No Spell")
+                        return;
+                    }
                     //area = damage or effect
                     if (spell.effect.includes("Damage")) {
-                        SpellDamage(spell,model);
+                        let rollResults = SD1(spell);
+                        SpellDamage(rollResults,spell,model);
                     }
                     if (spell.effect.includes("Effect")) {
                         SpellEffect(spell,model);
@@ -2375,6 +2393,20 @@ log(spell)
             }
         })
     }
+
+    const SD1 = (spell) => {
+        let rollResults = RollDamage(spell.damage,false); //total, diceText
+        tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
+        outputCard.body.push("Total: " + tip + " " + Capit(spell.damageType) + " Damage");   
+        if (spell.savingThrow && spell.savingThrow != "No") {
+        outputCard.body.push(Capit(spell.savingThrow) + " Save = " + spell.saveEffect);
+        } else {
+            outputCard.body.push("No Saving Throw");
+        }
+        return rollResults;
+    }
+
+
 
     const EndModelsRound = (lastTurnInfo) => {
         let model = ModelArray[lastTurnInfo.modelID];
@@ -2389,18 +2421,41 @@ log(spell)
     }
 
 
-    const SpellDamage = (spell,model) => {
-        
-
-
-
-
+    const SpellDamage = (rollResults,spell,model) => {
+        let damageResults = (ApplyDamage(rollResults,spell.dc,model,spell));
+        let saveTip = "";
+        if (damageResults.save) {
+            saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
+        }
+        outputCard.body.push(model.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
+        if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
+            MoveTarget(ModelArray[spell.casterID],model,10);
+        }
     }
 
     const SpellEffect = (spell,model) => {
-
-
-
+        let saved = false;
+        let noun = "Fails";
+        let tip = "";
+        let phrase = spell.failText;
+        if (spell.conditionImmune && model.conditionImmunities.includes(spell.conditionImmune)) {
+            saved = true;
+            outputCard.body.push(model.name + " is Immune");
+            return;
+        }
+        if (saved === false && spell.savingThrow) {
+            let saveResult = Save(model,dc,spell.savingThrow,0);
+            saved = saveResult.save;
+            if (saved === true) {
+                noun = "Saves"
+                phrase = spell.saveText;
+            };
+            tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+        }
+        if (saved === false) {
+            model.token.set("status_" + Markers[spell.name],true);
+        }
+        outputCard.body.push(model.name + tip + phrase);
     }
 
 
@@ -2762,66 +2817,16 @@ log(spell)
         }
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
             _.each(targets,target => {
-                let saved = false;
-                let noun = "Fails";
-                let tip = "";
-                let phrase = spell.failText;
-                if (spell.conditionImmune && target.conditionImmunities.includes(spell.conditionImmune)) {
-                    saved = true;
-                    outputCard.body.push(target.name + " is Immune");
-                    return;
-                }
-                if (saved === false && spell.savingThrow) {
-                    let saveResult = Save(target,dc,spell.savingThrow,0);
-                    saved = saveResult.save;
-                    if (saved === true) {
-                        noun = "Saves"
-                        phrase = spell.saveText;
-                    };
-                    tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
-                }
-                if (saved === false) {
-                    target.token.set("status_" + Markers[spell.name],true);
-                }
-                outputCard.body.push(target.name + tip + phrase);
+                SpellEffect(spell,target);
             })            
         }
 
         if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
-            if (spell.cLevel && spell.cLevel[casterLevel]) {
-                spell.base = spell.cLevel[casterLevel];
-            }
-//need caster level for displaced spells
-            if (level > spell.level) {
-                spell.base = spell.sLevel[level];
-            }
-            spell.damage = spell.base + "," + spell.damageType;
-
-            let rollResults = RollDamage(spell.damage,false); //total, diceText
-log(rollResults)
-            tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
-            outputCard.body.push("Total: " + tip + " " + Capit(spell.damageType) + " Damage");   
-            if (spell.savingThrow && spell.savingThrow != "No") {
-                outputCard.body.push(Capit(spell.savingThrow) + " Save = " + spell.saveEffect);
-            } else {
-                outputCard.body.push("No Saving Throw");
-            }
+            let rollResults = SD1(spell);
             outputCard.body.push("[hr]")
             outputCard.body.push("[hr]")
-
             _.each(targets,target => {
-                let damageResults = (ApplyDamage(rollResults,dc,target,spell));
-                let saveTip = "";
-                if (damageResults.save) {
-                    saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
-                }
-                outputCard.body.push(target.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
-
-                if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
-                    MoveTarget(caster,target,10);
-                }
-
-
+                SpellDamage(rollResults,spell,target);
             })
         }
         FX(spell.fx,caster,spellTarget)
