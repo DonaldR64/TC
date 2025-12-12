@@ -2364,22 +2364,16 @@ log(spell)
                 if (Venn(m.Squares(),model.Squares()) === true) {
                     let spellID = m.token.get("gmnotes").toString();
                     let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
-
-log(spell)
                     //area = damage or effect
-
-
-
-
+                    if (spell.effect.includes("Damage")) {
+                        SpellDamage(spell,model);
+                    }
+                    if (spell.effect.includes("Effect")) {
+                        SpellEffect(spell,model);
+                    }
                 }
             }
         })
-
-
-
-
-
-
     }
 
     const EndModelsRound = (lastTurnInfo) => {
@@ -2395,8 +2389,19 @@ log(spell)
     }
 
 
+    const SpellDamage = (spell,model) => {
+        
 
 
+
+
+    }
+
+    const SpellEffect = (spell,model) => {
+
+
+
+    }
 
 
 
