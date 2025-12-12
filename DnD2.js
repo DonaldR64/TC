@@ -2272,6 +2272,7 @@ log(damageResults)
             }
             outputCard.body.push("Move Target to Location");
             AddSpell(spell);
+            target.token.set("gmnotes",spell.spellID);
         }
         PrintCard();
     }
@@ -2361,8 +2362,11 @@ log(spell)
         _.each(ModelArray,m => {
             if (spells.includes(m.name) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
-sendChat("","In " + m.name)
-//run as if area spell, for web - if makes save should clear it
+                    let spellID = m.token.get("gmnotes").toStrin();
+
+
+
+
 
                 }
             }
@@ -2629,7 +2633,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
         spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
-        let tok = ModelArray[spell.casterID];
+        let tok = ModelArray[spell.casterID].token;
 
         let newToken = createObj("graphic", {
             left: tok.get("left"),
@@ -2642,6 +2646,7 @@ log("Cumulative Slots: " + cumulativeSS)
             imgsrc: img,
             layer: "objects",
             represents: charID,
+            
         })
 
         if (newToken) {
