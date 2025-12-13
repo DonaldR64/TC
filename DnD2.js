@@ -371,7 +371,6 @@ const DnD = (() => {
             _.each(levels,level => {
                 if (spells[level] && spells[level].length > 0) {
                     spells[level].sort((a, b) => a.name.localeCompare(b.name));
-                    log(spells[level])
                 }
             })
             return spells
