@@ -2454,7 +2454,7 @@ log(spell)
             return;
         }
         if (saved === false && spell.savingThrow) {
-            let saveResult = Save(model,dc,spell.savingThrow,0);
+            let saveResult = Save(model,spell.dc,spell.savingThrow,0);
             saved = saveResult.save;
             if (saved === true) {
                 noun = "Saves"
@@ -2820,8 +2820,8 @@ log(spell)
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
 
-        let targetIDs = targets.map((e) => e.id);
-        AddSpell(spell,level,caster,targetIDs,false,spellTarget.id);
+        spell.targetIDs = targets.map((e) => e.id);
+        AddSpell(spell);
 
         if (spell.moveEffect) {
             spellTarget.token.set({
@@ -3212,7 +3212,7 @@ log(spell)
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 1;
-        state.DnD.conSpell = "";
+        state.DnD.conSpell = {};
         state.DnD.regSpells = {};
         state.DnD.areaSpell = "";
 
