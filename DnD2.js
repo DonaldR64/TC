@@ -368,6 +368,12 @@ const DnD = (() => {
                     }
                 })
             })
+            _.each(levels,level => {
+                if (spells[level] && spells[level].length > 0) {
+                    spells[level].sort((a, b) => a.name.localeCompare(b.name));
+                    log(spells[level])
+                }
+            })
             return spells
         }
 
@@ -2447,7 +2453,7 @@ log(spell)
         let saved = false;
         let noun = "Fails";
         let tip = "";
-        let phrase = spell.failText;
+        let phrase = spell.failText || "";
         if (spell.conditionImmune && model.conditionImmunities.includes(spell.conditionImmune)) {
             saved = true;
             outputCard.body.push(model.name + " is Immune");
@@ -2458,7 +2464,7 @@ log(spell)
             saved = saveResult.save;
             if (saved === true) {
                 noun = "Saves"
-                phrase = spell.saveText;
+                phrase = spell.saveText || "";
             };
             tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
         }
