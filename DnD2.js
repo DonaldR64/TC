@@ -2466,6 +2466,7 @@ log(spell)
             model.token.set("status_" + Markers[spell.name],true);
         }
         outputCard.body.push(model.name + tip + phrase);
+        return saved;
     }
 
 
@@ -2804,23 +2805,32 @@ log(spell)
         if (spell.name === "Sleep") {
             targets = Sleep(targets,level); //refine based on hp
         }
+        let targetIDs = [];
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
             _.each(targets,target => {
-                SpellEffect(spell,target);
+                let saved = SpellEffect(spell,target);
+                if (saved === false) {
+                    targetIDs.push(target.id);
+                }
             })            
         }
+
         if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
             let rollResults = SD1(spell);
             outputCard.body.push("[hr]")
             outputCard.body.push("[hr]")
             _.each(targets,target => {
                 SpellDamage(rollResults,spell,target);
+                targetIDs.push(target.id);
             })
         }
         FX(spell.fx,caster,spellTarget)
         PlaySound(spell.sound);
 
-        spell.targetIDs = targets.map((e) => e.id);
+        spell.targetIDs = targetIDs;
+
+        spell.ongoingID = targetID;
+
         AddSpell(spell);
 
         if (spell.moveEffect) {
