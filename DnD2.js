@@ -91,7 +91,7 @@ const DnD = (() => {
         "Prone": "Prone::2006547",
         "Restrained": "Cage::1431882",
         "Stunned": "Stunned::2006499",
-        "Unconscious": "KO::2006544",
+        "Unconscious": "sleepy",
         "Dodge": "half-haze",
         "Disadvantage": "Minus::2006420",
         "Advantage": "Plus::2006398",
@@ -109,7 +109,7 @@ const DnD = (() => {
         "Web": "Effect_Web_Spider_Climb::1432012",
         "Entangle": "Effect_Entangled_Vine_Grow::1431943",
         "Hold Person": "Effect_Control_Hypno::1431929",
-
+        "Sleep": "KO::2006544",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -983,7 +983,7 @@ log(model.name + ": " + id)
             conSpell: {},
             regSpells: {},
             spellList: [],
-
+            areaSpell: "",
         }
         nameArray = {};
     }
@@ -2244,14 +2244,16 @@ log(damageResults)
             targetIDs.push(caster.id);
         }
 
+        let casterLevel = caster.casterLevel;
+
 
         spell.casterID = casterID;
         spell.targetIDs = targetIDs;
         spell.castLevel = level;
+        spell.casterLevel = casterLevel;
         spell.isRitual = ritual;
         spell.dc = caster.spellDC;
 
-        let casterLevel = caster.casterLevel;
         if (spell.cLevel && spell.cLevel[casterLevel]) {
             spell.base = spell.cLevel[casterLevel];
         }
@@ -2259,9 +2261,6 @@ log(damageResults)
             spell.base = spell.sLevel[level];
         }
         spell.damage = spell.base + "," + spell.damageType;
-
-
-
 
 
         if (spell.spellType === "DirectAttack") {
@@ -2338,11 +2337,11 @@ log(spell)
         return spell.name;
     }
 
-    const AddSpell = (spell,precastFlag) => {
+    const AddSpell = (spell,precastFlag = false) => {
         if (!spell.duration) {return};
-        if (!precastFlag) {precastFlag = false}
         spell.endTurn = state.DnD.combatTurn + spell.duration;
         if (precastFlag === true) {spell.endTurn--};
+        
         spell.spellID = stringGen();
 
         state.DnD.spellList.push(spell);
@@ -2674,16 +2673,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
     const SpellTarget = (spell) => {
         img = getCleanImgSrc(spell.tempImg);
-        let action = "!AreaSpell;" + spell.name + ";" + spell.casterID + ";" + spell.castLevel;
-        if (spell.damageType) {
-            action += ";" + spell.damageType;
-        }
-        if (spell.dc) {
-            action += ";" + spell.dc;
-        }
-        if (spell.originalCasterID) {
-            action += ";" + spell.originalCasterID;
-        }
+        let action = "!AreaSpell";
         
         let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
 
@@ -2707,7 +2697,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
         spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
-        let tok = ModelArray[spell.casterID].token;
+        let tok = ModelArray[spell.casterID].token; //place new token on casters token
 
         let newToken = createObj("graphic", {
             left: tok.get("left"),
@@ -2723,10 +2713,13 @@ log("Cumulative Slots: " + cumulativeSS)
             
         })
 
+
         if (newToken) {
             toFront(newToken);
             let target = new Model(newToken);
             target.isSpell = spell.casterID;
+
+            state.DnD.areaSpell = spell;
             return target;
         } else {
             sendChat("","Error in CreateObj")
@@ -2751,30 +2744,15 @@ log("Cumulative Slots: " + cumulativeSS)
     const AreaSpell = (msg) => {
         let targetID = msg.selected[0]._id;
         let spellTarget = ModelArray[targetID];
-        let Tag = msg.content.split(";");
-        let caster = ModelArray[Tag[2]];
-        let level = parseInt(Tag[3]);
-        let dc = caster.spellDC;
-        let casterLevel = caster.casterLevel;
+        let spell = state.DnD.areaSpell;
 
-        let spell = DeepCopy(SpellInfo[Tag[1]]);
-
-        //if in spell list, then check/override the default levels etc
-        let ss;
-        if (spell.concentration === true) {
-            let spellID = state.DnD.conSpell[caster.id];
-            ss = state.DnD.spellList.filter((e) => e.spellID === spellID)[0];
-        } else {
-            let list = state.DnD.spellList.filter((e) => e.spellName === spell.name); //list of spells with that name
-            ss = list.filter((e) => state.DnD.regSpells[caster.id].includes(e.spellID))[0];
-        }
-        if (ss) {
-            level = ss.spellLevel;
-            casterLevel = ss.casterLevel;
-            dc = ss.dc;
-        }
+        let caster = ModelArray[spell.casterID];
+        let level = spell.castLevel;
+        let dc = spell.DC;
+        let casterLevel = spell.casterLevel;
 
         if (spell.name === "Breathe") {
+////////
 //change to use spell info in state
             spell.damageType = Tag[4].toLowerCase();
             spell.name += " " + Capit(spell.damageType);
@@ -2831,7 +2809,6 @@ log(spell)
                 SpellEffect(spell,target);
             })            
         }
-
         if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
             let rollResults = SD1(spell);
             outputCard.body.push("[hr]")
@@ -2863,8 +2840,7 @@ log(spell)
             outputCard.body.push(emote);
         }
         PrintCard();
-
-log(state.DnD.spellList)
+//state.DnD.areaSpell = "";
 
     }
 
@@ -3236,8 +3212,9 @@ log(state.DnD.spellList)
 
         Campaign().set("turnorder", JSON.stringify(turnorder));
         state.DnD.combatTurn = 1;
-        state.DnD.conSpell = {};
+        state.DnD.conSpell = "";
         state.DnD.regSpells = {};
+        state.DnD.areaSpell = "";
 
         //precast spells - drop duration by 1 round
         _.each(ModelArray,model => {
