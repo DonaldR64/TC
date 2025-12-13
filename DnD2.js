@@ -3263,6 +3263,7 @@ log(state.DnD.spellList)
         //check any spell areas model is in, eg Moonbeam, entangle etc
 log("Start Models Round: " + model.name)
         EffectCheck(model);
+        
         //Spells cast by model and ongoing - check duration
         let spellIDs = [];
         if (state.DnD.conSpell[model.id]) {
@@ -3286,12 +3287,6 @@ log(spellIDs)
             }
         }
 
-
-
-
-
-
-
         //spells on model based on markers, then check spell to see if/when save/ends
         let spellNames = model.Markers(); //could also be conditions, will screen out below
         for (let i=0;i<spellNames.length;i++) {
@@ -3300,23 +3295,24 @@ log("Marker on Model")
 log(spellName)
             let spell = FindSpell(spellName,model.id);
             if (!spell) {continue};
-            if (spell && spell.when) {
-                let spellEnds;
+            if (spell.savingThrow) {
+                if (spell.savingThrow === "auto" && spell.when === "start") {
+                    outputCard.body.push(spell.saveText);
+                    model.token.set("status_" + Markers[spellName],false);
+                    continue;
+                }
+
                 if (model.isParty === true) {
                     outputCard.body.push("The character is affected by " + spell.name + ", requiring a " + Capit(spell.savingThrow) + " Save with a DC of " + spellInfo.dc);
                     if (spell.when === "action") {
                         outputCard.body.push("The Character can use its Action to make the Save");
-                    }
-                    if (spell.when === "endAll" || spell.when === "end") {
+                    } else if (spell.when === "endAll" || spell.when === "end") {
                         outputCard.body.push("The Save occurs at the end of its round");
-                    }
-                    if (spell.when === "start") {
+                    } else if (spell.when === "start") {
                         outputCard.body.push("The Save is made at the start of the Character's round");
                     }
                 } else {
-                    spellEnds = SpellCheck(spell.spellID,model);
-log("Spell Ends " + spell.when + " => " + spellEnds)
-
+                    let spellEnds = SpellCheck(spell.spellID,model);
                     if (spell.when === "start" && spellEnds === true) {
                         outputCard.body.push(model.name + " can act normally");
                     }
@@ -3327,25 +3323,15 @@ log("Spell Ends " + spell.when + " => " + spellEnds)
                         outputCard.body.push(model.name + "'s turn is over");
                     }
                     if (spell.when === "end") {
-                        //// ????
+                        outputCard.body.push("The Save is made at the end of its turn");
                     }
-
-
                 }
-            }
+            } 
         }
-
-
-
-        
-
-
-
-
     }
 
     const FindSpell = (spellName,modelID) => {
-        let spell;
+        let spell = SpellInfo[spellName];
         for (let i=0;i<state.DnD.spellList.length;i++) {
             if (state.DnD.spellList[i].name === spellName && state.DnD.spellList[i].targetIDs.includes(modelID)) {
                 spell = state.DnD.spellList[i];
