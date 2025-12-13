@@ -2286,6 +2286,7 @@ log(damageResults)
                 outputCard.body.push(emote);
             }
             spell.ongoingID = target.id;
+            spell.targetIDs = [target.id];
             outputCard.body.push("Move Target to Location");
             AddSpell(spell);
             target.token.set("gmnotes",spell.spellID);
@@ -2312,7 +2313,9 @@ log(spell)
 
         if (spell.ongoingID) {
             let spellModel = ModelArray[spell.ongoingID];
-            spellModel.Destroy();
+            if (spellModel) {
+                spellModel.Destroy();
+            }
         }
 
         if (caster) {
@@ -3099,7 +3102,6 @@ log(state.DnD.spellList)
                     //assumes is that players turn, so places this init at start
                     Campaign().set("turnorder", JSON.stringify(turnorder));
                 }
-                return newToken.get("id");
             } else {
                 sendChat('','/w gm Cannot create token for <b>'+character.get('name')+'</b>');
             }
@@ -3165,7 +3167,36 @@ log(state.DnD.spellList)
             }
         }
 
-        let newTokenID = summonToken(cID,left,top,size,pr,markers);
+        summonToken(cID,left,top,size,pr,markers);
+
+        let newToken = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            layer: "objects",
+            represents: cID,
+        })[0];
+        let newTokenID = newToken.get("id");
+
+        //spells cast by character have tokenIDs changed, and if target also changed
+        if (state.DnD.conSpell[id]) {
+            state.DnD.conSpell[newTokenID] = state.DnD.conSpell[id];
+            state.DnD.conSpell[id] = "";
+        }
+        if (state.DnD.regSpells[id]) {
+            state.DnD.regSpells[newTokenID] = state.DnD.regSpells[id];
+            state.DnD.regSpells[id] = [];
+        }
+        _.each(state.DnD.spellList,spell => {
+            if (spell.casterID === id) {
+                spell.casterID = newTokenID;
+            }
+            let index = spell.targetIDs.indexOf(id)
+            if (index > -1) {
+                spell.targetIDs.splice(index,1,newTokenID);
+            }
+        })
+
         outputCard.body.push("Wild Shape to " + shape);
         PrintCard();
 
