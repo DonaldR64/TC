@@ -2300,6 +2300,7 @@ log("In End Spell")
 log(spell)
         if(!spell) {return}
         let caster = ModelArray[spell.casterID];
+
         let index;
         let sm = Markers[spell.name] || "";
         _.each(spell.targetIDs,targetID => {
@@ -2314,16 +2315,19 @@ log(spell)
             spellModel.Destroy();
         }
 
-
-        if (spell.concentration === true) {
-            state.DnD.conSpell[caster.id] = "";
-            outputCard.body.push("[" + spell.name + " Ends]");
-        } else {
-            index = state.DnD.regSpells[caster.id].indexOf(spell.spellID);
-            if (index > -1) {
-                state.DnD.regSpells[caster.id].splice(index,1);
+        if (caster) {
+            if (spell.concentration === true) {
+                state.DnD.conSpell[caster.id] = "";
+                outputCard.body.push("[" + spell.name + " Ends]");
+            } else {
+                index = state.DnD.regSpells[caster.id].indexOf(spell.spellID);
+                if (index > -1) {
+                    state.DnD.regSpells[caster.id].splice(index,1);
+                }
             }
         }
+
+
         index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
         if (index > -1) {
             state.DnD.spellList.splice(index,1);
