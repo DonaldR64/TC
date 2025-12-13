@@ -1663,8 +1663,11 @@ log(state.DnD.spells)
             crit = true;
         }
         let ac = defender.ac;
-        if (defender.token.get("aura2_color") === "#ffd700") {
+        if (defMarkers.includes("Shield of Faith")) {
             ac += 2;
+        }
+        if (defMarkers.includes("Mage Armour")) {
+            ac = 13 + defender.statBonus.dexterity;
         }
         let cover = CheckCover(defender);
         if (cover === "Light") {
