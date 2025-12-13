@@ -2335,7 +2335,7 @@ log(spell)
         if (index > -1) {
             state.DnD.spellList.splice(index,1);
         }
-
+        return spell.name;
     }
 
     const AddSpell = (spell,precastFlag) => {
@@ -3415,6 +3415,17 @@ log(state.DnD.spellList)
         return spellEnds;
     }
 
+    const EndConSpell = (msg) => {
+        if (!msg.selected) {return};
+        spellName = EndSpell(state.DnD.conSpell[msg.selected[0]._id]);
+        if (!spellName) {spellName = "No Spell"}
+        sendChat("","/w GM " + spellName + " Ended");
+    }
+
+
+
+
+
 
 
 
@@ -3546,6 +3557,10 @@ log(state.DnD.spellList)
             case '!EndCombat':
                 EndCombat();
                 break;
+            case '!EndConSpell':
+                EndConSpell(msg);
+                break;
+
 
         }
     };
