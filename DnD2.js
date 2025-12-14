@@ -112,6 +112,7 @@ const DnD = (() => {
         "Sleep": "KO::2006544",
         "Barkskin": "Effect_Nature_Leaf::1431993",
         "Heat Metal": "Effect_Heat::1431954",
+        "Magic Weapon": "Sword::7585199",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -1636,6 +1637,7 @@ log(state.DnD.spells)
         }
 
         //Magic Items
+        let magicBonus;
         if (extra !== "Non-Magic" && extra !== "No") {
             if (extra.includes("+")) {
                 magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
@@ -1647,6 +1649,14 @@ log(state.DnD.spells)
         if (extra.includes("Silver") && weapon.magic.includes("magic") === false) {
             weapon.magic = "silver";
         }
+
+        if (attMarkers.includes("Magic Weapon") && weapon.magic !== "magic") {
+            magicBonus = parseInt(attacker.token.get("status_" + Markers["Magic Weapon"])) || 1;
+            weapon.base += "+" + magicBonus;
+            attackBonus += magicBonus;
+            weapon.magic = "magic";
+        }
+
 
         weapon.damage = [weapon.base + "," + weapon.damageType];
         if (attMarkers.includes("Divine Favour")) {
@@ -1667,6 +1677,7 @@ log(state.DnD.spells)
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
             weapon.type = "Ranged";
         }
+log(weapon)
 
         let advResult = Advantage(attacker,defender,weapon); 
 
@@ -2723,8 +2734,14 @@ log("Cumulative Slots: " + cumulativeSS)
             }
             if (saved === false) {
                 someoneFailed = true;
-                target.token.set("status_" + Markers[spell.name],true);
+                target.token.set("status_" + Markers[spell.name],true);            
             }
+            if (spell.name === "Magic Weapon") {
+                let plus = (spell.castLevel < 4) ? true:Math.min(Math.floor(spell.castLevel/2),3);
+                target.token.set("status_" + Markers["Magic Weapon"],plus);
+            }
+
+
         })
 
         if (spell.heal) {
@@ -2761,14 +2778,6 @@ log("Cumulative Slots: " + cumulativeSS)
             let abilityID = AddAbility("Flame Blade",action,caster.charID);
             spell.abilityID = abilityID;
         }
-
-
-
-
-
-
-
-
 
         if (spell.name === "Dragon's Breath") {
             let target = ModelArray[spell.targetIDs[0]];

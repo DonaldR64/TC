@@ -28,7 +28,6 @@
             sound: "Entangle",
             concentration: true,
             duration: 600,
-            marker: true,
         },
 
 
@@ -89,7 +88,6 @@
             macro: "!Spell;Divine Favour;1;%Selected%",
             emote: "Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.<br>Casting this only takes a Bonus Action",
             sound: "Angels",
-            marker: true,
         },       
 
         "Dragon's Breath": {
@@ -263,8 +261,8 @@
             emote: "You touch a willing creature who isn’t wearing armor, and a protective magical force surrounds it until the spell ends.The target’s base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss the spell as an action.",
             macro: "!Spell;Mage Armour;1;%Selected%;%Target%",
             sound: "Angels",
-            marker: true,
         },
+
         "Magic Missile": {
             name: "Magic Missile",
             level: 1,
@@ -278,6 +276,19 @@
             emote: "%%Caster%% creates glowing darts of magical force which strike the target",
             sound: "Splinter2",
             fx: "missile-magic",
+        },
+
+        "Magic Weapon": {
+            name: "Magic Weapon",
+            level: 2,
+            range: 5,
+            spellType: "Misc",
+            emote: "%%Caster%% enchants a weapon to be magical!",
+            macro: "!Spell;Magic Weapon;%Level%;%Selected%;%Target%",
+            sound: "FFire",
+            concentration: true,
+            duration: 600,
+
         },
 
         "Moonbeam": {
@@ -328,7 +339,6 @@
             emote: "The creature you touch is granted Protection against certain creatures.",
             macro: "!Spell;Protection from Evil and Good;1;%Selected%;%Target%",
             sound: "Angels",
-            marker: true,
         },
 
         "Ray of Frost": {
@@ -359,7 +369,6 @@
             emote: "As a bonus action, You ward a creature within range against attack. Until the spell ends, any creature who targets the warded creature with an attack or a harmful spell must first make a Wisdom saving throw. On a failed save, the creature must choose a new target or lose the attack or spell. This spell doesn’t protect the warded creature from area effects, such as the explosion of a fireball. If the warded creature makes an attack or casts a spell that affects an enemy creature, this spell ends.",
             macro: "!Spell;Sanctuary;1;%Selected%;%Target%",
             sound: "Angels",
-            marker: true,
         },
 
         "Shield of Faith": {
