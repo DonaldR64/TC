@@ -2394,6 +2394,9 @@ log(spell)
             }
         }
 
+        if (spell.displacedSpellID) {
+            EndSpell(spell.displacedSpellID);
+        }
 
         index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
         if (index > -1) {
@@ -2784,48 +2787,46 @@ log("Cumulative Slots: " + cumulativeSS)
         }
 
         if (spell.name === "Dragon's Breath") {
-            tempSpell = DeepCopy(SpellInfo["Breathe"]);
-            tempSpell.casterID = spell.casterID;
-            tempSpell.targetIDs = spell.targetIDs;
-            tempSpell.castLevel = spell.castLevel;
-            tempSpell.casterLevel = spell.casterLevel;
-            tempSpell.dc = spell.dc;
-            tempSpell.base = spell.base;
-            tempSpell.damage = spell.damage;
-            tempSpell.taragetIDs = spell.targetIDs;
-            spell = tempSpell;
-            spell.spellID = stringGen();
+            //create a 2nd spell to place on target of Dragon's Breath
+            newSpell = DeepCopy(SpellInfo["Breathe"]);
+            newSpell.casterID = spell.casterID;
+            newSpell.targetIDs = spell.targetIDs;
+            newSpell.castLevel = spell.castLevel;
+            newSpell.casterLevel = spell.casterLevel;
+            newSpell.dc = spell.dc;
+            newSpell.damageType = spell.damageType;
+            if (spell.castLevel > 2) {
+                newSpell.base = newSpell.sLevel[spell.castLevel] || 0;
+            }
+            newSpell.damage = newSpell.base + "," + spell.damageType;
+            newSpell.spellID = stringGen();
+
             let target = ModelArray[spell.targetIDs[0]];
-            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.spellID;
+            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + newSpell.spellID;
             spell.abilityID = AddAbility("Breathe " + Capit(spell.damageType),action,target.charID);
             spell.displacedCharID = target.charID;
             spell.displacedTokenID = target.id;
+            spell.displacedSpellID = newSpell.spellID;
 
-            spell.fx = "breath-";
-            switch (spell.damageType) {
-                case 'acid':
-                    spell.fx += "acid";
+            newSpell.fx = "breath-";
+            switch (newSpell.damageType) {
+                case 'Acid':
+                    newSpell.fx += "acid";
                     break;
-                case 'cold':
-                    spell.fx += "frost";
+                case 'Cold':
+                    newSpell.fx += "frost";
                     break;
-                case 'fire':
-                    spell.fx += "fire";
+                case 'Fire':
+                    newSpell.fx += "fire";
                     break;
-                case 'lightning':
-                    spell.fx += "magic";
+                case 'Lightning':
+                    newSpell.fx += "magic";
                     break;
-                case 'poison':
-                    spell.fx += "slime";
+                case 'Poison':
+                    newSpell.fx += "slime";
                     break;
             }
-            spell.range = 15;
-
-
-
-
-
-
+            AddSpell(newSpell);
         }
 
         if (someoneFailed === true) {

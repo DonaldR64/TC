@@ -36,6 +36,7 @@
             level: 2,
             range: 15,
             spellType: "Area",
+            duration: 10,
             base: '3d6',
             sLevel: [0,0,"3d6","4d6","5d6","6d6","7d6"],
             damageType: "fire",
