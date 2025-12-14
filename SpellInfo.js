@@ -441,6 +441,7 @@
             areaEffect: "Effect",
             savingThrow: "dexterity",
             when: "action",
+            actionSave: "strength",
             conditionImmune: "restrained",
             saveText: " and remains free to act",
             failText: " and is restrained by the webs",

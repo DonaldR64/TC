@@ -3468,7 +3468,13 @@ log(spellName)
                         outputCard.body.push(model.name + " can act normally");
                     }
                     if (spell.when === "action") {
-                        outputCard.body.push(model.name + " has used its Action but may Move if able");
+                        let line = model.name + ' has used its Action';
+                        if (Restrained.includes(spellName)) {
+                            line += ", and is restrained by " + spellName + " from moving";
+                        } else {
+                            line += " but may Move";
+                        }
+                        outputCard.body.push(line);
                     }
                     if (spell.when === "endAll") {
                         outputCard.body.push(model.name + "'s turn is over");
@@ -3497,11 +3503,12 @@ log(spellName)
 log("In Spell Check")
 log("Pre")
 log(spell)
-        let spellEnds = (spell.savingThrow === "auto") ? true:false;
+        let savingThrow = (spell.actionSave) ? spell.actionSave:(spell.savingThrow) ? spell.savingThrow:false;
+        let spellEnds = (savingThrow === "auto") ? true:false;
 
         let text = "";
-        if (spell.savingThrow && spell.savingThrow !== "auto") {
-            let saveResult = Save(model,spell.dc,spell.savingThrow);
+        if (savingThrow !== false && savingThrow !== "auto") {
+            let saveResult = Save(model,spell.dc,savingThrow);
             saved = saveResult.save;
             noun = "Failed Save";
             if (saved === true) {noun = "Saves"};
