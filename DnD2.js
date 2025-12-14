@@ -1968,6 +1968,7 @@ log(weapon)
             let spell = (state.DnD.spellList.find((e) => e.spellID === spellID));
             ClearSpellTarget(spell);
             let target = SpellTarget(spell);
+            state.DnD.areaSpell = spell;
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
         }
@@ -2382,8 +2383,8 @@ log(spell)
         if (spell.abilityID) {
             //remove ability eg if Flame Blade
             let charID = caster.charID;
-            if (spell.displacedID) {
-                charID = spell.displacedID;
+            if (spell.displacedCharID) {
+                charID = spell.displacedCharID;
             }
             let ability = findObjs({_type: "ability", _characterid: charID, _id: spell.abilityID})[0];
             if (ability) {
@@ -2785,7 +2786,33 @@ log("Cumulative Slots: " + cumulativeSS)
             let target = ModelArray[spell.targetIDs[0]];
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.spellID;
             spell.abilityID = AddAbility("Breathe " + Capit(spell.damageType),action,target.charID);
-            spell.displacedID = target.charID;
+            spell.displacedCharID = target.charID;
+            spell.displacedTokenID = target.id;
+            spell.fx = "breath-";
+            switch (spell.damageType) {
+                case 'acid':
+                    spell.fx += "acid";
+                    break;
+                case 'cold':
+                    spell.fx += "frost";
+                    break;
+                case 'fire':
+                    spell.fx += "fire";
+                    break;
+                case 'lightning':
+                    spell.fx += "magic";
+                    break;
+                case 'poison':
+                    spell.fx += "slime";
+                    break;
+            }
+            spell.range = 15;
+            
+
+
+
+
+
         }
 
         if (someoneFailed === true) {
@@ -2879,33 +2906,8 @@ log("Cumulative Slots: " + cumulativeSS)
         let dc = spell.DC;
         let casterLevel = spell.casterLevel;
 
-        if (spell.name === "Breathe") {
-////////
-//change to use spell info in state
-            spell.damageType = Tag[4].toLowerCase();
-            spell.name += " " + Capit(spell.damageType);
-            dc = parseInt(Tag[5]);
-            originalCaster = ModelArray[Tag[6]];
-            casterLevel = originalCaster.casterLevel;
-            spell.fx = "breath-";
-//sound?
-            switch (spell.damageType) {
-                case 'acid':
-                    spell.fx += "acid";
-                    break;
-                case 'cold':
-                    spell.fx += "frost";
-                    break;
-                case 'fire':
-                    spell.fx += "fire";
-                    break;
-                case 'lightning':
-                    spell.fx += "magic";
-                    break;
-                case 'poison':
-                    spell.fx += "slime";
-                    break;
-            }
+        if (spell.name === "Dragon's Breath") {
+            caster = ModelArray[spell.displacedTokenID];
         }
 log("Spell")
 log(spell)
