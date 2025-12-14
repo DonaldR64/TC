@@ -1964,17 +1964,10 @@ log(weapon)
             Smite(attacker,defender,critical,level);
         }
         if (abilityName === "Dragon's Breath") {
-            let spell = DeepCopy(SpellInfo["Breathe"]);
-            let spellInfo = {
-                caster: attacker,
-                spell: spell,
-                level: parseInt(Tag[3]),
-                dc: parseInt(Tag[5]),
-                originalCasterID: Tag[6],
-                damageType: Tag[4],
-            }
+            let spellID = Tag[3];
+            let spell = (state.DnD.spellList.find((e) => e.spellID === spellID));
             ClearSpellTarget(spell);
-            SpellTarget(spellInfo);
+            let target = SpellTarget(spell);
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
         }
@@ -2096,6 +2089,7 @@ log(weapon)
 
     const Emote = (spell) => {
         let caster = ModelArray[spell.casterID];
+        let targetZero = ModelArray[spell.targetIDs[0]];
         let emotes = [];
         if (spell.emote) {emotes.push(spell.emote)};
         if (spell.duration) {
@@ -2109,8 +2103,12 @@ log(weapon)
             if (i>0) {final += "<br>"};
             let emote = emotes[i];
             emote = emote.replace(/%%Caster%%/g,caster.name);
+            emote = emote.replace(/%%Target%%/g,targetZero.name);
             final += emote;
         }
+        if (spell.name === "Dragon's Breath")  {
+            final = final.replace("magical",spell.damageType);
+        }    
         return final;        
     }
 
@@ -2383,7 +2381,11 @@ log(spell)
 
         if (spell.abilityID) {
             //remove ability eg if Flame Blade
-            let ability = findObjs({_type: "ability", _characterid: caster.charID, _id: spell.abilityID})[0];
+            let charID = caster.charID;
+            if (spell.displacedID) {
+                charID = spell.displacedID;
+            }
+            let ability = findObjs({_type: "ability", _characterid: charID, _id: spell.abilityID})[0];
             if (ability) {
                 ability.remove();
             }
@@ -2402,7 +2404,9 @@ log(spell)
         spell.endTurn = state.DnD.combatTurn + spell.duration;
         if (precastFlag === true) {spell.endTurn--};
         
-        spell.spellID = stringGen();
+        if (!spell.spellID) {
+            spell.spellID = stringGen();
+        }
 
         state.DnD.spellList.push(spell);
 log("In Add Spell")
@@ -2708,10 +2712,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
     const MiscSpell = (spell) => {
         let emote = Emote(spell);
-        if (emote) {
-            if (spell.name === "Dragon's Breath")  {
-                emote = emote.replace("magical",spellInfo.spell.damageType);
-            }           
+        if (emote) {         
             outputCard.body.push(emote);
         }
         let someoneFailed = false;
@@ -2721,7 +2722,7 @@ log("Cumulative Slots: " + cumulativeSS)
             let target = ModelArray[targetID];
             if (!target) {return};
             let text = spell.failText || "";
-            if (spell.savingThrow) {
+            if (spell.savingThrow && !spell.friendlySpell) {
                 let saveResult = Save(target,spell.dc,spell.savingThrow,0);
                 saved = saveResult.save;
                 noun = "Fails";
@@ -2780,15 +2781,17 @@ log("Cumulative Slots: " + cumulativeSS)
         }
 
         if (spell.name === "Dragon's Breath") {
+            spell.spellID = stringGen();
             let target = ModelArray[spell.targetIDs[0]];
-            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.castLevel + ";" + spell.damageType + ";" + spell.dc + ";" + spell.caster.id;
-            AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
+            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.spellID;
+            spell.abilityID = AddAbility("Breathe " + Capit(spell.damageType),action,target.charID);
+            spell.displacedID = target.charID;
         }
-
 
         if (someoneFailed === true) {
             AddSpell(spell);
         }
+
         PlaySound(spell.sound);
         //Use Slot if not ritual
 
