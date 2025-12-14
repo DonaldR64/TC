@@ -110,6 +110,7 @@ const DnD = (() => {
         "Entangle": "Effect_Entangled_Vine_Grow::1431943",
         "Hold Person": "Effect_Control_Hypno::1431929",
         "Sleep": "KO::2006544",
+        "Barkskin": "Effect_Nature_Leaf::1431993",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -906,12 +907,13 @@ log(model.name + ": " + id)
 
 
     const AddAbility = (abilityName,action,charID) => {
-        createObj("ability", {
+        let ability = createObj("ability", {
             name: abilityName,
             characterid: charID,
             action: action,
             istokenaction: true,
         })
+        return ability.get("id");
     }    
 
     const InlineButtons = (array) => {
@@ -997,12 +999,13 @@ log(model.name + ": " + id)
         damageInfo = damageInfo.split(",");
         base = damageInfo[0].trim();
         damageType = damageInfo[1].trim();
-
+log("Roll Damage")
+log(damageInfo)
         base = base.split("+");
         let comp = [];
         _.each(base,e => {
             e = e.split("d");
-            let n = parseInt(e[0]) || 1;
+            let n = parseInt(e[0]) || 0;
             let t; //dice type eg. d8 -> 8
             let dtype = "N";
             if (e[1]) {
@@ -1571,6 +1574,20 @@ log(state.DnD.spells)
         if (weapon.properties.includes("Finesse")) {
             statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
         }
+        if (weapon.properties.includes("Spell")) {
+            statBonus = 0;
+            weapon.magic = "magic";
+            if (weapon === "Flame Blade") {
+                let spellID = state.DnD.conSpell[attID];
+                let spell = state.DnD.spellList.find((e) => e.spellID = spellID);
+                if (!spell) {
+                    errorMsg.push("Flame Blade isn't active");
+                } else {
+                    let d = Math.floor((spell.castLevel - 2)/2) + 3;
+                    weapon.base = d + "d6";
+                }
+            }
+        }
 
         if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
             errorMsg.push("Target is Out of Max Range");
@@ -1582,7 +1599,6 @@ log(state.DnD.spells)
             })
             return;
         }
-
         //damage bonuses, add into weaponInfo.base for Damage routine
         //stat
         if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
@@ -1674,6 +1690,11 @@ log(state.DnD.spells)
         if (defMarkers.includes("Mage Armour")) {
             ac = 13 + defender.statBonus.dexterity;
         }
+        if (defMarkers.includes("Barkskin")) {
+            ac = Math.max(16,ac);
+        }
+
+
         let cover = CheckCover(defender);
         if (cover === "Light") {
             ac += 2;
@@ -2141,6 +2162,9 @@ log(damageResults)
             if (cover === "Light") {
                 ac += 2;
             }
+            if (defMarkers.includes("Barkskin")) {
+                ac = Math.max(16,ac);
+            }
 
             if (spell.autoHit === "No") {
                 if (attackResult.roll === 20) {crit = true};
@@ -2260,10 +2284,10 @@ log(damageResults)
         spell.dc = caster.spellDC;
 
         if (spell.cLevel && spell.cLevel[casterLevel]) {
-            spell.base = spell.cLevel[casterLevel];
+            spell.base = spell.cLevel[casterLevel] || 0;
         }
-        if (level > spell.level) {
-            spell.base = spell.sLevel[level];
+        if (level > spell.level && spell.sLevel) {
+            spell.base = spell.sLevel[level] || 0;
         }
         spell.damage = spell.base + "," + spell.damageType;
 
@@ -2331,6 +2355,14 @@ log(spell)
                 if (index > -1) {
                     state.DnD.regSpells[caster.id].splice(index,1);
                 }
+            }
+        }
+
+        if (spell.abilityID) {
+            //remove ability eg if Flame Blade
+            let ability = findObjs({_type: "ability", _characterid: caster.charID, _id: spell.abilityID})[0];
+            if (ability) {
+                ability.remove();
             }
         }
 
@@ -2647,29 +2679,59 @@ log("Cumulative Slots: " + cumulativeSS)
             }
         })
 
-        if (someoneFailed === true) {
-            AddSpell(spell);
-        }
-
-        if (spell.name === "Cure Wounds") {
+        if (spell.heal) {
             let rolls = [];
-            let bonus = Math.max(0,(spell.dc - 10));
+            let bonus = 0;
+            let bonusText = "";
+            if (spell.heal.includes("Bonus")) {
+                bonus = Math.max(0,(spell.dc - 10));
+            }
+            if (bonus !== 0) {
+                bonusText = (bonus > 0) ? "+" + bonus:bonus;
+            }
             let total = bonus;
-            for (i=0;i<spell.castLevel;i++) {
-                let roll = randomInteger(8);
+            let split = spell.heal.split("d");
+            let num = parseInt(split[0]);
+            if (spell.heal.includes("level")) {
+                num += (spell.castLevel - spell.level);
+            }
+            let diceType = parseInt(split[1].charAt(0));
+            for (i=0;i<num;i++) {
+                let roll = randomInteger(diceType);
                 rolls.push(roll);
                 total += roll;
             }
-            let tip ="Roll: [" + rolls.toString() + "] + " + bonus + "<br>[" + spell.castLevel + "d8+" + bonus + "]"; 
+            let tip ="Roll: [" + rolls.toString() + "] " + bonusText + "<br>[" + num + "d" + diceType + bonusText + "]"; 
             tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
+            outputCard.body.push("Spell Heals for " + tip + " HP");
         }
+
+        if (spell.name === "Flame Blade") {
+            //add ability, store ID in spell
+            let action = "!Attack;@{selected|token_id};@{target|token_id};Flame Blade";
+            let caster = ModelArray[spell.casterID];
+            let abilityID = AddAbility("Flame Blade",action,caster.charID);
+            spell.abilityID = abilityID;
+        }
+
+
+
+
+
+
+
+
+
         if (spell.name === "Dragon's Breath") {
             let target = ModelArray[spell.targetIDs[0]];
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.castLevel + ";" + spell.damageType + ";" + spell.dc + ";" + spell.caster.id;
             AddAbility("Breathe " + Capit(spellInfo.spell.damageType),action,target.charID);
         }
 
+
+        if (someoneFailed === true) {
+            AddSpell(spell);
+        }
         PlaySound(spell.sound);
         //Use Slot if not ritual
 
@@ -2695,7 +2757,7 @@ log("Cumulative Slots: " + cumulativeSS)
                 if (spell.tempSize.includes("Level")) {
                     if (spell.tempSize.includes("*")) {
                         spell.tempSize = parseInt(spell.tempSize.replace(/[^\d]/g,""));
-                        spell.tempSize = level * spell.tempSize;
+                        spell.tempSize = spell.level * spell.tempSize;
                     }
                 }
             }

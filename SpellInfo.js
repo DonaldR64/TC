@@ -18,6 +18,20 @@
             macro: '!Spell;Acid Splash;0;%Selected%;%Target%',
         },
 
+        "Barkskin": {
+            name: "Barkskin",
+            level: 2,
+            range: 5,
+            spellType: "Misc",
+            emote: "You touch a willing creature. Until the spell ends, the target’s skin has a rough, bark-like appearance, and the target’s AC can’t be less than 16, regardless of what kind of armor it is wearing.",
+            macro: "!Spell;Barkskin;2;%Selected%;%Target%",
+            sound: "Entangle",
+            concentration: true,
+            duration: 600,
+            marker: true,
+        },
+
+
         "Breathe": {
             name: "Breathe",
             level: 2,
@@ -59,6 +73,7 @@
             name: "Cure Wounds",
             level: 1,
             range: 5,
+            heal: "1d8 + level + Bonus",
             spellType: "Misc",
             sound: "Angels",
             macro: "!Spell;Cure Wounds;%Level%;%Selected%",
@@ -133,6 +148,22 @@
             fx: 'explode-magic',
         },
 
+        "Flame Blade": {
+            name: "Flame Blade",
+            level: 2,
+            duration: 100,
+            concentration: true,
+            spellType: "Misc",
+            sound: "Woosh",
+            macro: '!Spell;Flame Blade;%Level%',
+            fx: 'burn-fire',
+            emote: "%%Caster%% evokes a Fiery Blade as a Bonus Action",            
+        },
+
+
+
+
+
         "Fog Cloud": {
             name: "Fog Cloud",
             level: 1,
@@ -142,12 +173,23 @@
             range: 120,
             duration: 600,
             concentration: true,
-            emote: 'The Fog can be blown away by a strong wind. ',
+            emote: 'The Dense Fog blocks vision into/out of or through it.<br>The Fog can be blown away by a strong wind.',
             areaEffect: "Graphic",
             moveEffect: "map",
             macro: '!Spell;Fog Cloud;%Level%',
             tempImg: "https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289",
             tempSize: 'Level * 40',
+        },
+
+         "Healing Word": {
+            name: "Healing Word",
+            level: 1,
+            range: 60,
+            heal: "1d4 + level + Bonus",
+            spellType: "Misc",
+            sound: "Angels",
+            emote: "As a Bonus Action",
+            macro: "!Spell;Healing Word;%Level%;%Selected%;%Target%",
         },
 
         "Hold Person": {

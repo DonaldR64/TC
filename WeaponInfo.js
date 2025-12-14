@@ -99,7 +99,7 @@
         'Flame Blade': {
             base: "3d6",
             damageType: 'fire',
-            properties: "Finesse",
+            properties: "Spell",
             type: "Melee",
             sound: "Woosh",
         },
