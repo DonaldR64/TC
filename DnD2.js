@@ -1966,11 +1966,17 @@ log(weapon)
         if (abilityName === "Dragon's Breath") {
             let spellID = Tag[3];
             let spell = (state.DnD.spellList.find((e) => e.spellID === spellID));
+log("In Special Ability")
+log(spell)
+
             ClearSpellTarget(spell);
+            spell.displacedTokenID = attID;
+            spell.tempSize = 5;
             let target = SpellTarget(spell);
             state.DnD.areaSpell = spell;
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
+            
         }
         if (abilityName === "Lucky") {
             SetupCard(attacker.name,"Lucky",attacker.displayScheme);
@@ -2093,7 +2099,7 @@ log(weapon)
         let targetZero = ModelArray[spell.targetIDs[0]];
         let emotes = [];
         if (spell.emote) {emotes.push(spell.emote)};
-        if (spell.duration) {
+        if (spell.duration && spell.name !== "Breathe") {
             emotes.push("The Spell lasts " + spell.duration + " rounds. ");
         }
         if (spell.concentration === true) {
@@ -2807,6 +2813,7 @@ log("Cumulative Slots: " + cumulativeSS)
             spell.displacedCharID = target.charID;
             spell.displacedTokenID = target.id;
             spell.displacedSpellID = newSpell.spellID;
+            newSpell.displacedTokenID = target.id;
 
             newSpell.fx = "breath-";
             switch (newSpell.damageType) {
@@ -2921,14 +2928,10 @@ log("Cumulative Slots: " + cumulativeSS)
 
         let caster = ModelArray[spell.casterID];
         let level = spell.castLevel;
-        let dc = spell.DC;
-        let casterLevel = spell.casterLevel;
 
-        if (spell.name === "Dragon's Breath") {
+        if (spell.name === "Breathe") {
             caster = ModelArray[spell.displacedTokenID];
         }
-log("Spell")
-log(spell)
 
         SetupCard(caster.name,spell.name,caster.displayScheme);
 
