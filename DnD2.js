@@ -111,6 +111,7 @@ const DnD = (() => {
         "Hold Person": "Effect_Control_Hypno::1431929",
         "Sleep": "KO::2006544",
         "Barkskin": "Effect_Nature_Leaf::1431993",
+        "Heat Metal": "Effect_Heat::1431954",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -991,6 +992,7 @@ log(model.name + ": " + id)
             regSpells: {},
             spellList: [],
             areaSpell: "",
+            moveID: "",
         }
         nameArray = {};
     }
@@ -1153,7 +1155,7 @@ log(defender.vulnerabilities)
             let result = Save(defender,dc,savingThrow,adv); //save, saveTotal, tip
             if (saveTip !== "") {saveTip += "<br>"}
             if (result.save === true) {
-                save = "Saves";
+                save = "Saves: ";
                 saveTip += "Saves";
                 if (saveEffect === "No Damage") {
                     saveTip += " and takes No Damage";
@@ -1163,10 +1165,18 @@ log(defender.vulnerabilities)
                     saveTip += " and takes 1/2 Damage";
                     total = Math.round(total/2);
                 }
+                if (saveEffect === 'Special') {
+                    save = "Saves " + damageInfo.saveText;
+                }
+
+
                 saveTip += "<br>" + result.tip
             } else {
                 saveTip = "Fails<br>" + result.tip;
-                save = "Fails";
+                save = "Fails:";
+                if (saveEffect === 'Special') {
+                    save = "Fails " +  damageInfo.failText; 
+                }
             }
         }
 
@@ -1717,14 +1727,12 @@ log(weapon)
                 //might have a 2nd eg 1d6,fire for a flaming longsword
                 //roll damage for each damage type then 'apply' it to defender
                 let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
-log(rollResults)
                 let damageResults = ApplyDamage(rollResults,dc,defender,weapon);
-log(damageResults)
                 let tip = rollResults.diceText;  
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
                 let saveTip = "";
                 if (damageResults.save) {
-                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ') ';
                 }
 
                 outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
@@ -1800,11 +1808,11 @@ log(damageResults)
         let ids = Object.keys(ModelArray);
 
         let positive = ["Invisible","Advantage"];
-        let attNegative = ["Blind","Frightened","Poison","Disadvantage"];
+        let attNegative = ["Blind","Frightened","Poison","Disadvantage","Heat Metal"];
         let defNegative = ["Blind","Disadvantage"];
 
         let advantage = false;
-        let advText = [];
+        let advText = []; 
         let disadvantage = false;
         let disText = [];
 
@@ -2184,7 +2192,7 @@ log(damageResults)
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
                 let saveTip = "";
                 if (damageResults.save) {
-                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + ": "
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
                 }
                 outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
                 if (spell.note) {
@@ -2318,6 +2326,10 @@ log(damageResults)
             outputCard.body.push("Move Target to Location");
             AddSpell(spell);
             target.token.set("gmnotes",spell.spellID);
+            if (spell.moveEffect) {
+                //moves it at start of next turn, ie after player moves
+                state.DnD.moveID = target.id;
+            }
         }
         PrintCard();
     }
@@ -2409,12 +2421,13 @@ log(spell)
 
     const EffectCheck = (model,mid = false) => {
         //ongoing spell or similar effects - represented by a model
-        let spells = ["Moonbeam","Web"];
-        if (spells.includes(model.name)) {
+        let spellsA = ["Moonbeam","Web","Flaming Sphere"]; //at start of turn or when move
+        let spellsB = ["Spike Growth"]; //when move only
+        if (spellsA.includes(model.name) || spellsB.includes(model.name)) {
             return;
         }
         _.each(ModelArray,m => {
-            if (spells.includes(m.name) && m.id !== model.id) {
+            if ((spellsA.includes(m.name) || spellsB.includes(m.name)) && m.id !== model.id) {
                 if (Venn(m.Squares(),model.Squares()) === true) {
                     let spellID = m.token.get("gmnotes").toString();
                     let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
@@ -2425,20 +2438,31 @@ log(spell)
                     //area = damage or effect
                     if (mid === true) {
                         SetupCard(model.name,"Movement",model.displayScheme);
-                    }
-                    if (spell.effect.includes("Damage")) {
-                        let rollResults = SD1(spell);
-                        SpellDamage(rollResults,spell,model);
-                    }
-                    if (spell.effect.includes("Effect")) {
-                        SpellEffect(spell,model);
-                    }
-                    if (mid === true) {
+                        if (spell.effect.includes("Damage")) {
+                            let rollResults = SD1(spell);
+                            SpellDamage(rollResults,spell,model);
+                        }
+                        if (spell.effect.includes("Effect")) {
+                            SpellEffect(spell,model);
+                        }
                         PrintCard();
+                    } else if (mid === false && spellsA.includes(m.name)) {
+                        if (spell.effect.includes("Damage")) {
+                            let rollResults = SD1(spell);
+                            SpellDamage(rollResults,spell,model);
+                        }
+                        if (spell.effect.includes("Effect")) {
+                            SpellEffect(spell,model);
+                        }
                     }
                 }
             }
         })
+
+
+
+
+
     }
 
     const SD1 = (spell) => {
@@ -2506,7 +2530,31 @@ log(spell)
         return saved;
     }
 
-
+    const FlamingSphere = (model) => {
+        //check if moved the sphere centre onto someone
+        let spellID = model.token.get("gmnotes").toString();
+        let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
+        let caster = ModelArray[spell.casterID]
+        if(!spell) {
+            log("No Spell")
+            return;
+        }
+        let pt = model.Point();
+        let square = [pt.toSquare()];
+        _.each(ModelArray,m => {
+            if (m.id !== model.id && m.id !== caster.id) {
+                if (Venn(m.Squares(),square) === true) {
+                    SetupCard("Flaming Sphere","Movement",caster.displayScheme);
+                    let rollResults = SD1(spell);
+                    SpellDamage(rollResults,spell,m);
+                    outputCard.body.push("[hr]");
+                    outputCard.body.push("The Flaming Sphere stops Moving");
+                    PrintCard();
+                }
+            };
+        })
+        toBack(model.token);
+    }
 
 
 
@@ -3292,6 +3340,7 @@ log(spell)
         state.DnD.conSpell = {};
         state.DnD.regSpells = {};
         state.DnD.areaSpell = "";
+        state.DnD.moveID = "";
 
         //precast spells - drop duration by 1 round
         _.each(ModelArray,model => {
@@ -3314,6 +3363,17 @@ log(spell)
         turnorder = JSON.parse(Campaign().get("turnorder"));
         let currentTurnItem = turnorder[0];
         if (!currentTurnItem) {EndCombat();return};
+
+        if (state.DnD.moveID !== "") {
+            let s = ModelArray[state.DnD.moveID];
+            if (s) {
+                s.layer = "map";
+                s.token.set("layer","map");
+            }
+            state.DnD.moveID = "";
+        }
+
+
         let id = currentTurnItem.id;
         let model = ModelArray[id];
         if (currentTurnItem.custom === "Turn") {
@@ -3355,7 +3415,6 @@ log(spell)
         //check any spell areas model is in, eg Moonbeam, entangle etc
 log("Start Models Round: " + model.name)
         EffectCheck(model);
-        
         //Spells cast by model and ongoing - check duration
         let spellIDs = [];
         if (state.DnD.conSpell[model.id]) {
@@ -3497,8 +3556,10 @@ log(state.DnD.spellList)
         }
         //check if entered area effect such as Moonbeam, Web
         if (model && (tok.get("left") !== prev.left || tok.get("top") !== prev.top) && state.DnD.combatTurn > 0) {
-
             EffectCheck(model,true);
+            if (model.name === "Flaming Sphere") {
+                FlamingSphere(model);
+            }
         }
 
     }

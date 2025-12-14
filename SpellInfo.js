@@ -160,6 +160,28 @@
             emote: "%%Caster%% evokes a Fiery Blade as a Bonus Action",            
         },
 
+        "Flaming Sphere": {
+            level: 2,
+            name: "Flaming Sphere",
+            range: 60,
+            spellType: "Ongoing",
+            duration: 10,
+            concentration: true,
+            base: '2d6',
+            sLevel: [0,0,"2d6","3d6","4d6","5d6","6d6"],
+            damageType: "fire",
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",
+            area: 'special',
+            effect: "Damage",
+            tempImg: 'https://files.d20.io/images/467704024/63vhnKhZNoVRWYEwBz8uTQ/thumb.png?1765676435',
+            tempSize: 15,
+            sound: "Inferno",
+            fx: "glow-fire",
+            macro: '!Spell;Flaming Sphere;%Level%',
+            emote: "A sphere of fire appears within range. Any creature entering the sphere takes damage. The sphere can be moved 30 feet and into other creatures, who take damage, stopping the sphere",
+            charID: '-OgPVj8fUQkF1eJDvbWI',
+        },
 
 
 
@@ -191,6 +213,31 @@
             emote: "As a Bonus Action",
             macro: "!Spell;Healing Word;%Level%;%Selected%;%Target%",
         },
+
+        "Heat Metal": {
+            name: "Heat Metal",
+            level: 2,
+            range: 60,
+            duration: 10,
+            concentration: true,
+            when: "start",
+            macro: "!Spell;Heat Metal;%Level%;%Selected%;%Target%",
+            sound: "Woosh",
+            savingThrow: "constitution",
+            emote: "",
+            when: "start",
+            spellType: "DirectAttack",
+            saveText: " and may drop/remove the Object<br>",
+            failText: " and must drop/remove the Object<br>",
+            autoHit: "Yes",
+            base: '2d8',
+            sLevel: [0,0,"2d8","3d8","4d8","5d8","6d8"],
+            damageType: "fire",
+            saveEffect: "Special",
+        },
+
+
+
 
         "Hold Person": {
             name: "Hold Person",
@@ -342,6 +389,26 @@
             tempImg: 'https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066',
             tempSize: 40,
             fx: "explode-magic",
+        },
+
+        "Spike Growth": {
+            level: 2,
+            name: "Spike Growth",
+            range: 150,
+            spellType: "Ongoing",
+            duration: 100,
+            concentration: true,
+            base: '2d4',
+            damageType: "piercing",
+            area: 'special',
+            effect: "Damage",
+            moveEffect: "map",
+            tempImg: 'https://files.d20.io/images/467719558/sFDuFb5emZeavny7OaHurg/thumb.png?1765684299',
+            tempSize: 40,
+            sound: "Entangle",
+            macro: '!Spell;Spike Growth;2',
+            emote: "The ground erupts in hard spikes and thorns. The area become difficult terrain and causes damage for any creature moving within.",
+            charID: '-OgPtm6w70voqIqyYk1X',
         },
 
         "Thunderwave": {
