@@ -2104,7 +2104,9 @@ log(weapon)
             if (i>0) {final += "<br>"};
             let emote = emotes[i];
             emote = emote.replace(/%%Caster%%/g,caster.name);
-            emote = emote.replace(/%%Target%%/g,targetZero.name);
+            if (targetZero) {
+                emote = emote.replace(/%%Target%%/g,targetZero.name);
+            }
             final += emote;
         }
         if (spell.name === "Dragon's Breath")  {
@@ -2782,12 +2784,23 @@ log("Cumulative Slots: " + cumulativeSS)
         }
 
         if (spell.name === "Dragon's Breath") {
+            tempSpell = DeepCopy(SpellInfo["Breathe"]);
+            tempSpell.casterID = spell.casterID;
+            tempSpell.targetIDs = spell.targetIDs;
+            tempSpell.castLevel = spell.castLevel;
+            tempSpell.casterLevel = spell.casterLevel;
+            tempSpell.dc = spell.dc;
+            tempSpell.base = spell.base;
+            tempSpell.damage = spell.damage;
+            tempSpell.taragetIDs = spell.targetIDs;
+            spell = tempSpell;
             spell.spellID = stringGen();
             let target = ModelArray[spell.targetIDs[0]];
             let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + spell.spellID;
             spell.abilityID = AddAbility("Breathe " + Capit(spell.damageType),action,target.charID);
             spell.displacedCharID = target.charID;
             spell.displacedTokenID = target.id;
+
             spell.fx = "breath-";
             switch (spell.damageType) {
                 case 'acid':
@@ -2807,7 +2820,7 @@ log("Cumulative Slots: " + cumulativeSS)
                     break;
             }
             spell.range = 15;
-            
+
 
 
 
@@ -2853,6 +2866,9 @@ log("Cumulative Slots: " + cumulativeSS)
         spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
         let tok = ModelArray[spell.casterID].token; //place new token on casters token
+        if (spell.displacedTokenID) {
+            tok = ModelArray[spell.displacedTokenID].token;
+        }
 
         let newToken = createObj("graphic", {
             left: tok.get("left"),
@@ -2882,8 +2898,9 @@ log("Cumulative Slots: " + cumulativeSS)
     }
 
     const ClearSpellTarget = (spell) => {
+        if (!spell) {return};
         let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
-
+        
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",

@@ -102,16 +102,7 @@
             damageType: "fire",
             emote: "%%Target%% gains the ability to breath magical in a 15 foot cone.",
             macro: "!Spell;Dragon's Breath;%Level%;%Selected%;%Target%;?{Energy Type|Acid|Cold|Fire|Lightning|Poison}",
-            targetBecomesCaster: true,
             alternates: ["damageType"],
-            base: '3d6',
-            sLevel: [0,'3d6',"4d6","5d6","6d6","7d6","8d6"],
-            savingThrow: "dexterity",
-            saveEffect: "Half Damage",
-            area: 'Cone',
-            areaEffect: "Damage",
-            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
-            tempSize: 5,
         },
 
         "Entangle": {
