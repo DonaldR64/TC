@@ -1568,6 +1568,7 @@ log(state.DnD.spells)
         let weapon = WeaponInfo[weaponName];
         if (weapon) {
             weapon = DeepCopy(WeaponInfo[weaponName]);
+            weapon.info = extra;
         } else {
             weapon = {
                 base: Tag[4],
@@ -1575,12 +1576,12 @@ log(state.DnD.spells)
                 damageType: Tag[6],
                 base2: Tag[7],
                 properties: Tag[8],
-                range: Tag[9],
+                range: Tag[9].split(",").map((e) => parseInt(e)),
                 text: Tag[10],
                 sound: Tag[11],
             }
         }
-        weapon.info = extra;
+
         //set some defaults
         if (!weapon.critOn) {weapon.critOn = 20};
         if (!weapon.range) {weapon.range = [0,0]};
@@ -1717,7 +1718,6 @@ log(state.DnD.spells)
             outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
             weapon.type = "Ranged";
         }
-log(weapon)
 
         let advResult = Advantage(attacker,defender,weapon); 
 
