@@ -96,6 +96,7 @@
         "Divine Favour": {
             name: "Divine Favour",
             level: 1,
+            bonusAction: true,
             duration: 10,
             beneficial: true,
             concentration: true,
@@ -109,6 +110,7 @@
         "Dragon's Breath": {
             name: "Dragon's Breath",
             level: 2,
+            bonusAction: true,
             range: 5,
             duration: 10,
             concentration: true,
@@ -165,6 +167,7 @@
         "Flame Blade": {
             name: "Flame Blade",
             level: 2,
+            bonusAction: true,
             duration: 100,
             concentration: true,
             spellType: "Misc",
@@ -217,6 +220,7 @@
          "Healing Word": {
             name: "Healing Word",
             level: 1,
+            bonusAction: true,
             beneficial: true,
             range: 60,
             heal: "1d4 + level + Bonus",
@@ -307,6 +311,7 @@
         "Magic Weapon": {
             name: "Magic Weapon",
             level: 2,
+            bonusAction: true,
             beneficial: true,
             range: 5,
             spellType: "Misc",
@@ -391,6 +396,7 @@
         "Sanctuary": {
             name: "Sanctuary",
             level: 1,
+            bonusAction: true,
             range: 30,
             beneficial: true,
             spellType: "Misc",
@@ -403,6 +409,7 @@
         "Searing Smite": {
             name: "Searing Smite",
             level: 1,
+            bonusAction: true,
             range: 5,
             beneficial: true,
             duration: 10,
@@ -416,6 +423,7 @@
         "Shield of Faith": {
             name: "Shield of Faith",
             level: 1,
+            bonusAction: true,
             range: 60,
             beneficial: true,
             duration: 100,
@@ -466,6 +474,7 @@
         "Thunderous Smite": {
             name: "Thunderous Smite",
             level: 1,
+            bonusAction: true,
             range: 5,
             beneficial: true,
             duration: 10,
@@ -524,6 +533,7 @@
         "Wrathful Smite": {
             name: "Wrathful Smite",
             level: 1,
+            bonusAction: true,
             range: 5,
             beneficial: true,
             duration: 10,

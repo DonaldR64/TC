@@ -2667,21 +2667,25 @@ log(model.spells)
             buttons = [];
             outputCard.body.push("[B][U]Cantrips[/b][/u]");
             _.each(model.spells.cantrip,cantrip => {
+                let name = cantrip.name;
                 let macro = "!DisplaySpellInfo;" + model.id + ";" + cantrip.name + ";" + cantrip.desckey;
-                if (SpellInfo[cantrip.name]) {
-                    macro = SpellInfo[cantrip.name].macro;
+                if (SpellInfo[name]) {
+                    macro = SpellInfo[name].macro;
                     macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
                     macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
                     macro = macro.replace("%Target1%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
                     macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
                     macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
 
-
+                    
 
 
                 }
+                if (SpellInfo[name] && SpellInfo[name].bonusAction) {
+                    name = name + " (BA)";
+                }
                 buttons.push({
-                    phrase: cantrip.name,
+                    phrase: name,
                     action: macro,
                 })
             })
@@ -2712,9 +2716,10 @@ log("Cumulative Slots: " + cumulativeSS)
             let buttons = [];
 //
             _.each(spells,spell => {
+                let name = spell.name;
                 if (Attribute(model.charID,spell.prepared) == 1) {
                     let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
-                    if (SpellInfo[spell.name]) {
+                    if (SpellInfo[name]) {
                         let levelMacro = "?&#123;Level&#124;" + i;
                         let availLevels = [i];
                         for (let j=(i+1);j<10;j++) {
@@ -2727,7 +2732,7 @@ log("Cumulative Slots: " + cumulativeSS)
                         if (availLevels.length === 1) {
                             levelMacro = parseInt(availLevels[0]);
                         }                                 
-                        macro = SpellInfo[spell.name].macro || macro;
+                        macro = SpellInfo[name].macro || macro;
                         macro = macro.replace("%Level%",levelMacro);
                         macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
                         macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
@@ -2735,8 +2740,11 @@ log("Cumulative Slots: " + cumulativeSS)
                         macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
                         macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
                     }
+                    if (SpellInfo[name] && SpellInfo[name].bonusAction) {
+                        name = name + " (BA)";
+                    }
                     buttons.push({
-                        phrase: spell.name,
+                        phrase: name,
                         action: macro,
                     })
                 }
@@ -3373,7 +3381,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
         let cID = shapes[cName][shape].cID;
         let size = shapes[cName][shape].size;
-        
+
         let left= Math.max(model.token.get("left") - 35,35*size/70);
         let top = Math.max(model.token.get("top") - 35,35*size/70);
         let pr = -1;
