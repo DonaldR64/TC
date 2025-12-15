@@ -1262,7 +1262,7 @@ log(state.DnD.spells)
 
     }
 
-    const Save = (model,dc,stat,adv) => {
+    const Save = (model,dc,stat,adv = 0) => {
         let saved = false;
         adv = (adv > 0) ? true:false;
         disadv = (adv < 0) ? true:false;
@@ -1676,7 +1676,7 @@ log(state.DnD.spells)
         if (attMarkers.includes("Thunderous Smite")) {
             weapon.damage.push('2d6,thunder');
         }
-        if (attMarkers.includes("Searing Smite")) {
+        if (attMarkers.includes("Wrathful Smite")) {
             weapon.damage.push('1d6,psychic');
         }
 
@@ -1779,6 +1779,47 @@ log(weapon)
                 outputCard.body.push("[hr]");
                 outputCard.body.push("Total Damage: " + finalDamage);
             }
+
+            if (finalDamage > 0) {
+                if (attMarkers.includes("Searing Smite")) {
+                    outputCard.body.push("At the start of each of its turns until the spell ends, the target must make a Constitution saving throw. On a failed save, it takes 1d6 fire damage. On a successful save, the spell ends. If the target or a creature within 5 feet of it uses an action to put out the flames, or if some other effect douses the flames (such as the target being submerged in water), the spell ends.");
+                    let spell = FindSpell("Searing Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+                if (attMarkers.includes("Thunderous Smite")) {
+                    outputCard.body.push("The Thunderclap is audible within 300 feet");
+                    let saveResult = Save(defender,attacker.spellDC,"strength");
+                    let noun = "Fails"
+                    let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                    if (saveResult.save === true) {
+                        outputCard.body.push(defender.name + " " +  '[saves]' + tip + " and resists the Shockwave");
+                    } else {
+                        outputCard.body.push(defender.name + " " + '[fails]'
+                            + tip + " its save and is knocked back and Prone!");
+                        defender.token.set("status_" + Markers["Prone"],true);
+                        MoveTarget(attacker,defender,10);
+                    }
+                    let spell = FindSpell("Thunderous Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+                if (attMarkers.includes("Wrathful Smite")) {
+                    let saveResult = Save(defender,attacker.spellDC,"wisdom");
+                    let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                    if (saveResult.save === true) {
+                        outputCard.body.push(defender.name + " " +  '[saves]' + tip);
+                    } else {
+                        outputCard.body.push(defender.name + " " + '[fails]'
+                            + tip + " its save and is Frightened. It can make a Wisdom Save each round to overcome this.");
+                        defender.token.set("status_" + Markers["Frightened"],true);
+                    }
+                    let spell = FindSpell("Wrathful Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+
+
+            }
+
+
 
 
             if (attacker.class.includes("paladin") && inReach === true) {
