@@ -400,6 +400,19 @@
             sound: "Angels",
         },
 
+        "Searing Smite": {
+            name: "Searing Smite",
+            level: 1,
+            range: 5,
+            beneficial: true,
+            duration: 10,
+            concentration: true,
+            spellType: "Misc",
+            emote: "The next hit deals extra Fire Damage and may cause the target to Ignite in flames",
+            macro: "!Spell;Searing Smite;%Level%;",
+            sound: "Angels",
+        },
+
         "Shield of Faith": {
             name: "Shield of Faith",
             level: 1,
@@ -450,6 +463,21 @@
             charID: '-OgPtm6w70voqIqyYk1X',
         },
 
+        "Thunderous Smite": {
+            name: "Thunderous Smite",
+            level: 1,
+            range: 5,
+            beneficial: true,
+            duration: 10,
+            concentration: true,
+            spellType: "Misc",
+            emote: "The next hit deals extra thunder Damage and may knock the target prone and away",
+            macro: "!Spell;Thunderous Smite;1;",
+            sound: "Angels",
+        },
+
+
+
         "Thunderwave": {
             name: "Thunderwave",
             level: 1,
@@ -493,6 +521,18 @@
             fx: "",
         },
 
+        "Wrathful Smite": {
+            name: "Wrathful Smite",
+            level: 1,
+            range: 5,
+            beneficial: true,
+            duration: 10,
+            concentration: true,
+            spellType: "Misc",
+            emote: "The next hit deals extra Psychic Damage and may cause the target to Flee",
+            macro: "!Spell;Wrathful Smite;1;",
+            sound: "Angels",
+        },
 
     }
 
