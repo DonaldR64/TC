@@ -97,7 +97,7 @@ const DnD = (() => {
         "Advantage": "Plus::2006398",
         //spells and abilities
         "Protection from Evil and Good": "Good_Evil::1432039",
-        "Bless": "Plus-1d4::2006401",
+        "Bless": "Effect_Blessed::1431919",
         "Divine Favour": "Slimed-Mustard-Transparent::2006560",
         "Sacred Weapon": "Torch-Light::2006651",
         "Sanctuary": "Unknown-or-Mystery-2::2006534",
@@ -113,6 +113,8 @@ const DnD = (() => {
         "Barkskin": "Effect_Nature_Leaf::1431993",
         "Heat Metal": "Effect_Heat::1431954",
         "Magic Weapon": "Sword::7585199",
+        "Heroism": "Effect_Hero_Banner_Rally::1431958",
+
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -2404,6 +2406,12 @@ log(spell)
             EndSpell(spell.displacedSpellID);
         }
 
+        if (spell.name === "Heroism") {
+            let model = ModelArray[spell.targetIDs[0]];
+            TempHP(model,0,false); //resets temp hp to 0
+        } 
+
+
         index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
         if (index > -1) {
             state.DnD.spellList.splice(index,1);
@@ -2738,6 +2746,12 @@ log("Cumulative Slots: " + cumulativeSS)
             outputCard.body.push(emote);
         }
         let someoneFailed = false;
+
+        if (spell.name === "Heroism") {
+            let target = ModelArray[spell.targetIDs[0]]
+            let tempHP = parseInt(spell.dc - 10);
+            TempHP(target,tempHP);
+        }
 
         _.each(spell.targetIDs,targetID => {
             let saved = false
@@ -3491,7 +3505,14 @@ log("Marker on Model")
 log(spellName)
             let spell = FindSpell(spellName,model.id);
             if (!spell) {continue};
-            if (spell.savingThrow) {
+
+            if (spell.name === "Heroism") {
+                let tempHP = parseInt(spell.dc - 10);
+                TempHP(model,tempHP);
+            }
+
+
+            if (spell.savingThrow && !spell.beneficial) {
                 if (spell.savingThrow === "auto" && spell.when === "start") {
                     outputCard.body.push(spell.saveText);
                     model.token.set("status_" + Markers[spellName],false);
@@ -3587,7 +3608,24 @@ log(state.DnD.spellList)
         sendChat("","/w GM " + spellName + " Ended");
     }
 
-
+    const TempHP = (model,tempHP,gain = true) => {
+        if (gain === true) {
+            let currentTemp = parseInt(Attribute(model.charID,"hp_temp")) || 0;
+            tempHP = Math.max(currentTemp,tempHP);
+            AttributeSet(model.charID,"hp_temp",tempHP);
+            model.token.set({
+                showplayers_bar3: true,
+                bar3_value: tempHP,
+            })
+            outputCard.body.push(model.name + " has " + tempHP + " Temporary HP");
+        } else {
+            AttributeSet(model.charID,"hp_temp",0);
+            model.token.set({
+                showplayers_bar3: true,
+                bar3_value: 0,
+            })
+        }
+    }
 
 
 

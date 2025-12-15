@@ -22,6 +22,7 @@
             name: "Barkskin",
             level: 2,
             range: 5,
+            beneficial: true,
             spellType: "Misc",
             emote: "You touch a willing creature. Until the spell ends, the target’s skin has a rough, bark-like appearance, and the target’s AC can’t be less than 16, regardless of what kind of armor it is wearing.",
             macro: "!Spell;Barkskin;2;%Selected%;%Target%",
@@ -34,6 +35,7 @@
             name: "Bless",
             level: 1,
             range: 30,
+            beneficial: true,
             spellType: "Misc",
             emote: "You Bless up to 3 creatures of your choice within range.",
             macro: "!Spell;Bless;1;%Selected%;%Target1%;%Target2%;%Target3%",
@@ -82,6 +84,7 @@
 
          "Cure Wounds": {
             name: "Cure Wounds",
+            beneficial: true,
             level: 1,
             range: 5,
             heal: "1d8 + level + Bonus",
@@ -94,6 +97,7 @@
             name: "Divine Favour",
             level: 1,
             duration: 10,
+            beneficial: true,
             concentration: true,
             range: "Self",
             spellType: "Misc",
@@ -213,6 +217,7 @@
          "Healing Word": {
             name: "Healing Word",
             level: 1,
+            beneficial: true,
             range: 60,
             heal: "1d4 + level + Bonus",
             spellType: "Misc",
@@ -244,6 +249,18 @@
         },
 
 
+        "Heroism": {
+            name: "Heroism",
+            beneficial: true,
+            level: 1,
+            range: 5,
+            spellType: "Misc",
+            emote: "%%Target%% is imbued with bravery, immune to being frightened and gains temporary hp each round.",
+            macro: "!Spell;Heroism;1;%Selected%;%Target%",
+            sound: "Angels",
+            concentration: true,
+            duration: 10,
+        },
 
 
         "Hold Person": {
@@ -290,6 +307,7 @@
         "Magic Weapon": {
             name: "Magic Weapon",
             level: 2,
+            beneficial: true,
             range: 5,
             spellType: "Misc",
             emote: "%%Caster%% enchants a weapon to be magical!",
@@ -342,6 +360,7 @@
             level:1,
             name: "Protection from Evil and Good",
             duration: 100,
+            beneficial: true,
             concentration: true,
             range: 5,
             spellType: "Misc",
@@ -373,6 +392,7 @@
             name: "Sanctuary",
             level: 1,
             range: 30,
+            beneficial: true,
             spellType: "Misc",
             duration: 10,
             emote: "As a bonus action, You ward a creature within range against attack. Until the spell ends, any creature who targets the warded creature with an attack or a harmful spell must first make a Wisdom saving throw. On a failed save, the creature must choose a new target or lose the attack or spell. This spell doesn’t protect the warded creature from area effects, such as the explosion of a fireball. If the warded creature makes an attack or casts a spell that affects an enemy creature, this spell ends.",
@@ -384,6 +404,7 @@
             name: "Shield of Faith",
             level: 1,
             range: 60,
+            beneficial: true,
             duration: 100,
             concentration: true,
             spellType: "Misc",
