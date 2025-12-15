@@ -37,7 +37,7 @@
             sound: "Sword",
         },
         'Dire Wolf Bite': {
-            base: "2d6,piercing",
+            base: "2d6",
             damageType: 'piercing',
             sound: "Beast",
             type: "Melee",

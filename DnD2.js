@@ -1569,8 +1569,16 @@ log(state.DnD.spells)
         if (weapon) {
             weapon = DeepCopy(WeaponInfo[weaponName]);
         } else {
-            errorMsg.push("Weapon not in Array");
-            weapon = {range: 1000,type: " ",properties: " "};
+            weapon = {
+                base: Tag[4],
+                type: Tag[5],
+                damageType: Tag[6],
+                base2: Tag[7],
+                properties: Tag[8],
+                range: Tag[9],
+                text: Tag[10],
+                sound: Tag[11],
+            }
         }
         weapon.info = extra;
         //set some defaults
@@ -1675,6 +1683,10 @@ log(state.DnD.spells)
 
 
         weapon.damage = [weapon.base + "," + weapon.damageType];
+        if (weapon.base2) {
+            weapon.damage.push(weapon.base2);
+        }
+
         if (attMarkers.includes("Divine Favour")) {
             weapon.damage.push('1d4,radiant');
         }
@@ -1687,6 +1699,8 @@ log(state.DnD.spells)
         if (attMarkers.includes("Wrathful Smite")) {
             weapon.damage.push('1d6,psychic');
         }
+
+
 
 
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
@@ -2660,6 +2674,8 @@ log(spell)
     const ShowSpells = (msg) => {
         if (!msg.selected) {return};
         let model = ModelArray[msg.selected[0]._id];
+        if (!model) {return}
+
 log(model.spells)
         SetupCard(model.name,"Available Spells",model.displayScheme);
         //cantrips
