@@ -915,7 +915,9 @@ log(model.name + ": " + id)
             if (SpellInfo[model.name]) {
                 let spellID = token.get("gmnotes").toString();
                 let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
-                model.isSpell = spell.casterID;
+                if (spell) {
+                    model.isSpell = spell.casterID;
+                }
             }   
         });
     }
@@ -2519,6 +2521,7 @@ log(spell)
 
     const EffectCheck = (model,type) => {
         //interaction of spell and model
+        if (!model) {return}
         let spellLists = {
             "Start": ["Moonbeam","Web"],
             "ModelMove": ["Moonbeam","Web","Spike Growth"],
@@ -2526,8 +2529,7 @@ log(spell)
             "SpellMove": ["Flaming Sphere"],
         }
         let spells = spellLists[type];
-log("Effect Check")
-log(model.name + " / " + type)
+
         if (type.includes("Spell") && spells.includes(model.name)) {
             if (model.name === "Flaming Sphere") {FlamingSphere(model)};
 
@@ -3371,13 +3373,7 @@ log("Cumulative Slots: " + cumulativeSS)
 
         let cID = shapes[cName][shape].cID;
         let size = shapes[cName][shape].size;
-
-        if (shape !== "Human") {        
-            PlaySound("Growl");
-            let hp = shapes[cName][shape].hp;
-            AttributeSet(cID,"hp",hp);
-        }
-
+        
         let left= Math.max(model.token.get("left") - 35,35*size/70);
         let top = Math.max(model.token.get("top") - 35,35*size/70);
         let pr = -1;
@@ -3398,6 +3394,14 @@ log("Cumulative Slots: " + cumulativeSS)
             layer: "objects",
             represents: cID,
         })[0];
+
+        if (shape !== "Human") {
+            PlaySound("Growl");
+            hp = shapes[cName][shape].hp;
+            AttributeSet(cID,"hp",hp);
+            newToken.set("bar1_value",hp);
+        }
+
         let newTokenID = newToken.get("id");
 
         //spells cast by character have tokenIDs changed, and if target also changed
@@ -3418,6 +3422,14 @@ log("Cumulative Slots: " + cumulativeSS)
                 spell.targetIDs.splice(index,1,newTokenID);
             }
         })
+        _.each(ModelArray,m => {
+            if (m.isSpell && m.isSpell === id) {
+                m.isSpell = newTokenID;
+            }
+        })
+
+
+
 
         outputCard.body.push("Wild Shape to " + shape);
         PrintCard();
