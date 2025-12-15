@@ -114,6 +114,12 @@ const DnD = (() => {
         "Heat Metal": "Effect_Heat::1431954",
         "Magic Weapon": "Sword::7585199",
         "Heroism": "Effect_Hero_Banner_Rally::1431958",
+        "Searing Smite": "400-Bordeaux::5818060",
+        "Thunderous Smite": "600-kakadoi::5818087",
+        "Wrathful Smite": "700-Grey::5818092",
+
+
+
 
     }
 
@@ -1664,6 +1670,16 @@ log(state.DnD.spells)
         if (attMarkers.includes("Divine Favour")) {
             weapon.damage.push('1d4,radiant');
         }
+        if (attMarkers.includes("Searing Smite")) {
+            weapon.damage.push('1d6,fire');
+        }
+        if (attMarkers.includes("Thunderous Smite")) {
+            weapon.damage.push('2d6,thunder');
+        }
+        if (attMarkers.includes("Searing Smite")) {
+            weapon.damage.push('1d6,psychic');
+        }
+
 
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
         if (inReach === true && weapon.type.includes("Melee")) {

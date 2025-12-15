@@ -409,7 +409,7 @@
             concentration: true,
             spellType: "Misc",
             emote: "The next hit deals extra Fire Damage and may cause the target to Ignite in flames",
-            macro: "!Spell;Searing Smite;%Level%;",
+            macro: "!Spell;Searing Smite;1",
             sound: "Angels",
         },
 
