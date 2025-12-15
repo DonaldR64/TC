@@ -2599,7 +2599,14 @@ log(model.spells)
                 if (SpellInfo[cantrip.name]) {
                     macro = SpellInfo[cantrip.name].macro;
                     macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
-                    macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target1%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
+
+
+
+
                 }
                 buttons.push({
                     phrase: cantrip.name,
@@ -2651,7 +2658,10 @@ log("Cumulative Slots: " + cumulativeSS)
                         macro = SpellInfo[spell.name].macro || macro;
                         macro = macro.replace("%Level%",levelMacro);
                         macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
-                        macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target1%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
                     }
                     buttons.push({
                         phrase: spell.name,

@@ -30,6 +30,17 @@
             duration: 600,
         },
 
+        "Bless": {
+            name: "Bless",
+            level: 1,
+            range: 30,
+            spellType: "Misc",
+            emote: "You Bless up to 3 creatures of your choice within range.",
+            macro: "!Spell;Bless;1;%Selected%;%Target1%;%Target2%;%Target3%",
+            sound: "Angels",
+            concentration: true,
+            duration: 10,
+        },
 
         "Breathe": {
             name: "Breathe",
@@ -181,9 +192,6 @@
             emote: "A sphere of fire appears within range. Any creature entering the sphere takes damage. The sphere can be moved 30 feet and into other creatures, who take damage, stopping the sphere",
             charID: '-OgPVj8fUQkF1eJDvbWI',
         },
-
-
-
 
         "Fog Cloud": {
             name: "Fog Cloud",
