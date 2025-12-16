@@ -1700,21 +1700,19 @@ log(state.DnD.spells)
             weapon.damage.push('1d6,psychic');
         }
 
-
-
-
         SetupCard(attacker.name,"Attack",attacker.displayScheme);
+        let pronoun = (attacker.name.includes("Ireena")) ? " her ":" his "
         if (inReach === true && weapon.type.includes("Melee")) {
-            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
+            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with" + pronoun + weaponName);
             weapon.type = "Melee";
         }
         if (inReach === false && weapon.properties.includes("Thrown")) {
-            outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
+            outputCard.body.push(attacker.name + " throws" + pronoun + weaponName + " at " + defender.name);
             weapon.sound = "Shuriken";
             weapon.type = "Ranged";
         }
         if (inReach === false && weapon.properties.includes("Thrown") === false) {
-            outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
+            outputCard.body.push(attacker.name + ' fires' + pronoun + weaponName + " at " + defender.name);
             weapon.type = "Ranged";
         }
 
