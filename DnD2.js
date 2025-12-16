@@ -1260,7 +1260,7 @@ log(defender.vulnerabilities)
         if (markers.includes("Web")) {
             outputCard.body.push("Has Web");
         }
-
+log(model)
 log(token.get("statusmarkers"))
 log(PCs)
 log(state.DnD.spells)
