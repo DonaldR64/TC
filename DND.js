@@ -1,206 +1,50 @@
-const Strahd = (() => {
-    const version = '2025.11.14';
-    if (!state.Strahd) {state.Strahd = {}};
+const DnD = (() => {
+    const version = '2025.12.16';
+    if (!state.DnD) {state.DnD = {}};
 
-
+    //various constants used in game
     let outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
 
     let ModelArray = {};
+    let nameArray = {};
 
     const pageInfo = {name: "",page: "",gridType: "",scale: 0,width: 0,height: 0};
-
-    const LoadPage = () => {
-        //build Page Info
-        pageInfo.id = Campaign().get('playerpageid');
-        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
-        pageInfo.name = pageInfo.page.get("name");
-        pageInfo.scale = pageInfo.page.get("snapping_increment");
-        pageInfo.width = pageInfo.page.get("width");
-        pageInfo.height = pageInfo.page.get("height");
-        pageInfo.scaleNum = pageInfo.page.get("scale_number");
-
-        _.each(playerCodes,pID => {
-            let pObj = getObj('player', pID);
-            if (pObj) {
-                let colour = playerColours[pID];
-                pObj.set({color: colour});
-            }
-        })
-
-    }
 
     const playerCodes = {
         "-OdzmtPMDNNfcmdvIN5m": "Ted",
         "all": "Allied",
         "-OdyHPJkwRBH1F9Zn5AU": "Ian",
         "-OeTGX5FY4C70LTFBna4": "Vic",
+    };
+
+    let PCs = {
+        //will put default tokenID attached to playerID here
+        "-OdzmtPMDNNfcmdvIN5m": "",
+        "-OdyHPJkwRBH1F9Zn5AU": "",
+        "-OeTGX5FY4C70LTFBna4": "",
     }
 
     const playerColours = {
         "-OdzmtPMDNNfcmdvIN5m": "#ffd700",
         "-OdyHPJkwRBH1F9Zn5AU": "#228C22",
-        "-OeTGX5FY4C70LTFBna4": "#0000ff",
-    }
-
-
-
-    const simpleObj = (o) => {
-        let p = JSON.parse(JSON.stringify(o));
-        return p;
+        "-OeTGX5FY4C70LTFBna4": "#00ffff",
+        "all": "#ff0000"
     };
-
-    const getCleanImgSrc = (imgsrc) => {
-        let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/);
-        if(parts) {
-            return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
-        }
-        return;
-    };
-
-    const tokenImage = (img) => {
-        //modifies imgsrc to fit api's requirement for token
-        img = getCleanImgSrc(img);
-        img = img.replace("%3A", ":");
-        img = img.replace("%3F", "?");
-        img = img.replace("med", "thumb");
-        return img;
-    };
-
-    const DeepCopy = (variable) => {
-        variable = JSON.parse(JSON.stringify(variable))
-        return variable;
-    };
-
-    const PlaySound = (name) => {
-        let sound = findObjs({type: "jukeboxtrack", title: name})[0];
-        if (sound) {
-            sound.set({playing: true,softstop:false});
-        }
-    };
-
-    const FX = (fxname,model1,model2) => {
-        //model2 is target, model1 is shooter
-        //if its an area effect, model1 isnt used
-        let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
-        let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
-
-        if (fxname.includes("System")) {
-            //system fx
-            fxname = fxname.replace("System-","");
-            if (fxname.includes("Blast")) {
-                fxname = fxname.replace("Blast-","");
-                spawnFx(model2.token.get("left"),model2.token.get("top"), fxname);
-            } else {
-                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
-
-            }
-        } else {
-            let fxType =  findObjs({type: "custfx", name: fxname})[0];
-            if (fxType) {
-                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
-            }
-        }
-    }
-
-    const ModelInSquare = (model,corners) => {
-        //check centre points of squares covered by token
-        //start with centre of token, add in others if size > 1
-        let c = new Point(model.token.get("left"),model.token.get("top"))
-        let centrePts = [c];
-        if (model.size === 2 || model.size === 4) {
-            centrePts.push(new Point(c.x - 35,c.y - 35));
-            centrePts.push(new Point(c.x + 35,c.y - 35));
-            centrePts.push(new Point(c.x - 35,c.y + 35));
-            centrePts.push(new Point(c.x + 35,c.y + 35));
-        }
-        if (model.size === 3) {
-            centrePts.push(new Point(c.x - 70,c.y - 70));
-            centrePts.push(new Point(c.x,c.y - 70));
-            centrePts.push(new Point(c.x + 70,c.y - 70));
-            centrePts.push(new Point(c.x - 70,c.y));
-            centrePts.push(new Point(c.x,c.y));
-            centrePts.push(new Point(c.x + 70,c.y));
-            centrePts.push(new Point(c.x - 70,c.y + 70));
-            centrePts.push(new Point(c.x,c.y + 70));
-            centrePts.push(new Point(c.x + 70,c.y + 70));
-        }
-        if (model.size === 4) {
-            centrePts.push(new Point(c.x - 105,c.y - 105));
-            centrePts.push(new Point(c.x - 35,c.y - 105));
-            centrePts.push(new Point(c.x + 35,c.y - 105));
-            centrePts.push(new Point(c.x + 105,c.y - 105));
-            centrePts.push(new Point(c.x - 105,c.y - 35));
-            centrePts.push(new Point(c.x + 105,c.y - 35));
-            centrePts.push(new Point(c.x - 105,c.y + 35));
-            centrePts.push(new Point(c.x + 105,c.y + 35));
-            centrePts.push(new Point(c.x - 105,c.y + 105));
-            centrePts.push(new Point(c.x - 35,c.y + 105));
-            centrePts.push(new Point(c.x + 35,c.y + 105));
-            centrePts.push(new Point(c.x + 105,c.y + 105));
-        }
-
-        for (let i=0;i<centrePts.length;i++) {
-            let c = centrePts[i];
-            if (c.x >= corners[0].x && c.x <= corners[1].x && c.y >= corners[0].y && c.y <= corners[1].y) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-
-
-    const pointInPolygon = (point,vertices) => {
-        //evaluate if point is in the polygon
-        px = point.x
-        py = point.y
-        collision = false
-        len = vertices.length - 1
-        for (let c=0;c<len;c++) {
-            vc = vertices[c];
-            vn = vertices[c+1]
-            if (((vc.y >= py && vn.y < py) || (vc.y < py && vn.y >= py)) && (px < (vn.x-vc.x)*(py-vc.y)/(vn.y-vc.y)+vc.x)) {
-                collision = !collision
-            }
-        }
-        return collision
-    }
-
-    const translatePoly = (poly) => {
-        //translate points in a pathv2 polygon to map points
-        let vertices = [];
-        let points = JSON.parse(poly.get("points"));
-        let centre = new Point(poly.get("x"), poly.get("y"));
-        //covert path points from relative coords to actual map coords
-        //define 'bounding box;
-        let minX = Infinity,minY = Infinity, maxX = 0, maxY = 0;
-        _.each(points,pt => {
-            minX = Math.min(pt[0],minX);
-            minY = Math.min(pt[1],minY);
-            maxX = Math.max(pt[0],maxX);
-            maxY = Math.max(pt[1],maxY);
-        })
-        //translate each point back based on centre of box
-        let halfW = (maxX - minX)/2 + minX;
-        let halfH = (maxY - minY)/2 + minY
-        let zeroX = centre.x - halfW;
-        let zeroY = centre.y - halfH;
-        _.each(points,pt => {
-            let x = Math.round(pt[0] + zeroX);
-            let y = Math.round(pt[1] + zeroY);
-            vertices.push(new Point(x,y));
-        })
-        return vertices;
-    }
 
     const Factions = {
         "NPC": {
-            "backgroundColour": "#FFFFFF",
+            "backgroundColour": "#000000",
+            "titlefont": "Arial",
+            "fontColour": "#ffffff",
+            "borderColour": "#000000",
+            "borderStyle": "5px ridge",
+        },
+        "Red": {
+            "backgroundColour": "#ff0000",
             "titlefont": "Arial",
             "fontColour": "#000000",
             "borderColour": "#ff0000",
-            "borderStyle": "5px ridge",
+            "borderStyle": "5px groove",
         },
         "Allied": {
             "backgroundColour": "#FFFFFF",
@@ -213,13 +57,13 @@ const Strahd = (() => {
             "backgroundColour": "#ffd700",
             "titlefont": "Candal",
             "fontColour": "#000000",
-            "borderColour": "#000000",
-            "borderStyle": "5px double",
+            "borderColour": "#ff00ff",
+            "borderStyle": "5px inset",
         },
         "Vic": {
-            "backgroundColour": "#0000ff",
+            "backgroundColour": "#00ffff",
             "titlefont": "Merriweather",
-            "fontColour": "#ffffff",
+            "fontColour": "#000000",
             "borderColour": "#0000ff",
             "borderStyle": "5px groove",
         },
@@ -230,14 +74,57 @@ const Strahd = (() => {
             "borderColour": "#000000",
             "borderStyle": "5px inset",
         },
+    }
 
-
+    const Markers = {
+        //conditions
+        "Blind": "Blind-::2006481",
+        "Charmed": "Charmed::2006504",
+        "Deaf": "Deaf::2006484",
+        "Frightened": "Fear-or-Afraid::2006486",
+        "Grappled": "Grappled::2006490",
+        "Incapacitated": "interdiction",
+        "Invisible": "Invisible::2006516",
+        "Paralyzed": "Paralyzed::2006491",
+        "Petrified": "Petrified-or-Stone-2::2006594",
+        "Poisoned": "Poison::2006492",
+        "Prone": "Prone::2006547",
+        "Restrained": "Cage::1431882",
+        "Stunned": "Stunned::2006499",
+        "Unconscious": "sleepy",
+        "Dodge": "half-haze",
+        "Disadvantage": "Minus::2006420",
+        "Advantage": "Plus::2006398",
+        //spells and abilities
+        "Protection from Evil and Good": "Good_Evil::1432039",
+        "Bless": "Effect_Blessed::1431919",
+        "Divine Favour": "Slimed-Mustard-Transparent::2006560",
+        "Sacred Weapon": "Torch-Light::2006651",
+        "Sanctuary": "Unknown-or-Mystery-2::2006534",
+        "Mage Armour": "418-MA-Buff::5818082",
+        "Slow": "Slow::2006498",
+        "Ray of Frost": "Cold::2006476",
+        "Shield of Faith": "Shield::2006495",
+        "Faerie Fire": "Effect_Faerie_Glow::1431945",
+        "Web": "Effect_Web_Spider_Climb::1432012",
+        "Entangle": "Effect_Entangled_Vine_Grow::1431943",
+        "Hold Person": "Effect_Control_Hypno::1431929",
+        "Sleep": "KO::2006544",
+        "Barkskin": "Effect_Nature_Leaf::1431993",
+        "Heat Metal": "Effect_Heat::1431954",
+        "Magic Weapon": "Sword::7585199",
+        "Heroism": "Effect_Hero_Banner_Rally::1431958",
+        "Searing Smite": "400-Bordeaux::5818060",
+        "Thunderous Smite": "600-kakadoi::5818087",
+        "Wrathful Smite": "700-Grey::5818092",
 
 
 
 
     }
 
+    const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
+    const Restrained = ["Restrained","Web","Entangle"];
 
 
 
@@ -246,193 +133,7 @@ const Strahd = (() => {
 
 
 
-
-
-
-    let ToHit = (advantage) => {
-        let roll1 = randomInteger(20);
-        let roll2 = randomInteger(20);
-        let rollText,bonusText,roll;
-        if (advantage > 0) {
-            roll = Math.max(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Advantage]";
-        } else if (advantage < 0) {
-            roll = Math.min(roll1,roll2);
-            rollText = "Rolls: " + roll1 + " / " + roll2 + " [Disadvantage]";
-        } else {
-            roll = roll1;
-            rollText ="Roll: " + roll;
-        }
-        let result = {
-            roll: roll,
-            rollText: rollText,
-        }
-        return result;
-    }
-
-
-const Line = (index1,index2) => {
-    //return points between map indexes 1 and 2, incl 1 and 2
-    let p0 = MapArray[index1].centre;
-    let p1 = MapArray[index2].centre;
-    let points = [];
-    let N = diagonal_distance(p0,p1);
-    for (let step = 0; step <= N; step++) {
-        let t = (N=== 0) ? 0.0 : (step/N);
-        points.push(round_point(lerp_point(p0,p1,t)));
-    }
-
-    //translate pts to square indexes
-    let indexes = [];
-    _.each(points,p => {
-        let index = p.toIndex();
-        indexes.push(index);
-    })
-    indexes = [...new Set(indexes)];
-    return indexes;
-}
-
-const diagonal_distance = (p0,p1) => {
-    let dx = p1.x - p0.x, dy = p1.y - p0.y;
-    let dist = Math.max(Math.abs(dx), Math.abs(dy));
-    return Math.round(dist/70);
-}
-
-const round_point = (p) => {
-    return new Point(Math.round(p.x), Math.round(p.y));
-}
-
-const lerp_point = (p0,p1,t) => {
-    return new Point(lerp(p0.x, p1.x, t),
-                     lerp(p0.y, p1.y, t));
-}
-
-const lerp = (start, end, t) => {
-    return start * (1.0 - t) + t * end;
-}
-
-
-const EndLine = (start,end,length) => {
-    //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
-    let sqL = Math.round(((length/pageInfo.scaleNum) - 1)/2);
-    let distance = sqL * 100; //larger than 70 to account for odd behaviour of 5e on angles
-    let p0 = MapArray[start].centre;
-    let p1 = MapArray[end].centre;
-    let index2,index3;
-    let w = end.split("/");
-    w = w.map((e) => parseInt(e));
-    if ((p1.x - p0.x) === 0) {  
-        //line 2 is horizontal
-        index2 = (w[0] - sqL) + "/" + w[1];
-        index3 = (w[0] + sqL) + "/" + w[1];
-    } else if ((p1.y - p0.y) === 0) {
-        //line2 is vertical
-        index2 = w[0] + "/" + (w[1] - sqL);
-        index3 = w[0] + "/" +(w[1] + sqL);
-    } else {
-        let m0 = (p1.y - p0.y)/(p1.x - p0.x);
-        let m1 = -1/m0;
-        let b1 = p1.y - (m1 * p1.x);
-        p2 = findPointOnLine(p1,m1,b1,distance,1);
-        p3 = findPointOnLine(p1,m1,b1,distance,-1);
-        index2 = p2.toIndex();
-        index3 = p3.toIndex();
-    }
-
-
-
-    let line = Line(index2,index3);
-
-    return line;
-}
-
-const findPointOnLine = (point,m,b,distance,direction) => {
-    let magnitude = Math.sqrt(1+m*m);
-    let deltaX = direction * (distance / magnitude);
-    let deltaY = direction * (m * distance / magnitude);
-    let pt = new Point(point.x + deltaX,point.y + deltaY);
-    return pt;
-}
-
-const Cone = (caster,target,length) => {
-    let start = caster.squares[0];
-    let end = target.squares[0];
-    //length is in feet
-    let sqL = length / pageInfo.scaleNum;
-    let midLine = Line(start,end)
-    let endLine = EndLine(start,end,length);
-    let AI = [];
-    for (let i=0;i<endLine.length;i++) {
-        let line = Line(start,endLine[i]);
-        for (j=0;j<line.length;j++) {
-            let index = line[j];
-            if (index !== start) {AI.push(index)};
-        }
-    }
-    AI = [...new Set(AI)]; //elim duplicates
-    let array = {};
-    _.each(AI,index => {
-        let dist1 = parseInt(MapArray[start].distance(MapArray[index]));
-        if (dist1 <= sqL) {
-            let dist2 = parseInt(MapArray[midLine[dist1]].distance(MapArray[index]));
-            let info = {
-                index: index,
-                midDist: dist2,
-            }
-            if (array[dist1]) {
-                array[dist1].push(info);
-            } else {
-                array[dist1] = [info];
-            }
-        }
-    })
-    _.each(array,line => {
-        line.sort((a,b) => a.midDist - b.midDist);
-    })
-log(midLine)
-log(array)
-    //temp fix
-    //redo MapArray TokenIndexes
-    _.each(ModelArray,model => {
-        let squares = ModelSquares(model) || [];
-        _.each(squares, square => {
-            if (MapArray[squares].tokenIDs.includes(model.id) === false) {
-                MapArray[squares].tokenIDs.push(model.id);
-            }
-        })
-    })
-
-
-
-
-    //will be an array of objects based on distance from caster 1st and distance from midline 2nd
-    //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
-    //skip if no creature so maximize targets caught
-    targetArray = [];
-    loop1:
-    for (let i=1;i <= sqL; i++) {
-        let counter = 0;
-        let line = array[i];
-        for (let j=0;j<line.length;j++) {
-            let ids = DeepCopy(MapArray[line[j].index].tokenIDs);
-log(line[j].index)
-log(ids)
-            if (ids.length === 0) {continue};
-            if (ids.length === 1 && ids[0] === target.id) {continue};
-            for (let k=0;k<ids.length;k++) {
-                let model = ModelArray[ids[k]];
-                if (model.id === target.id) {continue};
-                if (model) {
-                    counter ++;
-                    targetArray.push(model);
-                }
-                if (counter >= i) {continue loop1};
-            }
-        }
-    }
-
-    return targetArray;
-}
+    //Classes
 
     class Point {
         constructor(x,y) {
@@ -465,7 +166,7 @@ log(ids)
             return new Point(x,y);
         }
         toLabel() {
-            return (x + "/" + y);
+            return (this.x + "/" + this.y);
         }
         distance(b) {
             let dX = Math.abs(b.x - this.x);
@@ -474,10 +175,6 @@ log(ids)
         }
     }
 
-
-
-
-
     class Model {
         constructor(token) {
             let char = getObj("character", token.get("represents")); 
@@ -485,10 +182,10 @@ log(ids)
             this.id = token.get("id");
             this.name = token.get("name");
             let aa = AttributeArray(char.id);
+    
             this.charID = char.id;
-
-log(this.name)
             this.type = (aa.npc_type || " ").toLowerCase();
+            this.class = aa.class || " ";
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
             this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
@@ -504,16 +201,31 @@ log(this.name)
             this.class = (aa.class || " ").toLowerCase();
             this.race = (aa.race || " ").toLowerCase();
 
+            this.layer = token.get("layer");
 
             let control = char.get("controlledby");
-            if (control) {
-                this.displayScheme = playerCodes[control.split(",")[0]];;
-                this.npc = false;
+            let inParty = char.get("inParty")
+            this.inParty = inParty;
+            if (inParty === true) {
+                if (control) {
+                    this.displayScheme = playerCodes[control.split(",")[0]];
+                    this.npc = false;
+                    this.sheetType = "PC";
+                } else {
+                    this.displayScheme = "Allied";
+                }
+            }
+            if (this.name.includes("Haevan")) {
+                PCs["-OdyHPJkwRBH1F9Zn5AU"] = this.id;
+            }
+            if (this.name.includes("Wirsten")) {
+                PCs["-OdzmtPMDNNfcmdvIN5m"] = this.id;
+            }
+            if (this.name.includes("Eivirin")) {
+                PCs["-OeTGX5FY4C70LTFBna4"] = this.id;
             }
 
             this.initBonus = parseInt(aa.initiative_bonus) || 0;
-
-
 
             let dim = Math.max(token.get("width"),token.get("height"));
             dim = Math.round(dim/70);
@@ -539,6 +251,9 @@ log(this.name)
             this.spellAttack = parseInt(aa.spell_attack_bonus) || 0;
             this.casterLevel = parseInt(aa.caster_level) || 0;
             this.spellDC = parseInt(aa.spell_save_dc) || 0;
+        
+            this.spells = this.Spells(aa);
+            this.weapons = this.Weapons(aa);
 
             let saveBonus = {
                 strength: parseInt(aa.strength_save_bonus) || 0,
@@ -566,7 +281,6 @@ log(this.name)
             }
 
             this.special = aa.special || " ";
-            this.party = (this.npc === false || this.special.includes("Party")) ? true:false;
 
             this.token.set({
                 showname: true,
@@ -574,6 +288,8 @@ log(this.name)
                 showplayers_bar1:true,
                 showplayers_aura1: true,
                 playersedit_bar1: true,
+                bar_location: 'overlap_bottom',
+                compact_bar: 'compact',
             })
 
             ModelArray[token.id] = this;
@@ -582,8 +298,8 @@ log(this.name)
 
         Distance (model2) {
             let dist = Infinity;
-            let squares1 = ModelSquares(this);
-            let squares2 = ModelSquares(model2);
+            let squares1 = this.Squares();
+            let squares2 = model2.Squares();
             _.each(squares1,square1 => {
                 _.each(squares2, square2 => {
                     dist = Math.min(square1.distance(square2),dist);
@@ -597,59 +313,376 @@ log(this.name)
             if (token) {
                 token.remove();
             }
+            if (this.isSpell) {
+                //removes an ongoing spell in combat
+                let spellID = state.DnD.spellList.filter((e) => {
+                    e.spellName === this.name && e.casterID === this.isSpell
+                })[0];
+                if (spellID) {EndSpell(spellID)};
+            }
             delete ModelArray[this.id];
         }
+
+        Point () {
+            let pt = new Point(this.token.get("left"),this.token.get("top"))
+            return pt;
+        }
+
+        Squares() {
+            let squares = [];
+            let pt = this.Point();
+            let w = this.token.get("width");
+            let h = this.token.get("height");
+            if (w === 70 && h === 70) {
+                squares.push(pt.toSquare());
+            } else {
+                //define corners, pull in to be centres
+                let tL = new Point(pt.x - w/2 + 35,pt.y - h/2 + 35);
+                let bR = new Point(pt.x + w/2 - 35,pt.y + h/2 - 35);
+                for (let x = tL.x;x<= bR.x;x += 70) {
+                    for (let y = tL.y;y <= bR.y; y += 70) {
+                        let pt2 = new Point(x,y);
+                        let sq = pt2.toSquare();
+                        squares.push(sq);
+                    }
+                }
+            }
+            return squares;
+        }
+
+        Spells(aa) {
+            let spells = {};
+            let keys = Object.keys(aa);
+            let levels = ["cantrip",1,2,3,4,5,6,7];
+            _.each(keys,key => {
+                _.each(levels,level => {
+                    if (key.includes("repeating_spell-" + level) && key.includes("spellname") && key.includes("spellname_max") === false) {
+                        let name = aa[key].trim();
+                        if (name) {
+                            let prepkey = key.replace("spellname","spellprepared");
+                            let desckey = key.replace("spellname","spelldescription");
+                            let ritualkey = key.replace("spellname","spellritual");
+                            let ritual = aa[ritualkey] === "Yes" || aa[ritualkey] === "{{ritual=1}}" ? true:false;                
+            
+                            let info = {
+                                name: name,
+                                prepared: prepkey,
+                                desckey: desckey,
+                                ritual: ritual,
+                            }
+                            if (spells[level]) {
+                                spells[level].push(info);
+                            } else {
+                                spells[level] = [info];
+                            }
+                        }
+                    }
+                })
+            })
+            _.each(levels,level => {
+                if (spells[level] && spells[level].length > 0) {
+                    spells[level].sort((a, b) => a.name.localeCompare(b.name));
+                }
+            })
+            return spells
+        }
+
+        Weapons(aa) {
+            let weapons = [];
+            let keys = Object.keys(aa);
+            _.each(keys,key => {
+                if (key.includes("itemmodifiers")) {
+                    if (aa[key].includes("Weapon")) {
+                        let key2 = key.replace("itemmodifiers","itemname")
+                        let weaponName = aa[key2].trim();
+                        if (weaponName) {
+                            weapons.push(weaponName);
+                        }
+                    }
+                }
+            })
+            return weapons;
+        }
+
+        Markers() {
+            let statusmarkers = this.token.get("statusmarkers");
+            statusmarkers = statusmarkers.split(",");
+            let markers = [];
+            _.each(statusmarkers,marker => {
+                let m = getKeyByValue(Markers,marker);
+                if (m) {
+                    markers.push(m);
+                }
+            })
+            return markers;
+        }
+
+
+
 
 
     }
 
 
-    const ModelSquares = (model) => {
+
+
+
+
+
+
+
+
+
+
+    //Functions
+
+    const findCommon = (array1,array2) => {
+        let set2 = new Set(array2);
+        let common = array1.filter(item => set2.has(item));
+        return common;
+    }
+
+
+    const getKeyByValue = (object, value) => {
+        return Object.keys(object).find(key => object[key] === value);
+    };
+
+    const stringGen = () => {
+        let text = "";
+        let possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < 6; i++) {
+            text += possible.charAt(Math.floor(randomInteger(possible.length)));
+        }
+        return text;
+    };
+
+
+    const simpleObj = (o) => {
+        let p = JSON.parse(JSON.stringify(o));
+        return p;
+    };
+
+    const getCleanImgSrc = (imgsrc) => {
+        let parts = imgsrc.match(/(.*\/images\/.*)(thumb|med|original|max)([^?]*)(\?[^?]+)?$/);
+        if(parts) {
+            return parts[1]+'thumb'+parts[3]+(parts[4]?parts[4]:`?${Math.round(Math.random()*9999999)}`);
+        }
+        return;
+    };
+
+    const tokenImage = (img) => {
+        //modifies imgsrc to fit api's requirement for token
+        img = getCleanImgSrc(img);
+        img = img.replace("%3A", ":");
+        img = img.replace("%3F", "?");
+        img = img.replace("med", "thumb");
+        return img;
+    };
+
+    const DeepCopy = (variable) => {
+        variable = JSON.parse(JSON.stringify(variable))
+        return variable;
+    };
+
+
+    const Line = (start,end) => {
+        //return points between start and end points
+        //translate points to squares
+        let p0 = start;
+        let p1 = end;
         let squares = [];
-        let c = new Point(model.token.get("left"),model.token.get("top"));
-        let w = model.token.get("width");
-        let h = model.token.get("height");
-        
-        if (w === 70 && h === 70) {
-            squares = [c.toSquare()];
-        } else {
-            //define corners, pull in to be centres
-            let tL = new Point(c.x - w/2 + 35,c.y - h/2 + 35);
-            let bR = new Point(c.x + w/2 - 35,c.y + h/2 - 35);
-            for (let x = tL.x;x<= bR.x;x += 70) {
-                for (let y = tL.y;y <= bR.y; y += 70) {
-                    let pt = new Point(x,y);
-                    let sq = pt.toSquare();
-                    squares.push(sq);
-                }
-            }
+        let labels = [];
+        let N = diagonal_distance(p0,p1);
+        for (let step = 0; step <= N; step++) {
+            let t = (N=== 0) ? 0.0 : (step/N);
+            let pt = round_point(lerp_point(p0,p1,t));
+            let square = pt.toSquare();
+            let label = square.toLabel();
+            if (labels.includes(label)) {continue};//stop duplicates
+            labels.push(label);
+            squares.push(square);
         }
         return squares;
     }
 
+    const diagonal_distance = (p0,p1) => {
+        let dx = p1.x - p0.x, dy = p1.y - p0.y;
+        let dist = Math.max(Math.abs(dx), Math.abs(dy));
+        return Math.round(dist/35);
+    }
 
+    const round_point = (p) => {
+        return new Point(Math.round(p.x), Math.round(p.y));
+    }
 
-    const Angle = (theta) => {
-        while (theta < 0) {
-            theta += 360;
+    const lerp_point = (p0,p1,t) => {
+        return new Point(lerp(p0.x, p1.x, t),
+                        lerp(p0.y, p1.y, t));
+    }
+
+    const lerp = (start, end, t) => {
+        return start * (1.0 - t) + t * end;
+    }
+
+    const EndLine = (p0,p1,length) => {
+        //produces a line representing end of Cone of length x, using a start point (caster) and end pt (target)
+        let sqL = Math.round(((length/pageInfo.scaleNum) - 1)/2);
+        let raDist = sqL * 70;
+        let angDist = sqL * 100; //larger than 70 to account for odd behaviour of 5e on angles
+        let p2,p3;
+        if ((p1.x - p0.x) === 0) {  
+            //line 2 is horizontal
+            p2 = new Point(p1.x - raDist,p1.y);
+            p3 = new Point(p1.x + raDist,p1.y);
+        } else if ((p1.y - p0.y) === 0) {
+            //line2 is vertical
+            p2 = new Point(p1.x,p1.y - raDist);
+            p3 = new Point(p1.x,p1.y + raDist);
+        } else {
+            let m0 = (p1.y - p0.y)/(p1.x - p0.x);
+            let m1 = -1/m0;
+            let b1 = p1.y - (m1 * p1.x);
+            p2 = findPointOnLine(p1,m1,b1,angDist,1);
+            p3 = findPointOnLine(p1,m1,b1,angDist,-1);
         }
-        while (theta >= 360) {
-            theta -= 360;
+
+        let line = Line(p2,p3);
+        return line;
+    }
+
+    const findPointOnLine = (point,m,b,distance,direction) => {
+        let magnitude = Math.sqrt(1+m*m);
+        let deltaX = direction * (distance / magnitude);
+        let deltaY = direction * (m * distance / magnitude);
+        let pt = new Point(point.x + deltaX,point.y + deltaY);
+        return pt;
+    }
+
+    const Venn = (array1,array2) => {
+        //for comparing arrays of squares
+        //true if any of array2 are in array
+        let a1 = array1.map((e) => e.toLabel());
+        let a2 = array2.map((e) => e.toLabel());
+        let venn = a2.some(r=> a1.includes(r))
+        return venn;
+    }
+
+
+
+    const AOETargets = (target) => {
+        let temp = [];
+        _.each(ModelArray,model => {
+            if (model.id === target.id || model.layer === "map") {return}
+            if (Venn(target.Squares(),model.Squares()) === true) {
+                temp.push(model.id);
+            }
+        })
+        temp = [...new Set(temp)];
+        let array = [];
+        _.each(temp,id => {
+            let model = ModelArray[id];
+log(model.name + ": " + id)
+            array.push(model);
+        })
+        return array;
+    }
+
+
+    const Cone = (caster,target,length) => {
+        let startTime = Date.now();
+
+        let start = caster.Point();
+        let startSquare = start.toSquare();
+        let end = target.Point();
+        //length is in feet
+        let sqL = length / pageInfo.scaleNum;
+        let midLine = Line(start,end)
+        let endLine = EndLine(start,end,length);
+        //from start, draw lines to each point on endLine and add in the squares
+        let array = {};
+        let labels = [];
+        for (let i=0;i<endLine.length;i++) {
+            let line = Line(start,endLine[i].toPoint());
+            for (j=0;j<line.length;j++) {
+                let square = line[j];
+                let label = square.toLabel();
+                if (labels.includes(label)) {continue}
+                if (square.x === startSquare.x && square.y === startSquare.y) {continue};
+                let dist1 = startSquare.distance(square);
+                if (dist1 > sqL) {continue};
+                let dist2 = square.distance(midLine[dist1]);
+                let info = {
+                    square: square,
+                    midDist: dist2,
+                }
+                if (array[dist1]) {
+                    array[dist1].push(info);
+                } else {
+                    array[dist1] = [info];
+                }
+                labels.push(label); //prevent duplicates    
+            }
         }
-        return theta
-    }   
+
+        _.each(array,line => {
+            line.sort((a,b) => a.midDist - b.midDist);
+        })
+
+        //will be an array of objects based on distance from caster 1st and distance from midline 2nd
+        //thin to 1 at d 1, 2 at d2 etc, and start with those closest to midline
+        //skip if no creature so maximize targets caught
+        //minimize ModelArray based on distance from caster
+        let possibles = [];
+        _.each(ModelArray,model => {
+            if (model.id === caster.id || model.id === target.id || model.layer === "map") {return}
+            if (model.Distance(caster) > sqL) {return}
+            possibles.push(model)
+        })
+
+        let finalArray = [];
+        let ids = [];
+        let keys = Object.keys(array);
+        loop1:
+        for (let i=0;i<keys.length;i++) {
+            let line = array[keys[i]];    
+            let counter = 0;
+            for (let j=0;j<line.length;j++) {
+                let square = line[j].square;
+                for (let k=0;k<possibles.length;k++) {
+                    let model = possibles[k];
+                    if (ids.includes(model.id)) {continue};
+                    let squares = model.Squares();
+                    if (Venn(squares,[square])) {
+                        finalArray.push(model);
+                        counter++;
+                        ids.push(model.id); //each model 'caught' hit once
+                        if (counter > i) {
+                            continue loop1; //1 at distance 1, 2 at 2, etc
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        return finalArray;
+    }
 
 
-    const ButtonInfo = (phrase,action,inline) => {
+
+    const ButtonInfo = (phrase,action,inline,level) => {
         //inline - has to be true in any buttons to have them in same line -  starting one to ending one
         if (!inline) {inline = false};
+        if (!level) {level = false};
         let info = {
             phrase: phrase,
             action: action,
             inline: inline,
+            level: level,
         }
         outputCard.buttons.push(info);
     };
+
+
 
     const SetupCard = (title,subtitle,side) => {
         outputCard.title = title;
@@ -660,17 +693,6 @@ log(this.name)
         outputCard.inline = [];
     };
 
-    const DisplayDice = (roll,tablename,size) => {
-        roll = roll.toString();
-        let table = findObjs({type:'rollabletable', name: tablename})[0];
-        if (!table) {
-            table = findObjs({type:'rollabletable', name: "Neutral"})[0];
-        }
-        let obj = findObjs({type:'tableitem', _rollabletableid: table.id, name: roll })[0];        
-        let avatar = obj.get('avatar');
-        let out = "<img width = "+ size + " height = " + size + " src=" + avatar + "></img>";
-        return out;
-    };
 
     const PrintCard = (id) => {
         let output = "";
@@ -681,7 +703,6 @@ log(this.name)
         } else {
             output += "/desc ";
         }
-log(outputCard.side)
 
         if (!outputCard.side || !Factions[outputCard.side]) {
             outputCard.side = "Allied";
@@ -721,28 +742,12 @@ log(outputCard.side)
         for (let i=0;i<outputCard.body.length;i++) {
             let out = "";
             let line = outputCard.body[i];
+//log(i)
+//log(line)
             if (!line || line === "") {continue};
-            if (line.includes("[INLINE")) {
-                let end = line.indexOf("]");
-                let substring = line.substring(0,end+1);
-                let num = substring.replace(/[^\d]/g,"");
-                if (!num) {num = 1};
-                line = line.replace(substring,"");
-                out += `<div style="display: table-row; background: #FFFFFF;; `;
-                out += `"><div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
-                out += `"><span style="line-height: normal; color: #000000; `;
-                out += `"> <div style='text-align: center; display:block;'>`;
-                out += line + " ";
-
-                for (let q=0;q<num;q++) {
-                    let info = outputCard.inline[inline];
-                    out += `<a style ="background-color: ` + Factions[outputCard.side].backgroundColour + `; padding: 5px;`
-                    out += `color: ` + Factions[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
-                    out += `border-color: ` + Factions[outputCard.side].borderColour + `; font-family: Tahoma; font-size: x-small; `;
-                    out += `"href = "` + info.action + `">` + info.phrase + `</a>`;
-                    inline++;                    
-                }
-                out += `</div></span></div></div>`;
+            if (line.includes("[FORMATTED]")) {
+                line = line.replace("[FORMATTED]","");
+                out += line;
             } else {
                 line = line.replace(/\[hr(.*?)\]/gi, '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">');
                 line = line.replace(/\[\#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})\](.*?)\[\/[\#]\]/g, "<span style='color: #$1;'>$2</span>"); // [#xxx] or [#xxxx]...[/#] for color codes. xxx is a 3-digit hex code
@@ -807,13 +812,12 @@ log(outputCard.side)
         }
 
         output += `</div></div><br />`;
+//log(output)
         sendChat("",output);
         outputCard = {title: "",subtitle: "",side: "",body: [],buttons: [],};
     }
 
-
-    //Retrieve Values from Character Sheet Attributes
-    const Attribute = (charID,attributename) => {
+   const Attribute = (charID,attributename) => {
         //Retrieve Values from Character Sheet Attributes
         let attributeobj = findObjs({type:'attribute',characterid: charID, name: attributename})[0]
         let attributevalue = "";
@@ -866,26 +870,35 @@ log(outputCard.side)
         return aa;
     };
 
-
-    //line line collision where line1 is pt1 and 2, line2 is pt 3 and 4
-    const lineLine = (pt1,pt2,pt3,pt4) => {
-        //calculate the direction of the lines
-        uA = ( ((pt4.x-pt3.x)*(pt1.y-pt3.y)) - ((pt4.y-pt3.y)*(pt1.x-pt3.x)) ) / ( ((pt4.y-pt3.y)*(pt2.x-pt1.x)) - ((pt4.x-pt3.x)*(pt2.y-pt1.y)) );
-        uB = ( ((pt2.x-pt1.x)*(pt1.y-pt3.y)) - ((pt2.y-pt1.y)*(pt1.x-pt3.x)) ) / ( ((pt4.y-pt3.y)*(pt2.x-pt1.x)) - ((pt4.x-pt3.x)*(pt2.y-pt1.y)) );
-        if (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1) {
-            intersection = {
-                x: (pt1.x + (uA * (pt2.x-pt1.x))),
-                y: (pt1.y + (uA * (pt2.y-pt1.y)))
-            }
-            return intersection;
-        }
-        return;
+    const Capit = (string) => {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
+    const LoadPage = () => {
+        //build Page Info
+        pageInfo.id = Campaign().get('playerpageid');
+        pageInfo.page = getObj('page', Campaign().get("playerpageid"));
+        pageInfo.name = pageInfo.page.get("name");
+        pageInfo.scale = pageInfo.page.get("snapping_increment");
+        pageInfo.width = pageInfo.page.get("width");
+        pageInfo.height = pageInfo.page.get("height");
+        pageInfo.scaleNum = pageInfo.page.get("scale_number");
+
+        let pObjs = findObjs({type: "player"});
+        _.each(pObjs,pObj => {
+            let c = playerColours[pObj.id];
+            if (c) {
+                pObj.set("color",c);
+            }
+        })
+    };
+
+
     //an array of the PCs and any other tokens on page
-    //will need to rebuild on page change or when add a token
+    //will need to rebuild on page change
     const BuildArrays = () => {
         ModelArray = {};
+        nameArray = {};
         let tokens = findObjs({
             _pageid: Campaign().get("playerpageid"),
             _type: "graphic",
@@ -899,709 +912,119 @@ log(outputCard.side)
             };
             let model = new Model(token);
             model.name = token.get("name");
+            if (SpellInfo[model.name]) {
+                let spellID = token.get("gmnotes").toString();
+                let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                if (spell) {
+                    model.isSpell = spell.casterID;
+                }
+            }   
         });
-
-
-
-
     }
 
+
+    const AddAbility = (abilityName,action,charID) => {
+        let ability = createObj("ability", {
+            name: abilityName,
+            characterid: charID,
+            action: action,
+            istokenaction: true,
+        })
+        return ability.get("id");
+    }    
+
+    const InlineButtons = (array) => {
+        let output = "[FORMATTED]";
+        for (let i=0;i<array.length;i++) {
+            let info = array[i];
+            let inline = true;
+            if (i>0 && inline === false) {
+                output += '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">';
+            }
+            let out = "";
+            let borderColour = Factions[outputCard.side].borderColour;
+            if (inline === false || i===0) {
+                out += `<div style="display: table-row; background: #FFFFFF;; ">`;
+                out += `<div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
+                out += `"><span style="line-height: normal; color: #000000; `;
+                out += `"> <div style='text-align: center; display:block;'>`;
+            }
+            if (inline === true) {
+                out += '<span>     </span>';
+            }
+            out += `<a style ="background-color: ` + Factions[outputCard.side].backgroundColour + `; padding: 5px;`
+            out += `color: ` + Factions[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
+            out += `border-color: ` + borderColour + `; font-family: Tahoma; font-size: x-small; `;
+            out += `"href = "` + info.action + `">` + info.phrase + `</a>`
+            
+            if (inline === false || i === (array.length - 1)) {
+                out += `</div></span></div></div>`;
+            }
+            output += out;
+        }
+        return output;
+    }
+
+
+
+
+
+
+    const PlaySound = (name) => {
+        let sound = findObjs({type: "jukeboxtrack", title: name})[0];
+        if (sound) {
+            sound.set({playing: true,softstop:false});
+        }
+    };
+
+    const FX = (fxname,model1,model2) => {
+        //model2 is target, model1 is shooter
+        //if its an area effect, model1 isnt used
+        if (!fxname) {return};
+        let pt1 = new Point(model1.token.get("left"),model1.token.get("top"))
+        let pt2 =  new Point(model2.token.get("left"),model2.token.get("top"))
+
+        if (fxname.includes("Custom")) {
+            fxname = fxname.replace("Custom-","");
+            let fxType =  findObjs({type: "custfx", name: fxname})[0];
+            if (fxType) {
+                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxType.id);
+            }
+        } else {
+            let directed = ["breath","beam","missile","rocket"];
+            let points = directed.some(element => fxname.includes(element));
+            if (points === true) {
+                spawnFxBetweenPoints(new Point(model1.token.get("left"),model1.token.get("top")), new Point(model2.token.get("left"),model2.token.get("top")), fxname);
+            } else {
+                spawnFx(model2.token.get("left"),model2.token.get("top"), fxname);
+            }
+        }
+    }
 
     const ClearState = () => {
-        state.Strahd = {
-            wildshape: {},
-
-
+        state.DnD = {
+            combatTurn: 0,
+            conSpell: {},
+            regSpells: {},
+            spellList: [],
+            areaSpell: "",
+            moveID: "",
+            lastMoved: "",
         }
+        nameArray = {};
     }
 
-
-
-
-
-
-
-
-
-
-    const Smite = (msg) => {
-        let Tag = msg.content.split(";");
-        let attID = Tag[1];
-        let defID = Tag[2];
-        let critical = parseInt(Tag[3]) === 1 ? true:false;
-        let level = parseInt(Tag[4]);
-        let sub = (critical === "Yes") ? "Divine Smite Critical": "Divine Smite";
-
-        let attacker = ModelArray[attID];
-        let defender = ModelArray[defID]; 
-
-        let slots = parseInt(Attribute(attacker.charID,"lvl" + level + "_slots_expended")) || 0;
-        if (slots === 0) {
-            SetupCard(attacker.name,sub,attacker.displayScheme);
-            outputCard.body.push("No Available Spell Slots of this level");
-            PrintCard();
-            return;
-        } else {
-            slots--;
-            AttributeSet(attacker.charID,"lvl" + level + "_slots_expended",slots);
-        }
-
-        let dice = 2 + (level - 1);
-        if (defender.type.includes("undead")) {
-            dice += 1;
-            sub += " vs. Undead";
-        }
-        if (defender.type.includes("fiend")) {
-            dice += 1;
-            sub += " vs. Fiend";
-        }
-
-        if (critical === "Yes") {
-            dice = dice * 2;
-        }
-        let rolls = [];
-        let damage = 0;
-        for (let i=0;i<dice;i++) {
-            let roll = randomInteger(8);
-            rolls.push(roll);
-            damage += roll;
-        }
-        rolls = rolls.toString();
-        let extra = "";
-
-        if (defender.immunities.includes("radiant")) {
-            extra = defender.name + " is immune to Radiant Damage";   
-            damage = 0;
-        }
-        if (defender.resistances.includes("radiant")) {
-            extra = defender.name + " is resistant to Radiant Damage";
-            damage = Math.round(damage * .5);
-        }
-        if (defender.vulnerabilities.includes("radiant")) {
-            extra = defender.name + " is vulnerable to Radiant Damage";
-            damage = damage * 2;
-        }
-
-        SetupCard(attacker.name,sub,attacker.displayScheme);
-
-        let tip = "Rolls: " + rolls;
-        tip = '[🎲](#" class="showtip" title="' + tip + ')';
-
-        outputCard.body.push(tip + " Radiant Damage:  [#ff0000]" + damage + "[/#]");
-        if (extra !== "") {
-            outputCard.body.push(extra);
-        }
-        outputCard.body.push("Level " + level + " Spell Slot Used");
-        if (slots === 0) {outputCard.body.push("[None Left]")};
-
-        spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
-        PlaySound("Smite");
-        PrintCard();
-    }
-
-    const ShieldShove = (msg) => {
-        let Tag = msg.content.split(";");
-        let attID = Tag[1];
-        let defID = Tag[2];
-        //!SShove;@{selected|token_id};@{target|token_id}
-
-        let attacker = ModelArray[attID];
-        let defender = ModelArray[defID];
-
-        SetupCard(attacker.name,"Shield Shove",attacker.displayScheme);
-        if (defender.immunities.includes("prone")) {
-            outputCard.body.push(defender.name + " is immune to Shove");
-            PrintCard();
-            return;
-        }
-        if (defender.size > attacker.size) {
-            outputCard.body.push(defender.name + " is too large to Shove");
-            PrintCard();
-            return;
-        }
-
-        let attRoll = randomInteger(20);
-        let attTotal = attRoll + attacker.skills.athletics;
-
-        let defRoll = randomInteger(20);
-        let verb;
-
-        if (defender.skills.athletics >= defender.skills.acrobatics) {
-            defAtt = " [Athletics]";
-            verb = " resists ";
-            bonus = defender.skills.athletics;;
-        } else {
-            defAtt = " [Acrobatics]";
-            verb = " dodges ";
-            bonus = defender.skills.acrobatics;
-        }
-        let defTotal = defRoll + bonus;
-
-        let tip = attacker.name + " Rolls: " + attRoll + " + " + attacker.skills.athletics; 
-        tip += "<br>" + defender.name + " Rolls: " + defRoll + " + " + bonus + defAtt;
-        tip = '[🎲](#" class="showtip" title="' + tip + ')';
-
-        outputCard.body.push(tip + " " + attacker.name + " shoves " + defender.name + " with his Shield");
-
-        if (defTotal < attTotal) {
-            outputCard.body.push("[B]Success[/b]");
-            outputCard.body.push(defender.name + " can be either pushed back 5ft or knocked prone");
-        } else {
-            outputCard.body.push("[B][#ff0000]Failure[/b][/#]");
-            outputCard.body.push(defender.name + verb + "the Shove");
-        }
-        PrintCard();
-    }
-
-
-
-    const SpellInfo = {
-
-        "Ray of Frost": {
-            cat: "Spell",
-            level: 0,
-            range: 60,
-            auto: false,
-            base: '1d8',
-            cLevel: {5: '2d8', 11: '3d8'},
-            sLevel: 0,
-            damageType: "cold",
-            savingThrow: "No",
-            saveEffect: "",
-            note: "Target's Speed is reduced by 10 for a turn",
-            sound: "Laser",
-            emote: "A frigid beam of blue-white light streaks toward the target",
-            fx: "missile-frost",
-        },
-        "Acid Splash": {
-            cat: "Spell",
-            level: 0,
-            range: 60,
-            auto: false,
-            base: '1d6',
-            cLevel: {5: '2d6', 11: '3d6'},
-            sLevel: 0,
-            damageType: "acid",
-            savingThrow: "dexterity",
-            saveEffect: "No Damage",
-            note: "",
-            sound: "",
-        },
-        "Burning Hands": {
-            cat: "Spell",
-            level: 1,
-            range: 15,
-            auto: true,
-            base: '3d6',
-            cLevel: {},
-            sLevel: ['3d6',"4d6","5d6","6d6","7d6","8d6"],
-            damageType: "fire",
-            savingThrow: "dexterity",
-            saveEffect: "Half Damage",
-            note: "",
-            emote: "A thin sheet of flame shoots forth from %%C%%'s fingertips",
-            sound: "Inferno",
-        },
-        "Magic Missile": {
-            cat: "Spell",
-            level: 1,
-            range: 120,
-            auto: true,
-            base: '3d4+3',
-            cLevel: {},
-            sLevel: ['3d4+4','4d4+4','5d4+5','6d4+6','7d4+7'],
-            damageType: "force",
-            savingThrow: "No",
-            saveEffect: "",
-            note: "",
-            emote: "%%C%% creates glowing darts of magical force which strike the target",
-            sound: "Splinter2",
-            fx: "missile-magic",
-        },
-        "Sleep": {
-            emote: "Using a pinch of fine sand, %%C%% sends creatures into a magical slumber",
-            level: 1,
-            range: 90,
-        },
-        "Entangle": {
-            level: 1,
-            range: 90,
-        },
-        "Faerie Fire": {
-            level: 1,
-            range: 60,
-        },
-        "Thunderwave": {
-            level: 1,
-            range: 5,
-        },
-        "Fog Cloud": {
-            level: 1,
-            range: 120,
-        },
-        "Shield of Faith": {
-            level: 1,
-            range: 60,
-        },
-        "Produce Flame": {
-            cat: "Spell",
-            level: 0,
-            range: 30,
-            auto: false,
-            base: '1d8',
-            cLevel: {5: '2d8', 11: '3d8'},
-            sLevel: 0,
-            damageType: "fire",
-            savingThrow: "No",
-            saveEffect: "",
-            note: "",
-            sound: "Plasma",
-            emote: "%%C%% hurls a ball of flame at the target",
-            fx: "missile-frost",
-        },
-
-
-    }
-
-
-    const WeaponInfo = {
-        Longsword: {
-            cat: "Weapon",
-            base: '1d8',
-            properties: "Versatile",
-            damageType: "slashing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Sword",
-        },
-        Dagger: {
-            cat: "Weapon",
-            base: '1d4',
-            properties: "Finesse, Thrown",
-            damageType: "slashing",
-            type: "Melee,Ranged",
-            range: [20,60],
-            critOn: 20,
-            sound: "Club",
-        },
-        Acornbringer: {
-            cat: "Weapon",
-            base: '1d1',
-            properties: "Finesse",
-            damageType: "piercing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Sword",
-        },
-        'Quarterstaff (2H)': {
-            cat: "Weapon",
-            base: '1d8',
-            properties: "",
-            damageType: "bludgeoning",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Staff",
-        },
-        'Scimitar': {
-            cat: "Weapon",
-            base: "1d6",
-            properties: "Finesse",
-            damageType: "slashing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Sword",
-        },
-        'Dire Wolf Bite': {
-            cat: "Weapon",
-            base: "2d6",
-            properties: "",
-            damageType: "piercing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Beast",
-            special: "If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
-        },
-        "Bear Bite": {
-            cat: "Weapon",
-            base: "1d8",
-            properties: "",
-            damageType: "piercing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Beast",
-            special: "",
-        },
-        "Bear Claws": {
-            cat: "Weapon",
-            base: "2d6",
-            properties: "",
-            damageType: "slashing",
-            type: "Melee",
-            range: [0,0],
-            critOn: 20,
-            sound: "Beast",
-            special: "If the target is a Large or smaller creature, it has the Prone condition",
-        },
-        "Hand Crossbow": {
-            cat: "Weapon",
-            base: "1d6",
-            properties: "",
-            damageType: "piercing",
-            type: "Ranged",
-            range: [30,120],
-            critOn: 20,
-            sound: "Arrow",
-            special: "",
-        }
-
-
-
-
-
-    }
-
-    const Attack = (msg) => {
-        let Tag = msg.content.split(";");
-        let attID = Tag[1];
-        let defID = Tag[2];
-        let weaponName = Tag[3];
-        let magicInfo = Tag[4] || "Non-Magic";
-
-
-        //!Attack;@{selected|token_id};@{target|token_id};Longsword;any magic info or Silver or similar goes here
-
-        let attacker = ModelArray[attID];
-        let defender = ModelArray[defID];
-
-        let errorMsg = [];
-
-        if (!attacker) {
-            errorMsg.push("Attacker not in Array");
-            attacker = defender;
-        }
-        if (!defender) {
-            errorMsg.push("Defender not in Array");
-            defender = attacker;
-        }
-        let weapon = WeaponInfo[weaponName];
-        if (weapon) {
-            weapon = DeepCopy(WeaponInfo[weaponName]);
-        } else {
-            errorMsg.push("Weapon not in Array");
-            weapon = {range: 1000};
-        }
-        weapon.info = magicInfo;
-
-        let inReach = false;
-
-        let squares = attacker.Distance(defender);
-        let distance = squares * pageInfo.scaleNum;
-
-        if (squares === 1) {
-            inReach = true;
-        }
-        if (weapon.properties.includes("Reach") && squares <= 2) {
-            inReach = true;
-        }
-        if (inReach !== true && weapon.type.includes("Ranged") === false) {
-            errorMsg.push("Target not in Reach");
-        } 
-
-        let statBonus = attacker.statBonus["strength"];
-        if (inReach === false && weapon.properties.includes("Thrown") === false) {
-            statBonus = attacker.statBonus["dexterity"];
-        }
-        if (weapon.properties.includes("Finesse")) {
-            statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
-        }
-
-        if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
-            errorMsg.push("Target is Out of Max Range");
-        }
-
-        //damage bonuses, move into weapon for Damage routine
-        //stat
-        if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
-            weapon.base += "+" + statBonus;
-        }
-        //abilities
-        if (attacker.name === "Wirsten" && inReach === true) {
-            weapon.base += "+2"; //Duellist
-        }
-        if (attacker.token.get("status_yellow") === true) {
-            weapon.base += "+1d4R"; //Divine Favor
-        }
-
-        //attack bonuses - later check has proficiency?
-        attackBonus = statBonus + attacker.pb;
-
-        //Magic Items
-        if (magicInfo !== "Non-Magic" && magicInfo !== "No") {
-            if (magicInfo.includes("+")) {
-                magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
-                attackBonus += magicBonus;
-                weapon.base += "+" + magicBonus;
-            }
-        }
-
-        if (errorMsg.length > 0) {
-            _.each(errorMsg,msg => {
-                sendChat("",msg);
-            })
-            return;
-        }
-
-        SetupCard(attacker.name,"Attack",attacker.displayScheme);
-        if (inReach === true && weapon.type.includes("Melee")) {
-            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
-        }
-        if (inReach === false && weapon.properties.includes("Thrown")) {
-            outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
-            weapon.sound = "Shuriken"
-        }
-        if (inReach === false && weapon.properties.includes("Thrown") === false) {
-            outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
-        }
-
-        //Advantage/Disadvantage checking
-
-        let attPos = ["Invisible","Advantage"];
-        let attNeg = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
-        let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
-        let attMarkers = Markers(attacker.token.get("statusmarkers"));
-        let attAdvantage = 0;
-
-        //check if next to an enemy token if ranged attack, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
-        if (inReach === true && weapon.type.includes("Melee") === false) {
-            let ids = Object.keys(ModelArray);
-            idLoop1:
-            for (let i=0;i<ids.length;i++) {
-                let model2 = ModelArray[ids[i]];
-                if (model2.displayScheme !== "NPC") {continue};
-                let sm = model2.token.get("statusmarkers");
-                for (let j=0;j<ignore.length;j++) {
-                    if (sm.includes(ignore[j])) {continue idLoop1};
-                }
-                let squares = attacker.Distance(model2);                
-                if (squares > 1) {
-                    continue;
-                }
-                attAdvantage = -1;
-            }
-        }    
-        //prone if inReach
-        if (inReach === true && attMarkers.includes("Prone")) {
-            attAdvantage = -1;
-        }
-        //ranged weapons
-        if (inReach === false && distance > weapon.range[0]) {
-            attAdvantage = -1;
-        }
-        for (let i=0;i<attPos.length;i++) {
-            if (attMarkers.includes(attPos[i])) {
-                attAdvantage = Math.min(attAdvantage +1,1);
-                break;
-            }
-        }
-        for (let i=0;i<attNeg.length;i++) {
-            if (attMarkers.includes(attNeg[i])) {
-                attAdvantage = Math.max(attAdvantage -1, -1);
-                break;
-            }
-        }
-
-        if (attacker.special.includes("Pack Tactics")) {
-log("Pack Tactics!")
-            //check if a friendly is next to target
-            let adj = false;
-            let keys = Object.keys(ModelArray);
-            for (let i=0;i<keys.length;i++) {
-                let model2 = ModelArray[keys[i]];
-                if (model2.id === attacker.id || model2.id === defender.id) {continue}
-log(model2.name + ": " + model2.party)
-                if (model2.party === false) {continue};
-                let dist = model2.Distance(defender);
-                if (dist <= 1) {
-                    adj = true;
-                    break;
-                }
-            }
-            if (adj === true) {
-                attAdvantage = Math.min(attAdvantage +1,1);
-            }
-        }
-
-log("Att Adv: " + attAdvantage)
-
-        let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
-
-        let defAdvantage = (fFire === true) ? 1:0;
-        let defMarkers = Markers(defender.token.get("statusmarkers"));
-        let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
-        let defNeg = ["Invisible","Dodge","Advantage"];
-        if (defMarkers.includes("Prone")) {
-            if (inReach === true) {
-                defAdvantage = 1;
-            } else {
-                defAdvantage = -1;
-            }
-        }
-        for (let i=0;i<defPos.length;i++) {
-            if (defMarkers.includes(defPos[i])) {
-                defAdvantage = Math.min(defAdvantage +1,1);
-                break;
-            }
-        }
-        for (let i=0;i<defNeg.length;i++) {
-            if (defMarkers.includes(defNeg[i])) {
-                if (defNeg[i] === "Invisible" && fFire === true) {continue};
-                defAdvantage = Math.max(defAdvantage -1,-1);
-                break;
-            }
-        }
-
-        creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
-        if (defMarkers.includes("Protection") && creatTypes.includes(attacker.type)) {
-            defAdvantage = Math.max(defAdvantage -1,-1);
-        }
-
-
-
-
-
-log("Def Adv: " + defAdvantage)
-
-        let advantage = attAdvantage + defAdvantage;
-        advantage = Math.min(Math.max(-1,advantage),1);
-log("Final Adv: " + advantage)
-
-        let result = ToHit(advantage);
-        let total = result.roll + attackBonus;
-        let tip;
-        let crit = false;
-        if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && inReach === true) {
-            crit = true;
-        }
-
-        tip = result.rollText + " + " + attackBonus;
-        tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-        if (result.roll >= weapon.critOn) {
-            crit = true;
-        }
-        outputCard.body.push("Attack: " + tip + " vs. AC " + defender.ac);
-        if (crit === true) {
-            outputCard.body.push("[#ff0000]Crit![/#]");
-        }
-
-        if ((total >= defender.ac && result.roll !== 1) || crit === true) {
-            outputCard.body.push("[B]Hit![/b]")
-log(weapon)
-            let rollResults = RollDamage(weapon,crit,attacker);
-            let damageResults = ApplyDamage(weapon,attacker,defender,rollResults);
-            let add = "";
-            if (rollResults.bonus > 0) {
-                add = "+" + rollResults.bonus;
-            }
-            if (rollResults.bonus < 0) {
-                add = rollResults.bonus;
-            }
-            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
-            if (damageResults.note !== "") {
-                tip += "<br>" + damageResults.note;
-            }
-            tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Damage: " + tip);
-            if (crit === true) {
-                spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
-            } else {
-                spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
-            }
-
-            if (attacker.class.includes("paladin") && inReach === true) {
-                //add option of smite if has spell slots
-                let c = (crit === true) ? 1:0
-                let line = "!Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
-                let levels = [];
-                for (let level = 1;level < 6;level++) {
-                    if (SpellSlots(attacker,level) === true) {
-                        levels.push(level);
-                    }
-                }
-            
-                if (levels.length === 1) {
-                    line += levels[0];
-                } else {
-                    line += "?{Level";
-                    _.each(levels,level => {
-                        line += "|" + level;
-                    });
-                    line += "}"
-                }
-                if (levels.length > 0) {
-                    ButtonInfo("Smite!",line);
-                }
-            }
-
-
-
-
-            if (weapon.special) {
-                outputCard.body.push("[hr]");
-                outputCard.body.push(weapon.special);
-            }
-
-
-
-
-
-        } else {
-            outputCard.body.push("[B]Miss[/b]");
-        }
-
-        PlaySound(weapon.sound);
-
-        PrintCard();
-        
-
-
-
-
-
-
-
-
-
-
-    }
-
-    const RollDamage = (damageInfo,crit,attacker,level) => {
-        //spellinfo if a spell, weaponinfo if a weapon
-        //eg 1d8+1d6+3 or even 3
-        let base = damageInfo.base;
-        if (damageInfo.cat === "Spell") {
-            //some spells do higher damage based on caster level or on spell level
-            if (damageInfo.cLevel[attacker.casterLevel]) {
-                base = damageInfo.cLevel[attacker.casterLevel];
-            }
-            if (level > damageInfo.level) {
-                base = damageInfo.sLevel[level];
-            }
-        }
-
-
-
-
+    const RollDamage = (damageInfo,critical = false) => {
+        damageInfo = damageInfo.split(",");
+        base = damageInfo[0].trim();
+        damageType = damageInfo[1].trim();
+log("Roll Damage")
+log(damageInfo)
         base = base.split("+");
         let comp = [];
         _.each(base,e => {
             e = e.split("d");
-            let n = parseInt(e[0]) || 1;
+            let n = parseInt(e[0]) || 0;
             let t; //dice type eg. d8 -> 8
             let dtype = "N";
             if (e[1]) {
@@ -1629,7 +1052,7 @@ log(weapon)
                 bonus += info.num;
             } else {
                 let dice = info.num;
-                if (crit === true) {
+                if (critical === true) {
                     dice *= 2;
                 }                
                 text.push(dice + "d" + info.type);
@@ -1640,108 +1063,151 @@ log(weapon)
                 }
             }
         }
-
-
         total += bonus;
+        let s = (rolls.length === 1) ? "":"s";
+        let bonusText = (bonus < 0) ? bonus:(bonus > 0) ? "+" + bonus:"";
+        let results = "Roll" + s + ": [" + rolls.toString().replace(/,/g,"+") + "]" + bonusText + "<br>[";
+        for (let i=0;i<text.length;i++) {
+            if (i > 0) {results += "+"};
+            results += text[i];
+        }
+        results += bonusText + " ]"
+
         let result = {
-            rolls: rolls,
-            bonus: bonus,
-            diceText: text,
+            diceText: results,
             total: total,
+            damageType: damageType,
         }
 
         return result;
     }
 
-    const ApplyDamage = (damageInfo,attacker,defender,damageRolls) => {
-            //as for area damage, damage starts same but then applied to individuals
-            let total = parseInt(damageRolls.total);
-            let note = "";
-            let immune = false, resistant = false;
-            //Immunities, Resistances, Vulnerabilities
-            if (defender.immunities.includes(damageInfo.damageType)) {
-                if (damageInfo.cat === "Weapon") {
-                    if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " from Non-magical Weapons";
-                    }
-                    if (defender.immunities.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
-                    }
-                    if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
-                        immune = true;
-                        note = "Immune to " + damageInfo.damageType + " Weapons";
-                    }
-                }
-                if (damageInfo.cat === "Spell") {
+    const ApplyDamage = (rollResults,dc,defender,damageInfo) => {
+        if (!damageInfo) {damageInfo = {}};
+log(damageInfo)
+        let total = rollResults.total;
+        let damageType = rollResults.damageType;
+        let savingThrow = damageInfo.savingThrow;
+        let saveEffect = damageInfo.saveEffect;
+        let magic = damageInfo.magic === "magic" ? true:false;
+        let silver = damageInfo.magic === "silver" ? true:false;
+        let immune = false;
+        let resistant = false;
+        let irv = "";
+        let saveTip = "";
+
+        let weaponTypes = ["piercing","slashing","bludgeoning"]
+log(defender.immunities)
+log(defender.resistances)
+log(defender.vulnerabilities)
+        //Immunities
+        if (defender.immunities.includes(damageType)) {
+            if (weaponTypes.includes(damageType)) {
+                if (defender.immunities.includes("nonmagical") && defender.immunities.includes("silver") === false && magic === false) {
                     immune = true;
-                    note = "Immune to " + damageInfo.damageType + " Damage";
+                    saveTip = "Immune to " + Capit(damageType) + " Damage from Non-magical Weapons";
                 }
-                if (immune === true) {
+                if (defender.immunities.includes("silver") && magic === false && silver === false) {
+                    immune = true;
+                    saveTip = "Immune to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
+                }
+                if (defender.immunities.includes("nonmagical") === false && defender.immunities.includes("silver") === false) {
+                    immune = true;
+                    saveTip = "Immune to " + Capit(damageType) + " Damage";
+                }
+            } else {
+                immune = true;
+                saveTip = "Immune to " + Capit(damageType) + " Damage";
+            }
+        }
+        //Resistances
+        if (immune === false && defender.resistances.includes(damageType)) {
+            if (weaponTypes.includes(damageType)) {
+                if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
+                    resistant = true;
+                    saveTip = "Resistant to " + Capit(damageType) + " Damage from Non-magical Weapons";
+                }
+                if (defender.resistances.includes("silver") && magic === false && silver === false) {
+                    resistant = true;
+                    saveTip = "Resistant to " + Capit(damageType) + " Damage from Non-magical, Non-Silvered Weapons";
+                }
+                if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
+                    resistant = true;
+                    saveTip = "Immune to " + Capit(damageType) + " Damage";
+                }
+            } else {
+                resistant = true;
+                saveTip = "Resistant to " + Capit(damageType) + " Damage";
+            }
+        }
+        if (immune == true) {
+            total = 0
+            irv = " [#00ff00][Immune][/#]";        
+        }
+        if (resistant === true) {
+            total = Math.round(total/2)
+            irv = " [#00ff00][Resistant][/#]";
+        }
+        //Vulnerabilities
+        if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
+            total *= 2;
+            saveTip = "Vulnerable to " +  Capit(damageType);
+            irv = " [#ff0000][Vulnerable][/#]";
+        }
+
+        //other Damage Reduction Here
+
+
+        //advantage/disadvantage due to special considerations
+        let adv = 0;
+        if (damageInfo.name === "Moonbeam" && defender.type.includes("shapechanger")) {
+            adv = -1;
+            saveTip = "Disadvantage to Save";
+            irv = " [#ff0000][Disadvantage][/#]";
+        }
+
+        //Saving Throws
+        let save;
+        if (savingThrow && savingThrow !== "No" && immune === false && savingThrow !== "auto") {
+            let result = Save(defender,dc,savingThrow,adv); //save, saveTotal, tip
+            if (saveTip !== "") {saveTip += "<br>"}
+            if (result.save === true) {
+                save = "Saves: ";
+                saveTip += "Saves";
+                if (saveEffect === "No Damage") {
+                    saveTip += " and takes No Damage";
                     total = 0;
                 }
-            }
-            if (immune === false && defender.resistances.includes(damageInfo.damageType)) {
-                if (damageInfo.cat === "Weapon") {
-                    if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " from Non-magical Weapons";
-                    }
-                    if (defender.resistances.includes("silver") === true && damageInfo.info.includes("+") === false && damageInfo.info.includes("Magic") === false && damageInfo.info.includes("Silver") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " from Non-magical, Non-Silvered Weapons";
-                    }
-                    if (defender.resistances.includes("nonmagical") === false && defender.resistances.includes("silver") === false) {
-                        resistant = true;
-                        note = "Resistant to " + damageInfo.damageType + " Weapons";
-                    }
-                }
-                if (damageInfo.cat === "Spell") {
-                    resistant = true;
-                    note = "Resistant to " + damageInfo.damageType + " Damage";
-                }
-                if (resistant === true) {
+                if (saveEffect === "Half Damage") {
+                    saveTip += " and takes 1/2 Damage";
                     total = Math.round(total/2);
                 }
-            }
-            if (immune === false && resistant === false && defender.vulnerabilities.includes(damageInfo.damageType)) {
-                total *= 2;
-                note = "Vulnerable to " +  damageInfo.damageType + " = Double";
-            }
-
-    //add in any other damage reductions here
-
-
-            if (damageInfo.savingThrow && damageInfo.savingThrow !== "No") {
-                let dc = 10;
-                if (damageInfo.cat === "Spell") {
-                    dc = attacker.spellDC;
+                if (saveEffect === 'Special') {
+                    save = "Saves " + damageInfo.saveText;
                 }
-                let result= Save(defender,dc,damageInfo.savingThrow);
-                if (result.save === true) {
-                    tip = tip = '[Saves](#" class="showtip" title="' + result.tip + ')';
-                    if (damageInfo.saveEffect === "No Damage") {
-                        tip += " and takes No Damage";
-                        total = 0;
-                    }
-                    if (damageInfo.saveEffect === "Half Damage") {
-                        tip += " and takes 1/2 Damage";
-                        total = Math.round(total/2);
-                    }
-                } else {
-                    tip = tip = '[Fails](#" class="showtip" title="' + result.tip + ')' + " the Save";
+
+
+                saveTip += "<br>" + result.tip
+            } else {
+                saveTip = "Fails<br>" + result.tip;
+                save = "Fails:";
+                if (saveEffect === 'Special') {
+                    save = "Fails " +  damageInfo.failText; 
                 }
-                outputCard.body.push(defender.name + " " + tip);
             }
+        }
 
-            let result = {
-                total: total,
-                note: note,
-            }
+        let result = {
+            total: total,
+            irv: irv,
+            saveTip: saveTip,
+            save: save,
+        }
 
-            return result;
-    } 
+        return result;
+    }
+
+
 
     const SetCondition = (msg) => {
         let Tag = msg.content.split(";");
@@ -1756,13 +1222,11 @@ log(weapon)
             return;
         }
         let condition = Tag[1];
-        let marker = ConditionMarkers[condition];
+        let marker = Marker[condition];
         let status = Tag[2];
-        if (marker) {
-
-
+        if (!marker) {
+            return;
         }
-
         if (status === "On") {
             model.token.set("status_" + marker,true);
         } else if (status === "Off") {
@@ -1775,693 +1239,141 @@ log(weapon)
 
 
 
-    const ConditionMarkers = {
-        "Blind": "Blind-::2006481",
-        "Charmed": "Charmed::2006504",
-        "Deaf": "Deaf::2006484",
-        "Frightened": "Fear-or-Afraid::2006486",
-        "Grappled": "Grappled::2006490",
-        "Incapacitated": "interdiction",
-        "Invisible": "Invisible::2006516",
-        "Paralyzed": "Paralyzed::2006491",
-        "Petrified": "Petrified-or-Stone-2::2006594",
-        "Poisoned": "Poison::2006492",
-        "Prone": "Prone::2006547",
-        "Restrained": "Restrained-or-Webbed::2006494",
-        "Stunned": "Stunned::2006499",
-        "Unconscious": "KO::2006544",
-        "Dodge": "half-haze",
-        "Protection": "Shield::2006495",
-        "Disadvantage": "Minus::2006420",
-        "Advantage": "Plus::2006398",
-    }
 
-    const Markers = (initial) => {
-        initial = initial.split(",");
-        let sm = [];
-        let keys = Object.keys(ConditionMarkers);
-        for (let i=0;i<initial.length;i++) {
-            let cond = initial[i];
-            for (let j=0;j<keys.length;j++) {
-                if (ConditionMarkers[keys[j]] === cond) {
-                    sm.push(keys[j]);
-                    break;
-                }
-            }
-        }
-        sm = sm.toString() || " ";
-        return sm;
-    }
-
-    const Spell = (msg) => {
-        let id = msg.selected[0]._id;
-        let caster = ModelArray[id];
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let level = Tag[2]; //later can cahnge to be 'Cast at X Level'
-        
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        if (SpellSlots(caster,level) === false) {
-            outputCard.body.push("No Available Spell Slots of level " + level);
-            PrintCard();
-            return;
-        }
-
-        if (spellName === "Sleep") {
-            //create the sleep token, place on caster, with instructions
-            let charID = "-OeJRVLCc-tJuxhw911C";
-            let img = getCleanImgSrc("https://files.d20.io/images/464585187/odP4Dv5gqpOgxA4GtmGIMA/thumb.webp?1763427066");
-            let target = SpellTarget(caster,"Sleep",level,charID,img,40);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Entangle") {
-            let charID = "-OeJFbyJkH36zRywNsEm";
-            let img = getCleanImgSrc("https://files.d20.io/images/464592489/MlFXxUdwYnkx-S5mHam-KQ/thumb.png?1763430837");
-            let target = SpellTarget(caster,"Entangle",level,charID,img,20);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-        
-        if (spellName === "Faerie Fire") {
-            let charID = "-OeJf7QNTBO0lqtOd6Ac";
-            let img = getCleanImgSrc("https://files.d20.io/images/464592488/Ol6oEZ2kLqqfV-fEBHrq5Q/thumb.png");
-            let target = SpellTarget(caster,"Faerie Fire",level,charID,img,20);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Thunderwave") {
-            let charID = "-OeJrE-MQDPwPo0KDLtq";
-            let img = getCleanImgSrc("https://files.d20.io/images/464597646/OEF2m9OvLSy6J_WrL4Mh7Q/thumb.png?1763433964");
-            let target = SpellTarget(caster,"Thunderwave",level,charID,img,15);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Fog Cloud") {
-            let charID = "-OeJzgHWtgd8SummEE5T";
-            let img = getCleanImgSrc("https://files.d20.io/images/464601122/Z_72GfzK6nldIvjjv9Kusw/thumb.png?1763436289");
-            let dim = 40 + ((level - 1) * 40); //radius is 20 ft so diameter is 40
-            let target = SpellTarget(caster,"Fog Cloud",level,charID,img,dim);
-            outputCard.body.push("Place Target and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Cure Wounds") {
-            let rolls = [];
-            let bonus = Math.max(0,(caster.spellDC - 10));
-            let total = bonus;
-            for (i=0;i<level;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                total += roll;
-            }
-            let tip = level + "d8 + " + bonus + " = [" + rolls.toString() + "] + " + bonus;
-            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Cure Wounds Heals for " + tip + " HP");
-            PlaySound("Angels");
-            UseSlot(caster,level);
-            PrintCard();
-        }
-        
-        if (spellName === "Burning Hands") {
-            let charID = '-Oe8qdnMHHQEe4fSqqhm';
-            let img = getCleanImgSrc("https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991");
-            let target = SpellTarget(caster,"Burning Hands",1,charID,img,5);
-            outputCard.body.push("Move Target to 15ft and Centre of Cone, and then Use Macro to Cast");
-            PrintCard();
-        }
-
-        if (spellName === "Divine Favour") {
-            outputCard.body.push("Your prayer empowers you with divine radiance. Until the spell ends, your weapon attacks deal an extra 1d4 radiant damage on a hit.");
-            outputCard.body.push("Lasts 1 minute or Concentration");
-            caster.token.set("status_yellow",true);
-            PrintCard();
-        }
-
-
-    }
-
-
-    const CastSpell = (msg) => {
-        let targetID = msg.selected[0]._id;
-        let target = ModelArray[targetID];
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let casterID = Tag[2];
-        let level = parseInt(Tag[3]);
-        let caster = ModelArray[casterID];
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        let spellInfo = DeepCopy(SpellInfo[spellName]);
-        let squares = caster.Distance(target);
-        let spellDist = squares * pageInfo.scaleNum;
-
-        if (spellDist > spellInfo.range) {
-            outputCard.body.push("Out of Range of Spell");
-            PrintCard();
-            return;
-        }
-
-        if (spellName === "Sleep") {
-            //models within 20 ft of centre
-            let possibles = AOETargets(target);
-            possibles.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
-            let dice = 5 + ((level -1) * 2);
-            //5d8 hp. +2d8 for spell level > 1
-            let hp = 0;
-            let rolls = [];
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                hp += roll;
-            }
-            let tip = dice + "d8 = " + rolls.toString();
-            tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
-
-            outputCard.body.push(tip + " HP Affected");
-            for (let i = 0;i<possibles.length; i++) {
-                let possible = possibles[i];
-                if (possible.type.includes("undead")) {
-                    outputCard.body.push(possible.name + " is Immune");
-                    continue;
-                };
-                if (possible.conditionImmunities.includes("charmed")) {
-                    outputCard.body.push(possible.name + " is Immune");
-                    continue;
-                };
-                let posMarkers = Markers(possible.token.get("statusmarkers"));
-                if (posMarkers.includes("Unconscious")) {
-                    outputCard.body.push(possible.name + " is already Unconscious");
-                    continue;
-                };
-
-                let phb = parseInt(possibles[i].token.get("bar1_value"));
-                if (phb > hp) {break}
-                hp -= phb;
-                outputCard.body.push(possible.name + " Falls Asleep");
-                possible.token.set({
-                    "status_KO::2006544": true,
-                })
-            }
-            target.Destroy();
-            PlaySound("FFire");
-        }
-
-        if (spellName === "Entangle") {
-            let possibles = AOETargets(target);
-            _.each(possibles,model => {
-                if (model.conditionImmunities.includes("restrained")) {
-                    outputCard.body.push(model.name + " is Immune");
-                    return;
-                };
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"strength");
-                if (result.save === false) {
-                    model.token.set({
-                        "status_Restrained-or-Webbed::2006494": true,
-                    })
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is restrained");
-                } else if (result.save === true) {
-                    tip = '[saves](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is free to act");                
-                }
-            })
-            target.token.set("layer","map");
-            delete ModelArray[targetID]; //leave target token as marks the ground
-            outputCard.body.push("[hr]");
-            outputCard.body.push("The Area remains Difficult Ground for 1 min or until Concentration ends");
-            PlaySound("Entangle");
-        }
-
-        if (spellName === "Faerie Fire") {
-            let possibles = AOETargets(target);
-            _.each(possibles,model => {
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"dexterity");
-                if (result.save === false) {
-                    model.token.set({
-                        aura1_radius: 1,
-                        aura1_color: "#ff00ff",
-                        showplayers_aura1: true,
-                    })
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " and is outlined by Faerie Fire");
-                } else if (result.save === true) {
-                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip);                
-                }
-            })
-            target.Destroy();
-            outputCard.body.push("[hr]");
-            outputCard.body.push("The Faerie Fire's effect remain for 1 minute or until Concentration Ends");
-            PlaySound("FFire");
-        }
-
-        if (spellName === "Thunderwave") {
-            let possibles = AOETargets(target);
-            let dice = 2 + (level -1);
-            let total = 0;
-            let rolls = [];
-            for (let i=0;i<dice;i++) {
-                let roll = randomInteger(8);
-                rolls.push(roll);
-                total += roll;
-            }
-            let line = dice + "d8 = [" + rolls.toString() + "]";
-            tip = '[' + total + '](#" class="showtip" title="' + line + ')';
-
-            outputCard.body.push("Spell Damage: " + tip);
-            outputCard.body.push("[hr]");
-            _.each(possibles,model => {
-                let dc = caster.spellDC;
-                let tip;
-                let result = Save(model,dc,"constitution");
-                if (result.save === false) {
-                    tip = '[fails](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " - takes " + total + " Damage and is pushed 10ft back");
-//move token back 10ft, and stop if wall
-
-                } else if (result.save === true) {
-                    tip = '[passes](#" class="showtip" title="' + result.tip + ')';
-                    outputCard.body.push(model.name + " " + tip + " - takes " + Math.round(total/2) + " Damage");                
-                }
-            })
-            target.Destroy();
-            PlaySound("Thunder");
-        }
-
-        if (spellName === "Fog Cloud") {
-            target.token.set("layer","map");
-            delete ModelArray[targetID]; //leave token
-            outputCard.body.push("The Area in the Fog Cloud is Heavily Obscured and Blocks Vision");
-            outputCard.body.push("It lasts for 1 hour or until Concentration ends, or a stronger wind blows it apart");
-            PlaySound("Woosh");
-        }
-
-        if (spellName === "Burning Hands") {
-            let targets = Cone(caster,target,15);
-            //Roll Damage Routine here
-            spawnFxBetweenPoints(new Point(caster.token.get("left"),caster.token.get("top")), new Point(target.token.get("left"),target.token.get("top")), "breath-fire");
-            //Damage for group
-            let rollResults = RollDamage(spellInfo,false,caster,level);
-            let add = "";
-            if (rollResults.bonus > 0) {add = "+" + rollResults.bonus};
-            if (rollResults.bonus < 0) {add = rollResults.bonus}
-
-            let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
-            tip = "[" + rollResults.total + '](#" class="showtip" title="' + tip + ')';
-            outputCard.body.push("Group Damage: " + tip);
-            if (spellInfo.note !== "") {
-                outputCard.body.push(spellInfo.note);
-            }
-            outputCard.body.push("[hr]");
-
-
-            _.each(targets, defender => {
-                outputCard.body.push("[B]" + defender.name + "[/b]");
-                let damageResults = ApplyDamage(spellInfo,caster,defender,rollResults);
-                let tip = damageResults.note;
-                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-                outputCard.body.push("Damage: " + tip);
-            })
-
-            target.Destroy();
-            PlaySound("Flames")
-
-
-        }
-
-
-
-
-
-
-
-
-
-
-        UseSlot(caster,level);
-        PrintCard();
-    }
-
-    const SpellSlots = (caster,level) => {
-        if (level === 0) {return true};
-        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-        if (slots === 0) {return false};
-        return true;
-    }
-
-    const UseSlot = (caster,level) => {
-return;
-        if (level === 0) {return};
-        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
-        slots = Math.max(0,slots - 1);
-        AttributeSet(caster.charID,"lvl" + level + "_slots_expended",slots);
-        outputCard.body.push("[hr]")
-        outputCard.body.push("Level " + level + " Spell Slot Used");
-        if (slots === 0) {
-            outputCard.body.push("No More of that Level");
-        }
-    }
-
-
-
-    const CastSpell2 = (msg) =>{
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let spellInfo = SpellInfo[spellName];
-        if (spellInfo) {
-            spellInfo = DeepCopy(SpellInfo[spellName]);
-            spellInfo.info = "Spell";
-        } else {
-            sendChat("","Need Spell Info");
-            return;
-        }
-        let attID = Tag[2];
-        let level = parseInt(Tag[3]);
-
-        let caster = ModelArray[attID];
-
-        let targetID = Tag[4];
-        let target = ModelArray[targetID];
-
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        if (SpellSlots(caster,level) === false) {
-            outputCard.body.push("No Available Spell Slots of level " + level);
-            PrintCard();
-            return;
-        }
-
-        let squares = caster.Distance(target);
-        let spellDist = squares * pageInfo.scaleNum;
-        if (spellDist > spellInfo.range) {
-            outputCard.body.push("Out of Range of Spell");
-            PrintCard();
-            return;
-        }
-
-
-        if (spellName === "Shield of Faith") {
-            outputCard.body.push("A shimmering field appears and surrounds your target within range, granting it a +2 bonus to AC for the duration.");
-            outputCard.body.push("Lasts 10 minutes or Concentration");
-            target.token.set({
-                aura1_radius: 1,
-                aura1_color: "#ffd700",
-                showplayers_aura1: true,
-            })
-            PrintCard();
-            PlaySound("Angels")
-        }
-
-
-    }
-
-
-
-
-
-
-
-    const SpellAttack = (msg) => {
-        let Tag = msg.content.split(";");
-        let spellName = Tag[1];
-        let spellInfo = SpellInfo[spellName];
-        if (spellInfo) {
-            spellInfo = DeepCopy(SpellInfo[spellName]);
-            spellInfo.info = "Spell";
-        } else {
-            sendChat("","Need Spell Info");
-            return;
-        }
-        let attID = Tag[2];
-        let level = parseInt(Tag[3]);
-
-        let caster = ModelArray[attID];
-
-        SetupCard(caster.name,spellName,caster.displayScheme);
-        if (SpellSlots(caster,level) === false) {
-            outputCard.body.push("No Available Spell Slots of level " + level);
-            PrintCard();
-            return;
-        }
-
-        let emote = spellInfo.emote;
-        emote = emote.replace("%%C%%",caster.name);
-        outputCard.body.push(emote);
-
-        let attAdvantage = 0;
-
-
-        let attPos = ["Invisible","Advantage"];
-        let attNeg = ["Blind","Frightened","Poison","Restrained","Disadvantage"];
-        let ignore = ["Incapacitated","Paralyzed","Restrained","Stunned","Unconscious"];
-        let attMarkers = Markers(caster.token.get("statusmarkers"));
-
-        //check if next to an enemy token, if so, disadvantage unless is Incapacitated, paralyzed, restrained,stunned,unconsciou
-        let ids = Object.keys(ModelArray);
-        for (let i=0;i<ids.length;i++) {
-            let model2 = ModelArray[ids[i]];
-            if (model2.displayScheme !== "NPC") {continue};
-            let sm = model2.token.get("statusmarkers");
-            for (let j=0;j<ignore.length;j++) {
-                if (sm.includes(ignore[j])) {continue};
-            }
-            let squares = caster.Distance(model2);
-            if (squares === 1) {
-                attAdvantage = Math.max(-1,attAdvantage -1);
-                break;
-            }
-        }
-        for (let i=0;i<attPos.length;i++) {
-            if (attMarkers.includes(attPos[i])) {
-                attAdvantage = Math.min(1,attAdvantage + 1);
-                break;
-            }
-        }
-        for (let i=0;i<attNeg.length;i++) {
-            if (attMarkers.includes(attNeg[i])) {
-                attAdvantage = Math.max(-1,attAdvantage -1);
-                break;
-            }
-        }
-
-        attAdvantage = Math.min(Math.max(-1,attAdvantage),1);
-
-        let defenders = [];
-        for (let i=4;i<(Tag.length + 1);i++) {
-            let defender = ModelArray[Tag[i]];
-            if (!defender) {continue};
-            defenders.push(defender);
-        }    
-        for (let i=0;i<defenders.length;i++) {
-            let defender = defenders[i];
-            let defPt = new Point(defender.token.get('left'),defender.token.get('top'));
-            outputCard.body.push("[B]" + defender.name + "[/b]");
-            let distance = caster.Distance(defender) * pageInfo.scaleNum;
-            if (distance > spellInfo.range) {
-                outputCard.body.push("Target is Out of Range");
-                outputCard.body.push("Distance to Target: " + distance);
-                outputCard.body.push("Spell Range: " + spellInfo.range);
-                continue;
-            }
-
-            let fFire = (defender.token.get("aura1_color") === "#ff00ff" && defender.token.get("aura1_radius") === 1) ? true:false;
-
-            let defAdvantage = (fFire === true) ? 1:0;
-            let defMarkers = Markers(defender.token.get("statusmarkers"));
-            let defPos = ["Blind","Paralyzed","Restrained","Stunned","Unconscious","Disadvantage"];
-            let defNeg = ["Invisible","Dodge","Advantage"];
-            for (let i=0;i<defPos.length;i++) {
-                if (defMarkers.includes(defPos[i])) {
-                    defAdvantage = Math.min(defAdvantage +1, 1);
-                    break;
-                }
-            }
-            for (let i=0;i<defNeg.length;i++) {
-                if (defMarkers.includes(defNeg[i])) {
-                    if (defNeg[i] === "Invisible" && fFire === true) {continue};
-                    defAdvantage = Math.max(defAdvantage -1,-1);
-                    break;
-                }
-            }
-            if (defMarkers.includes("Prone")) {
-                if (distance <= 5) {
-                    defAdvantage = Math.min(defAdvantage +1, 1);
-                } else {
-                    defAdvantage = Math.max(defAdvantage -1,-1);
-                }
-            }
-
-            creatTypes = ["Aberration","Celestial","Elemental","Fey","Fiend","Undead"];
-            if (defMarkers.includes("Protection") && creatTypes.includes(caster.type)) {
-                defAdvantage = Math.max(defAdvantage -1,-1);
-            }
-
-            defAdvantage = Math.min(Math.max(-1,defAdvantage),1);
-log("Def Adv: " + defAdvantage)
-
-            let advantage = attAdvantage + defAdvantage;
-            advantage = Math.min(Math.max(-1,advantage),1);
-log("Final Adv: " + advantage)
-
-            let result = ToHit(advantage);
-            let total = result.roll + caster.spellAttack;
-            let tip;
-            let crit = false;
-            if ((defMarkers.includes("Paralyzed") || defMarkers.includes("Unconscious")) && distance <= 5) {
-                crit = true;
-            }
-            if (spellInfo.auto === true) {
-                result.roll = 21;
-            } else {
-                tip = result.rollText + " + " + caster.spellAttack;
-                tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
-                line = "Attack: " + tip + " vs. AC " + defender.ac;
-                if (result.roll === 20) {
-                    crit = true;
-                }
-                outputCard.body.push(line);
-            }
-
-            if ((total >= defender.ac || spellInfo.auto === true || crit === true) && result.roll !== 1) {
-                if (crit === true) {
-                    outputCard.body.push("[#ff0000]Crit![/#]");
-                }   
-                let rollResults = RollDamage(spellInfo,crit,caster,level);
-                let damageResults = ApplyDamage(spellInfo,caster,defender,rollResults);
-                let add = "";
-                if (rollResults.bonus > 0) {
-                    add = "+" + rollResults.bonus;
-                }
-                if (rollResults.bonus < 0) {
-                    add = rollResults.bonus;
-                }
-                let tip = rollResults.diceText + add + " = " + rollResults.rolls + add;
-                if (damageResults.note !== "") {
-                    tip += "<br>" + damageResults.note;
-                }
-                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
-                outputCard.body.push("Damage: " + tip);
-                if (spellInfo.note !== "") {
-                    outputCard.body.push(spellInfo.note);
-                }
-
-
-            } else {
-                outputCard.body.push("[B]Miss[/b]");
-            }
-            if (defenders.length > 1) {
-                outputCard.body.push("[hr]");
-            }
-
-            if (i===0) {
-                PlaySound(spellInfo.sound);
-            }
-
-
-
-
-        }
-
-        UseSlot(caster,level);
-        PrintCard();
-
-
-
-
-
-
-
-        
-
-
-
-
-
-    }
 
 
     const TokenInfo = (msg) => {
         let id = msg.selected[0]._id;
         let model = ModelArray[id];
+        if (!id || !model) {return}
         let token = model.token;
         SetupCard(model.name,"","NPC");
-        let s = model.squares.length === 1 ? "":"s";
-        log(model.squares)
-        outputCard.body.push("Square" + s + ": " + model.squares.toString());
-        outputCard.body.push("Size: " + model.size)
-        let link = model.token.get("bar1_link");
-        outputCard.body.push(link)
+        let pt = new Point(token.get("left"),token.get("left"));
+        let squares = model.Squares();
+        outputCard.body.push("Point: " + pt.x + "/" + pt.y)
+        _.each(squares,square => {
+            outputCard.body.push("Square: " + square.x + "/" + square.y)
+        })
+        let char = getObj("character", token.get("represents"));    
+        let markers = model.Markers();
+        outputCard.body.push(markers.toString());
+        if (markers.includes("Web")) {
+            outputCard.body.push("Has Web");
+        }
+
+log(token.get("statusmarkers"))
+log(PCs)
+log(state.DnD.spells)
 
 
         PrintCard();
 
     }
 
+    const Save = (model,dc,stat,adv = 0) => {
+        let saved = false;
+        adv = (adv > 0) ? true:false;
+        disadv = (adv < 0) ? true:false;
+        let fail = false; //auto fail
+
+        let advReasons = [];
+        let disAdvReasons = [];
+        let failReason = "";
+        let bonus = model.saveBonus[stat];
+        let otherBonus = 0;
+        let saveTotal,saveTip,bonusText, otherBonusText;
+
+        let markers = model.Markers();
+
+        let incapacitated = (findCommon(markers,Incapacitated).length > 0) ? true:false;
+        let restrained = (findCommon(markers,Restrained).length > 0) ? true:false;
 
 
+        if ((stat === "strength" || stat === "dexterity") && incapacitated === true) {
+            fail = true;
+            failReason = "Incapacitated";
+        }
 
-    const AddAbility = (abilityName,action,charID) => {
-        createObj("ability", {
-            name: abilityName,
-            characterid: charID,
-            action: action,
-            istokenaction: true,
-        })
-    }    
+        if (markers.includes("Bless")) {
+            otherBonus = randomInteger(4);
+            otherBonusText = "Including " + otherBonus + " [Bless d4]";
+        }
+        bonus += otherBonus;
 
-    const AOETargets = (target) => {
-        let temp = [];
-        let targetSquares = target.squares;
-log(targetSquares)
-        _.each(ModelArray,model => {
-            if (model.id === target.id) {return}
-            let modelSquares = ModelSquares(model) || [];
-            for (let i=0;i<targetSquares.length;i++) {
-                let targetSquare = targetSquares[i];
-                if (modelSquares.includes(targetSquare)) {
-                    temp.push(model.id);
-                    return;
+        if (markers.includes("Dodge") && stat === "dexterity") {
+            adv = true;
+            advReasons.push("Dodge");
+        }
+        if (stat === "dexterity" && restrained === true) {
+            disadv = true;
+            disAdvReasons.push("Restrained");
+        }
+
+        let finalAdv = 0;
+        if (adv === true && disadv === false) {finalAdv = 1};
+        if (adv === true && disadv === true) {finalAdv = 0};
+        if (adv === false && disadv === true) {finalAdv = -1};
+        let saveRollResult = D20(finalAdv);
+        
+        if (dc === false) {
+            //display result in chat immediately
+            if (fail === true) {
+                outputCard.body.push("[#ff0000]Automatic Failure[/#]");
+                outputCard.body.push("Due to being " + failReason);
+            } else {
+                OutputRoll(saveRollResult,bonus);
+                outputCard.body.push(otherBonusText);
+                if (advReasons.length > 0) {
+                    outputCard.body.push("[" + advReasons.toString() + "]");
+                }
+                if (disAdvReasons.length > 0) {
+                    outputCard.body.push("[" + disAdvReasons.toString() + "]");
                 }
             }
-        })
+        } else {
+            if (bonus >= 0) {bonusText = " + " + bonus + " Bonus"} else {bonusText = " - " + Math.abs(bonus) + " Bonus"};
+            saveTotal = saveRollResult.roll + bonus;
+            saveTip = "<br>Roll: " + saveRollResult.roll + bonusText;
+            saveTip += "<br>" + saveRollResult.rollText
+            if (otherBonusText) {saveTip += "<br>" + otherBonusText};
+            if (advReasons.length > 0) {
+                saveTip += "<br>" + advReasons.toString();
+            }
+            if (disAdvReasons.length > 0) {
+                saveTip += "<br>" + disAdvReasons.toString();
+            }
+            if ((saveTotal >= dc || saveRollResult.roll === 20) && saveRollResult.roll !== 1) {
+                saved = true;
+            } 
+            saveTip = "Save: " + saveTotal + " vs. DC " + dc + saveTip;
+            if (fail === true) {
+                saved = false,
+                saveTip = "Automatically Failed Save due to " + failReason;
+            }
+        }
 
-/*
-
-        _.each(target.squares,square => {
-            let ids = MapArray[square].tokenIDs;
-            _.each(ids,id => {
-                if (id !== target.id) {
-                    temp.push(id);
-                }
-            })
-        })
-*/
-        temp = [...new Set(temp)];
-        let array = [];
-        _.each(temp,id => {
-            let model = ModelArray[id];
-log(model.name)
-            array.push(model);
-        })
-        return array;
+        let result = {
+            save: saved,
+            saveTotal:saveTotal,
+            tip: saveTip,
+        }
+        return result;
     }
 
-
-
-
     const SavingThrow = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
+        if (!model) {return};
         let Tag = msg.content.split(";");
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
         let stat = Tag[2];
@@ -2469,60 +1381,11 @@ log(model.name)
 
         SetupCard(model.name,stat,model.displayScheme);
 
-        let result = Save(model,false,statTLC,advantage);
-        let c1 = "",c2 = "";
-        if (result.saveRoll === 20) {
-            c1 = "[#008000]";
-            c2 = "[/#]";
-        }
-        if (result.saveRoll === 1) {
-            c1 = "[#ff0000]";
-            c2 = "[/#]";
-        }
-  
-        outputCard.body.push("[B]Result: " + result.saveTotal + "[/b]");
-        outputCard.body.push("[hr]");
-
-        let line = "Roll: " + c1 + result.saveRoll + c2;
-        if (result.finalAdv !== 0) {
-            line += "/[" + result.altRoll + "]";
-        }
-
-        line += " Bonus: ";
-        if (result.bonus >= 0) {
-            line += "+" + result.bonus;
-        } else {
-            line += result.bonus;
-        }
-
-        outputCard.body.push(line);
-        if (result.finalAdv === 1) {
-            line = "[Advantage";
-            if (result.advReasons !== "") {
-                line + ": " + result.advReasons + "]";
-            }
-            outputCard.body.push(line);
-        }
-        if (result.finalAdv === -1) {
-            line = "[Disadvantage";
-            if (result.disAdvReasons !== "") {
-                line + ": " + result.disAdvReasons + "]";
-            }
-            outputCard.body.push(line);
-        }
-
-        let inc = ["Paralyzed","Stunned","Unconscious"];            
+        Save(model,false,statTLC,advantage);
 
         if (model.name.includes("Wirsten") && statTLC === "dexterity") {
-            let sm = model.token.get("statusmarkers");
-            //incapacitated - means skip
-            let skip = false;
-            _.each(inc,c => {
-                if (sm.includes(c)) {
-                    skip = true;
-                }
-            })
-            if (skip === false) {
+            let inc = findCommon(model.Markers(),Incapacitated);
+            if (inc.length === 0) {
                 outputCard.body.push("[hr]");
                 outputCard.body.push("Shield Master: You can add 2 to your Result if the Spell/Harmful Effect targets only you");
                 outputCard.body.push("If you save and would take 1/2 Damage, you can use your Reaction to take No Damage, interposing your Shield");
@@ -2535,22 +1398,27 @@ log(model.name)
 
     }
 
-
     const Initiative = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
-
+        if (!model) {return};
         SetupCard(model.name,"Initiative",model.displayScheme);
-        let bonus = model.initBonus;
-        let roll = randomInteger(20);
-        let result = roll + bonus;
-        let tip = "Roll: " + roll + " + " + bonus;
-        tip = '[' + result + '](#" class="showtip" title="' + tip + ')';
-        outputCard.body.push("Initiative Result: " + tip);
+        let bonus = model.initBonus + (model.initBonus/10);
+        //later add in advantage/disadvantage for initiative here
+        let advantage = 0;
+        let roll = D20(advantage);
+        let total = OutputRoll(roll,bonus);
+
         PrintCard();
 
         if (Campaign().get("turnorder") == "") {
@@ -2558,151 +1426,1824 @@ log(model.name)
         } else {
             turnorder = JSON.parse(Campaign().get("turnorder"));
         }
-        turnorder.push({
-            _pageid:    model.token.get("_pageid"),
-            id:         id,
-            pr:         result,
-            formula:    "-1"
-        });
+
+        //replace result if already in turnorder, else add to turnorder
+        let item = turnorder.filter(item => item.id === id)[0];
+
+        if (!item) {
+            turnorder.push({
+                _pageid:    model.token.get("_pageid"),
+                id:         id,
+                pr:         total,
+            });
+        } else {
+            item.pr = total;
+        }
         turnorder.sort((a,b) => b.pr - a.pr);
         Campaign().set("turnorder", JSON.stringify(turnorder));
         PlaySound("Dice")
+        Campaign().set("initiativepage",true);
     }
 
 
+    
+
     const Check = (msg) => {
+        let id;
         if (!msg.selected) {
-            sendChat("","Select a Token");
-            return;
-        };
-        let id = msg.selected[0]._id;
+            if (msg.playerid) {
+                id = PCs[msg.playerid];
+            } else {
+                sendChat("","Select a Token");
+                return;
+            }
+        } else {
+            id = msg.selected[0]._id;
+        }
         let model = ModelArray[id];
+        if (!model) {return};
         let Tag = msg.content.split(";");
         let advantage = (Tag[1] === "Advantage") ? 1: (Tag[1] === "Disadvantage") ? -1:0;
         let text = Tag[2];
         let skill = text.toLowerCase();
-        skill = skill.replace(" ","_");
+        skill = skill.replace(/ /g,"_");
         SetupCard(model.name,text,model.displayScheme);
-
         let stats = ["strength","dexterity","constitution","intelligence","wisdom","charisma"];
-
         let bonus;
         if (stats.includes(skill)) {
             bonus = model.statBonus[skill];
         } else {
             bonus = model.skills[skill];
         }
+        let result = D20(advantage);
+        OutputRoll(result,bonus);
+        PlaySound("Dice")
+        PrintCard();
+    }
 
+    const ReloadTokens = (msg) => {
+        let ids = [];
+        _.each(msg.selected,s => {
+            ids.push(s._id);
+        })
+        _.each(ids,id => {
+            let token = findObjs({_type:"graphic", id: id})[0];
+            if (token) {
+                let m = new Model(token);
+            }
+        })
+        sendChat("","/w GM Reloaded")
+    }
+
+    let D20 = (advantage) => {
         let roll1 = randomInteger(20);
         let roll2 = randomInteger(20);
-        let altRoll;
-
-        let roll = roll1;
-        if (advantage === 1) {
+        let addText,roll,s = "s"
+        if (advantage > 0) {
             roll = Math.max(roll1,roll2);
-            altRoll = Math.min(roll1,roll2);
-        }
-        if (advantage === -1) {
+            addText = " [Advantage]";
+        } else if (advantage < 0) {
             roll = Math.min(roll1,roll2);
-            altRoll = Math.max(roll1,roll2);
+            addText = " [Disadvantage]";
+        } else {
+            roll = roll1;
+            s = "";
         }
-        let rollTotal = Math.max(roll + bonus,1);
+        let altRoll = (roll === roll1) ? roll2:roll1;
+        let text = "Roll" +s + ": " + roll;
+        if (advantage !== 0) {
+            text += "/" + altRoll + addText; 
+        }
+        let result = {
+            roll: roll,
+            rollText: text,
+        }
+        return result;
+    }
+    
+    let OutputRoll = (result,bonus) => {
+        //used to output Save Roll, Check Roll, Initiative Roll etc
+        //if needed, returns the total
         let c1 = "",c2 = "";
-        if (roll === 20) {
+        if (result.roll === 20) {
             c1 = "[#008000]";
             c2 = "[/#]";
         }
-        if (roll === 1) {
+        if (result.roll === 1) {
             c1 = "[#ff0000]";
             c2 = "[/#]";
         }
-
+        let rollTotal = Math.max(result.roll + bonus,1);
+        let bonusText;
+        if (bonus >= 0) {bonusText = " + " + bonus + " Bonus"} else {bonusText = " - " + Math.abs(bonus) + " Bonus"};
         outputCard.body.push("[B]" + c1 + "Result: " + rollTotal + "[/b]" + c2);
-        outputCard.body.push("[hr]");
+        outputCard.body.push(result.rollText + bonusText);
+        return rollTotal;
+    }
 
-        let line = "Roll: " + c1 + roll + c2;
-        if (advantage !== 0) {
-            line += "/[" + altRoll + "]";
+    const Attack = (msg) => {
+        let Tag = msg.content.split(";");
+        let attID = Tag[1];
+        let defID = Tag[2];
+        let weaponName = Tag[3];
+        let extra = Tag[4] || "Non-Magic";
+
+        let attacker = ModelArray[attID];
+        let defender = ModelArray[defID];
+
+        let errorMsg = [];
+
+        if (!attacker) {
+            errorMsg.push("Attacker not in Array");
+            attacker = defender;
+        }
+        if (!defender) {
+            errorMsg.push("Defender not in Array");
+            defender = attacker;
         }
 
-        line += " Bonus: ";
-        if (bonus >= 0) {
-            line += "+" + bonus;
+        let attMarkers = attacker.Markers();
+        let defMarkers = defender.Markers();
+
+        let weapon = WeaponInfo[weaponName];
+        if (weapon) {
+            weapon = DeepCopy(WeaponInfo[weaponName]);
+            weapon.info = extra;
         } else {
-            line += bonus;
+            weapon = {
+                base1: Tag[4],
+                base2: Tag[5],
+                type: Tag[6],
+                properties: Tag[7],
+                range: Tag[8],
+                text: Tag[9],
+                sound: Tag[10],
+            }
         }
-        outputCard.body.push(line);
 
-        if (advantage === 1) {
-            outputCard.body.push("[Advantage]");
+        //set some defaults
+        if (!weapon.critOn) {weapon.critOn = 20};
+        if (!weapon.range) {weapon.range = [0,0]};
+        if (!weapon.properties) {weapon.properties = " "};
+        weapon.magic = " ";
+
+        let inReach = false;
+
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
+
+        if (squares === 1) {
+            inReach = true;
         }
-        if (advantage === -1) {
-            outputCard.body.push("[Disadvantage]");
+        if (weapon.properties.includes("Reach") && squares <= 2) {
+            inReach = true;
+        }
+        if (inReach !== true && weapon.type.includes("Ranged") === false) {
+            errorMsg.push("Target not in Reach");
+        } 
+
+        let statBonus = attacker.statBonus["strength"];
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
+            statBonus = attacker.statBonus["dexterity"];
+        }
+        if (weapon.properties.includes("Finesse")) {
+            statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
+        }
+        if (weapon.properties.includes("Spell")) {
+            statBonus = 0;
+            weapon.magic = "magic";
+            if (weapon === "Flame Blade") {
+                let spellID = state.DnD.conSpell[attID];
+                let spell = state.DnD.spellList.find((e) => e.spellID = spellID);
+                if (!spell) {
+                    errorMsg.push("Flame Blade isn't active");
+                } else {
+                    let d = Math.floor((spell.castLevel - 2)/2) + 3;
+                    weapon.base1 = d + "d6,fire";
+                }
+            }
         }
 
-        PlaySound("Dice")
+        if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
+            errorMsg.push("Target is Out of Max Range");
+        }
+
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,msg => {
+                sendChat("",msg);
+            })
+            return;
+        }
+        //damage bonuses, add into weaponInfo.base for Damage routine
+        //stat
+        if (weapon.type.includes("Melee") || weapon.properties.includes("Thrown")) {
+            weapon.base1 = weapon.base1.replace(",","+"+ statBonus + ",");
+        }
+        //abilities
+        if (attacker.name === "Wirsten" && inReach === true) {
+            weapon.base1 = weapon.base1.replace(",","+2,"); //Duellist
+        }
+
+        //attack bonuses
+        attackBonus = statBonus + attacker.pb;
+
+        //other mods to attack bonus
+        let additionalText = "";
+        if (attMarkers.includes("Bless")) {
+            bless = randomInteger(4);
+            additionalText += "<br>inc +" + bless + " Bless";
+            attackBonus += bless;
+        }
+        if (attMarkers.includes("Sacred Weapon") && weapon.type === "Melee") {
+            attackBonus += 2;
+            weapon.magic = "magic";
+            additionalText += "<br>inc +2 Sacred Weapon";
+        }
+
+        //Magic Items
+        let magicBonus;
+        if (extra !== "Non-Magic" && extra !== "No") {
+            if (extra.includes("+")) {
+                magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
+                attackBonus += magicBonus;
+                weapon.base1 = weapon.base1.replace(",","+"+ magicBonus + ",");
+                weapon.magic = "magic";
+            }
+        }
+        if (extra.includes("Silver") && weapon.magic.includes("magic") === false) {
+            weapon.magic = "silver";
+        }
+
+        if (attMarkers.includes("Magic Weapon") && weapon.magic !== "magic") {
+            magicBonus = parseInt(attacker.token.get("status_" + Markers["Magic Weapon"])) || 1;
+            weapon.base1 = weapon.base1.replace(",","+"+ magicBonus + ",");
+            attackBonus += magicBonus;
+            weapon.magic = "magic";
+        }
+
+
+        weapon.damage = [weapon.base1];
+        if (weapon.base2) {
+            weapon.damage.push(weapon.base2);
+        }
+
+        if (attMarkers.includes("Divine Favour")) {
+            weapon.damage.push('1d4,radiant');
+        }
+        if (attMarkers.includes("Searing Smite")) {
+            weapon.damage.push('1d6,fire');
+        }
+        if (attMarkers.includes("Thunderous Smite")) {
+            weapon.damage.push('2d6,thunder');
+        }
+        if (attMarkers.includes("Wrathful Smite")) {
+            weapon.damage.push('1d6,psychic');
+        }
+
+
+
+
+        SetupCard(attacker.name,"Attack",attacker.displayScheme);
+        if (inReach === true && weapon.type.includes("Melee")) {
+            outputCard.body.push(attacker.name + " strikes at " + defender.name + " with his " + weaponName);
+            weapon.type = "Melee";
+        }
+        if (inReach === false && weapon.properties.includes("Thrown")) {
+            outputCard.body.push(attacker.name + " throws his " + weaponName + " at " + defender.name);
+            weapon.sound = "Shuriken";
+            weapon.type = "Ranged";
+        }
+        if (inReach === false && weapon.properties.includes("Thrown") === false) {
+            outputCard.body.push(attacker.name + ' fires his ' + weaponName + " at " + defender.name);
+            weapon.type = "Ranged";
+        }
+
+        let advResult = Advantage(attacker,defender,weapon); 
+
+        let attackResult = D20(advResult.advantage);
+        let attackTotal = attackResult.roll + attackBonus;
+        let tip;
+        let crit = false;
+
+        if ((findCommon(defMarkers,Incapacitated).length > 0) && inReach === true) {
+            crit = true;
+        }
+        let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
+
+        tip = attackResult.rollText + abText;
+        tip += "<br>[1d20" + abText + "]" + additionalText;
+        if (advResult.advText.length > 0) {
+            tip += "<br>Advantage from: " + advResult.advText.toString();
+        }
+       if (advResult.disText.length > 0) {
+            tip += "<br>Disadvantage from: " + advResult.disText.toString();
+        }
+
+        tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
+        if (attackResult.roll >= weapon.critOn) {
+            crit = true;
+        }
+        let ac = defender.ac;
+        if (defMarkers.includes("Shield of Faith")) {
+            ac += 2;
+        }
+        if (defMarkers.includes("Mage Armour")) {
+            ac = 13 + defender.statBonus.dexterity;
+        }
+        if (defMarkers.includes("Barkskin")) {
+            ac = Math.max(16,ac);
+        }
+
+
+        let cover = CheckCover(defender);
+        if (cover === "Light") {
+            ac += 2;
+        }
+
+        let dc = 10;//modify???
+
+
+        outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
+        if (crit === true) {
+            outputCard.body.push("[#ff0000]Crit![/#]");
+        }
+
+log(weapon)
+        if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true) {
+            outputCard.body.push("[B]Hit![/b]")
+            let finalDamage = 0;
+            for (let i=0;i<weapon.damage.length;i++) {
+                //normally one eg 1d8+1, slashing damage for a longsword
+                //might have a 2nd eg 1d6,fire for a flaming longsword
+                //roll damage for each damage type then 'apply' it to defender
+                let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
+                let damageResults = ApplyDamage(rollResults,dc,defender,weapon);
+                let tip = rollResults.diceText;  
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
+                let saveTip = "";
+                if (damageResults.save) {
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ') ';
+                }
+
+                outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+
+
+
+                if (crit === true) {
+                    spawnFx(defender.token.get("left"),defender.token.get("top"), "burn-blood",defender.token.get("_pageid"));
+                } else {
+                    spawnFx(defender.token.get("left"),defender.token.get("top"), "pooling-blood",defender.token.get("_pageid"));
+                }
+                finalDamage += damageResults.total;
+            }            
+            if (weapon.damage.length > 1) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push("Total Damage: " + finalDamage);
+            }
+
+            if (finalDamage > 0) {
+                if (attMarkers.includes("Searing Smite")) {
+                    outputCard.body.push("At the start of each of its turns until the spell ends, the target must make a Constitution saving throw. On a failed save, it takes 1d6 fire damage. On a successful save, the spell ends. If the target or a creature within 5 feet of it uses an action to put out the flames, or if some other effect douses the flames (such as the target being submerged in water), the spell ends.");
+                    let spell = FindSpell("Searing Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+                if (attMarkers.includes("Thunderous Smite")) {
+                    outputCard.body.push("The Thunderclap is audible within 300 feet");
+                    let saveResult = Save(defender,attacker.spellDC,"strength");
+                    let noun = "Fails"
+                    let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                    if (saveResult.save === true) {
+                        outputCard.body.push(defender.name + " " +  '[saves]' + tip + " and resists the Shockwave");
+                    } else {
+                        outputCard.body.push(defender.name + " " + '[fails]'
+                            + tip + " its save and is knocked back and Prone!");
+                        defender.token.set("status_" + Markers["Prone"],true);
+                        MoveTarget(attacker,defender,10);
+                    }
+                    let spell = FindSpell("Thunderous Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+                if (attMarkers.includes("Wrathful Smite")) {
+                    let saveResult = Save(defender,attacker.spellDC,"wisdom");
+                    let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                    if (saveResult.save === true) {
+                        outputCard.body.push(defender.name + " " +  '[saves]' + tip);
+                    } else {
+                        outputCard.body.push(defender.name + " " + '[fails]'
+                            + tip + " its save and is Frightened. It can make a Wisdom Save each round to overcome this.");
+                        defender.token.set("status_" + Markers["Frightened"],true);
+                    }
+                    let spell = FindSpell("Wrathful Smite",attacker.id);
+                    EndSpell(spell.spellID);
+                }
+
+
+            }
+
+
+
+
+            if (attacker.class.includes("paladin") && inReach === true) {
+                //add option of smite if has spell slots
+                let c = (crit === true) ? 1:0;
+                let line = "!SpecialAbility;Smite;" + attacker.id + ";" + defender.id + ";" + c + ";";
+                let levels = [];
+                for (let level = 1;level < 6;level++) {
+                    if (SpellSlots(attacker,level) > 0) {
+                        levels.push(level);
+                    }
+                }
+                if (levels.length === 1) {
+                    line += levels[0];
+                } else {
+                    line += "?{Level";
+                    _.each(levels,level => {
+                        line += "|" + level;
+                    });
+                    line += "}"
+                }
+                if (levels.length > 0) {
+                    ButtonInfo("Smite!",line);
+                }
+            }
+
+            if (weapon.text) {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(weapon.text);
+            }
+        } else {
+            outputCard.body.push("[B]Miss[/b]");
+        }
+
+        PlaySound(weapon.sound);
 
         PrintCard();
+    }
 
+    const Advantage = (attacker,defender,damageInfo) => {
+        let inReach = false;
+
+        let squares = attacker.Distance(defender);
+        let distance = squares * pageInfo.scaleNum;
+
+        if (squares === 1) {
+            inReach = true;
+        }
+        if (damageInfo.properties && damageInfo.properties.includes("Reach") && squares <= 2) {
+            inReach = true;
+        }
+
+        let attMarkers = attacker.Markers();
+        let defMarkers = defender.Markers();
+
+        let ids = Object.keys(ModelArray);
+
+        let positive = ["Invisible","Advantage"];
+        let attNegative = ["Blind","Frightened","Poison","Disadvantage","Heat Metal"];
+        let defNegative = ["Blind","Disadvantage"];
+
+        let advantage = false;
+        let advText = []; 
+        let disadvantage = false;
+        let disText = [];
+
+        if (damageInfo.type.includes("Melee") === false) {
+            //check if any adjacent enemies that arent incapacitated, as they will impose disadvantage
+            for (let i=0;i<ids.length;i++) {
+                let model2 = ModelArray[ids[i]];
+                if (model2.id === attacker.id) {continue};
+                if (attacker.inParty !== model2.inParty) {
+                    if (findCommon(model2.Markers(),Incapacitated).length === 0) {
+                        let squares = attacker.Distance(model2);
+                        if (squares <= 1) {
+                            disadvantage = true;
+                            disText.push("Adjacent to Enemy")
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //Prone
+        if (inReach === true) {
+            if (attMarkers.includes("Prone")) {
+                //attacker at disadvantage
+                disText.push("Prone Melee Attack");
+                disadvantage = true;
+            }
+            if (defMarkers.includes("Prone")) {
+                advText.push("Prone Melee Defender")
+                advantage = true;
+            }
+        } else {
+            if (defMarkers.includes("Prone")) {
+                disText.push("Prone Defender at Range");
+                disadvantage = true;
+            }
+        }
+
+        //ranged weapons over 'normal' range; note that thrown has changed to ranged in attack routine
+        if (inReach === false && damageInfo.type === "Ranged" && distance > damageInfo.range[0]) {
+            disText.push("Long Range");
+            disadvantage = true;
+        }
+
+        //check for conditions, spells etc
+        let attPos = findCommon(positive,attMarkers);
+        let attNeg = findCommon(attNegative,attMarkers);
+        attNeg = attNeg.concat(findCommon(Restrained,attMarkers));
+
+        let defPos = findCommon(positive,defMarkers);
+        let defNeg = findCommon(defNegative,defMarkers);
+        defNeg = defNeg.concat(findCommon(Incapacitated,defMarkers),findCommon(Restrained,defMarkers))
+
+        if (attPos.length > 0) {
+            advantage = true;
+            advText = advText.concat(attPos);
+        }
+        if (attNeg.length > 0) {
+            disadvantage = true;
+            disText = disText.concat(attNeg);
+        }
+        if (defPos.length > 0) {
+            disadvantage = true;
+            disText = disText.concat(defPos);
+        }
+        if (defNeg.length > 0) {
+            advantage = true;
+            advText = advText.concat(defNeg);
+        }
+
+        //specials, spells etc
+        if (defMarkers.includes("Faerie Fire")) {
+            advantage = true;
+            advText.push("Faerie Fire");
+        };
+        if (defMarkers.includes("Dodge")) {
+            disText.push("Defender taking Dodge Action");
+            disadvantage = true;
+        }
+        creatTypes = ["aberation","celestial","elemental","fey","fiend","undead"];
+        let other = creatTypes.some(type => attacker.type.toLowerCase().includes(type));
+
+        if (defMarkers.includes("Protection") && other === true) {
+            disadvantage = true;
+            disText.push("Protection from Evil/Good");
+        }
+        if (attacker.special.includes("Pack Tactics") && inReach === true && damageInfo.type.includes("Melee")) {
+            let adj = false;
+            for (let i=0;i<ids.length;i++) {
+                let model2 = ModelArray[ids[i]];
+                if (model2.id === attacker.id || model2.id === defender.id) {
+                    continue;
+                }
+                if (model2.inParty === attacker.inParty) {
+                    if (findCommon(model2.Markers(),Incapacitated).length === 0 && model2.Distance(defender) <= 1) {
+                        advantage = true;
+                        advText.push("Pack Tactics");
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        finalAdv = 0;
+        if (advantage === true && disadvantage === false) {
+            finalAdv = 1;
+        }
+        if (advantage === false && disadvantage === true) {
+            finalAdv = -1;
+        }
+        let result = {
+            advantage: finalAdv,
+            advText: advText,
+            disText: disText,
+        }
+        return result;
+    }
+
+
+    const SpecialAbility = (msg) => {
+        let Tag = msg.content.split(";");
+        let abilityName = Tag[1];
+        let attID = Tag[2];
+        let attacker = ModelArray[attID];
+
+        if (abilityName === "Shield Bash") {
+            let defID = Tag[3];
+            let defender = ModelArray[defID];
+            ShieldBash(attacker,defender);
+        }
+        if (abilityName === "Smite") {
+            let defID = Tag[3];
+            let defender = ModelArray[defID];
+            let critical = parseInt(Tag[4]) === 1 ? true:false;
+            let level = parseInt(Tag[5]);
+            Smite(attacker,defender,critical,level);
+        }
+        if (abilityName === "Dragon's Breath") {
+            let spellID = Tag[3];
+            let spell = (state.DnD.spellList.find((e) => e.spellID === spellID));
+log("In Special Ability")
+log(spell)
+
+            ClearSpellTarget(spell);
+            spell.displacedTokenID = attID;
+            spell.tempSize = 5;
+            let target = SpellTarget(spell);
+            state.DnD.areaSpell = spell;
+            SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
+            outputCard.body.push("Place Target then use Macro to Cast");
+            
+        }
+        if (abilityName === "Lucky") {
+            SetupCard(attacker.name,"Lucky",attacker.displayScheme);
+            outputCard.body.push("You use one of your Luck Points to roll an additional d20. This can be an attack roll (yours or one against you), an ability check or a saving throw. You can choose which d20 is used for the result.")
+//resource
+        }
+
+
+
+
+
+
+
+
+
+        PrintCard();
+    }
+
+    const ShieldBash = (attacker,defender) => {
+        SetupCard(attacker.name,"Shield Bash",attacker.displayScheme);
+        if (defender.immunities.includes("prone")) {
+            outputCard.body.push(defender.name + " is immune");
+            return;
+        }
+        if (defender.size > attacker.size) {
+            outputCard.body.push(defender.name + " is too large to Bash");
+            return;
+        }
+
+        let attRoll = randomInteger(20);
+        let attTotal = attRoll + attacker.skills.athletics;
+
+        let defRoll = randomInteger(20);
+        let verb;
+        if (defender.skills.athletics >= defender.skills.acrobatics) {
+            defAtt = " [Athletics]";
+            verb = " resists ";
+            bonus = defender.skills.athletics;;
+        } else {
+            defAtt = " [Acrobatics]";
+            verb = " dodges ";
+            bonus = defender.skills.acrobatics;
+        }
+        let defTotal = defRoll + bonus;
+        let tip = attacker.name + " Rolls: " + attRoll + " + " + attacker.skills.athletics; 
+        tip += "<br>" + defender.name + " Rolls: " + defRoll + " + " + bonus + defAtt;
+        tip = '[🎲](#" class="showtip" title="' + tip + ')';
+
+        outputCard.body.push(tip + " " + attacker.name + " bashes " + defender.name + " with his Shield");
+
+        if (defTotal < attTotal) {
+            outputCard.body.push("[B]Success[/b]");
+            outputCard.body.push(defender.name + " can be either pushed back 5ft or knocked prone");
+        } else {
+            outputCard.body.push("[B][#ff0000]Failure[/b][/#]");
+            outputCard.body.push(defender.name + verb + "the Shield Bash");
+        }
+        PlaySound("Shield");
+    }
+
+    const Smite = (attacker,defender,critical,level) => {
+        let sub = (critical === true) ? "Divine Smite Critical": "Divine Smite";
+        let dice = 2 + (level - 1);
+        if (defender.type.toLowerCase().includes("undead")) {
+            dice += 1;
+            sub += " vs. Undead";
+        }
+        if (defender.type.toLowerCase().includes("fiend")) {
+            dice += 1;
+            sub += " vs. Fiend";
+        }
+
+        if (critical === "Yes") {
+            sub = "Critical " + sub;
+            dice = dice * 2;
+        }
+        SetupCard(attacker.name,sub,attacker.displayScheme);
+
+        let damage = dice + "d8,radiant";
+        let rollResults = RollDamage(damage,critical);
+        let damageResults = ApplyDamage(rollResults,attacker.spellDC,defender);
+        let tip = rollResults.diceText;         
+        tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
+        let saveTip = "";
+
+        if (damageResults.save) {
+            saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + '): ';
+        }
+        outputCard.body.push(saveTip + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+
+        spawnFx(defender.token.get("left"),defender.token.get("top"), "nova-holy",defender.token.get("_pageid"));
+        PlaySound("Smite");
+    }
+
+    const SpellSlots = (caster,level) => {
+        let slots = parseInt(Attribute(caster.charID,"lvl" + level + "_slots_expended")) || 0;
+        return slots;
+    }
+
+    const MakeParty = (msg) => {
+        if (!msg.selected) {return};
+        for (let i=0;i<msg.selected.length;i++) {
+            let id = msg.selected[i]._id;
+            let model = ModelArray[id];
+            let char = getObj("character",model.charID);
+            if (char.get("inParty") === false) {
+                char.set("inParty",true);
+                v = " added to Party";
+            } else {
+                char.set("inParty",false);
+                v = " removed from Party"
+            }
+            char.set("inParty",true);
+            sendChat("",model.name + v);
+        }
+    }
+
+    const Emote = (spell) => {
+        let caster = ModelArray[spell.casterID];
+        let targetZero = ModelArray[spell.targetIDs[0]];
+        let emotes = [];
+        if (spell.emote) {emotes.push(spell.emote)};
+        if (spell.duration && spell.name !== "Breathe") {
+            emotes.push("The Spell lasts " + spell.duration + " rounds. ");
+        }
+        if (spell.concentration === true) {
+            emotes.push("The Spell requires Concentration");
+        }
+        let final = "";
+        for (let i=0;i<emotes.length;i++) {
+            if (i>0) {final += "<br>"};
+            let emote = emotes[i];
+            emote = emote.replace(/%%Caster%%/g,caster.name);
+            if (targetZero) {
+                emote = emote.replace(/%%Target%%/g,targetZero.name);
+            }
+            final += emote;
+        }
+        if (spell.name === "Dragon's Breath")  {
+            final = final.replace("magical",spell.damageType);
+        }    
+        return final;        
+    }
+
+    const DirectAttackSpell = (spell) => {
+        let caster = ModelArray[spell.casterID];
+        let targetIDs = spell.targetIDs;
+        let level = spell.castlevel;
+        let attMarkers = caster.Markers();
+
+        outputCard.body.push(Emote(spell));
+
+        if (spell.cLevel && spell.cLevel[caster.casterLevel]) {
+            spell.base = spell.cLevel[caster.casterLevel];
+        }
+        if (level > spell.level) {
+            spell.base = spell.sLevel[level];
+        }
+
+        spell.damage = spell.base + "," + spell.damageType;
+        spell.type = "Spell";
+
+
+        AddSpell(spell); //adds only if has duration
+
+        for (let i=0;i<targetIDs.length;i++) {
+            let defender = ModelArray[targetIDs[i]];
+            if (!defender) {continue};
+            let defMarkers = defender.Markers();
+            let advResult = Advantage(caster,defender,spell);
+
+            //attack bonuses
+            let attackBonus = caster.spellAttack;
+            //other mods to attack bonus
+            let additionalText = "";
+            if (attMarkers.includes("Bless")) {
+                bless = randomInteger(4);
+                additionalText += " +" + bless + " [Bless]";
+                attackBonus += bless;
+            }
+
+            let attackResult = D20(advResult.advantage);
+            let attackTotal = attackResult.roll + attackBonus;
+
+            let tip;
+            let crit = false;
+            if ((findCommon(Incapacitated,defMarkers).length > 0) && caster.Distance(defender) === 1) {
+                crit = true;
+            }
+
+            let abText = (attackBonus < 0) ? attackBonus:(attackBonus > 0) ? "+" + attackBonus:"";
+
+            tip = attackResult.rollText + abText + additionalText;
+            tip += "<br>[1d20" + abText + additionalText + "]";
+            if (advResult.advText.length > 0) {
+                tip += "<br>Advantage from: " + advResult.advText.toString();
+            }
+            if (advResult.disText.length > 0) {
+                tip += "<br>Disadvantage from: " + advResult.disText.toString();
+            }
+
+            tip = '[' + attackTotal + '](#" class="showtip" title="' + tip + ')';
+
+            let ac = defender.ac;
+            if (defMarkers.includes("Shield of Faith")) {
+                ac += 2;
+            }
+            let cover = CheckCover(defender);
+            if (cover === "Light") {
+                ac += 2;
+            }
+            if (defMarkers.includes("Barkskin")) {
+                ac = Math.max(16,ac);
+            }
+
+            if (spell.autoHit === "No") {
+                if (attackResult.roll === 20) {crit = true};
+                outputCard.body.push("Attack: " + tip + " vs. AC " + ac);
+                if (crit === true) {
+                    outputCard.body.push("[#ff0000]Crit![/#]");
+                }
+            }
+
+            let dc = spell.dc;
+
+            if ((attackTotal >= ac && attackResult.roll !== 1) || crit === true || spell.autoHit === "Yes") {
+                outputCard.body.push("[B]" + defender.name +" is Hit![/b]")
+                let rollResults = RollDamage(spell.damage,crit); //total, diceText
+                let damageResults = ApplyDamage(rollResults,dc,defender,spell);
+                let tip = rollResults.diceText;      
+                tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
+                let saveTip = "";
+                if (damageResults.save) {
+                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
+                }
+                outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+                if (spell.note) {
+                    outputCard.body.push("[hr]");
+                    outputCard.body.push(spell.note);
+                }
+                if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
+                    defender.token.set("status_" + Markers[spell.name],true);
+                }
+            } else {
+                outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
+            }
+            FX(spell.fx,caster,defender);
+        }
+        PlaySound(spell.sound);
+    }
+
+    const Spell = (msg) => {
+        let Tag = msg.content.split(";");
+        let spellName = Tag[1];
+        let level = parseInt(Tag[2]);
+        let casterID = Tag[3];
+        if (!casterID) {casterID = msg.selected[0]._id};
+        let targetIDs = [];
+        let errorMsg = [];
+
+        let caster = ModelArray[casterID];
+
+        let ritual = false;
+        if (spellName.includes("Ritual")) {
+            spellName = spellName.replace("Ritual","");
+            ritual = true;
+        }
+
+        if (!SpellInfo[spellName]) {
+            outputCard.body.push("Error");
+            PrintCard();
+            return;
+        }
+
+        let spell = DeepCopy(SpellInfo[spellName]);
+
+        //check spell slots, distance
+        if (!spell.exempt && ritual === false && level > 0) {
+            let slotsAvailable = SpellSlots(caster,level);
+            if (slotsAvailable === 0) {
+                errorMsg.push("No Slots of that Level Available");
+            }
+        }
+
+        //range check - note range check for Area checked in AreaSpell once template placed
+        let alt = 0;
+        for (let i=4;i< Tag.length;i++) {
+            let target = ModelArray[Tag[i]];
+            if (!target) {
+                let alternate = spell.alternates[alt];
+                spell[alternate] = Tag[i];
+                alt++;
+            } else {
+                let squares = caster.Distance(target);
+                let distance = squares * pageInfo.scale;
+                if (distance > spell.range) {
+                    errorMsg.push(target.name + " is out of Range");
+                } else {
+                    targetIDs.push(Tag[i]);
+                    //targets.push(target);
+                }
+            }
+        }
+
+        SetupCard(caster.name,spellName,caster.displayScheme);
+        if (ritual === true) {
+            outputCard.body.push("[B]Ritual[/b]");
+            spell.exempt = true;
+        }
+
+        if (errorMsg.length > 0) {
+            _.each(errorMsg,error => {
+                outputCard.body.push(error);
+            });
+            PrintCard();
+            return;
+        } 
+
+        if (targetIDs.length === 0) {
+            targetIDs.push(caster.id);
+        }
+
+        let casterLevel = caster.casterLevel;
+
+
+        spell.casterID = casterID;
+        spell.targetIDs = targetIDs;
+        spell.castLevel = level;
+        spell.casterLevel = casterLevel;
+        spell.isRitual = ritual;
+        spell.dc = caster.spellDC;
+
+        if (spell.cLevel && spell.cLevel[casterLevel]) {
+            spell.base = spell.cLevel[casterLevel] || 0;
+        }
+        if (level > spell.level && spell.sLevel) {
+            spell.base = spell.sLevel[level] || 0;
+        }
+        spell.damage = spell.base + "," + spell.damageType;
+
+
+        if (spell.spellType === "DirectAttack") {
+            //spells that directly attack the target
+            DirectAttackSpell(spell);
+        }
+        if (spell.spellType === "Misc") {
+            MiscSpell(spell);
+        }
+        if (spell.spellType === "Area") {
+            //creates a target template (depending on spell)
+            //target template will have a macro to actually cast spell
+            ClearSpellTarget(spell);
+            let target = SpellTarget(spell);
+            outputCard.body.push("Place Target then use Macro to Cast");
+        }
+        if (spell.spellType === "Ongoing") {
+            ClearSpellTarget(spell);
+            let target = SpellTarget(spell);
+            let emote = Emote(spell);
+            if (emote) {
+                outputCard.body.push(emote);
+            }
+            spell.ongoingID = target.id;
+            spell.targetIDs = [target.id];
+            outputCard.body.push("Move Target to Location");
+            AddSpell(spell);
+            target.token.set("gmnotes",spell.spellID);
+            if (spell.moveEffect) {
+                //moves it at start of next turn, ie after player moves
+                state.DnD.moveID = target.id;
+            }
+        }
+        PrintCard();
+    }
+
+    const EndSpell = (spellID) => {
+        if (!spellID) {return};
+        let spell = state.DnD.spellList.find((e)=> e.spellID === spellID);
+log("In End Spell")
+log(spell)
+        if(!spell) {return}
+        let caster = ModelArray[spell.casterID];
+
+        let index;
+        let sm = Markers[spell.name] || "";
+        _.each(spell.targetIDs,targetID => {
+            let target = ModelArray[targetID];
+            if (target) {
+                target.token.set("status_" + sm,false); 
+            }
+        })
+
+        if (spell.ongoingID) {
+            let spellModel = ModelArray[spell.ongoingID];
+            if (spellModel) {
+                spellModel.Destroy();
+            }
+        }
+
+        if (caster) {
+            if (spell.concentration === true) {
+                state.DnD.conSpell[caster.id] = "";
+                outputCard.body.push("[" + spell.name + " Ends]");
+            } else {
+                index = state.DnD.regSpells[caster.id].indexOf(spell.spellID);
+                if (index > -1) {
+                    state.DnD.regSpells[caster.id].splice(index,1);
+                }
+            }
+        }
+
+        if (spell.abilityID) {
+            //remove ability eg if Flame Blade
+            let charID = caster.charID;
+            if (spell.displacedCharID) {
+                charID = spell.displacedCharID;
+            }
+            let ability = findObjs({_type: "ability", _characterid: charID, _id: spell.abilityID})[0];
+            if (ability) {
+                ability.remove();
+            }
+        }
+
+        if (spell.displacedSpellID) {
+            EndSpell(spell.displacedSpellID);
+        }
+
+        if (spell.name === "Heroism") {
+            let model = ModelArray[spell.targetIDs[0]];
+            TempHP(model,0,false); //resets temp hp to 0
+        } 
+
+
+        index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
+        if (index > -1) {
+            state.DnD.spellList.splice(index,1);
+        }
+        return spell.name;
+    }
+
+    const AddSpell = (spell,precastFlag = false) => {
+        if (!spell.duration) {return};
+        spell.endTurn = state.DnD.combatTurn + spell.duration;
+        if (precastFlag === true) {spell.endTurn--};
+        
+        if (!spell.spellID) {
+            spell.spellID = stringGen();
+        }
+
+        state.DnD.spellList.push(spell);
+log("In Add Spell")
+log(spell)
+        if (spell.concentration === true) {
+            if (state.DnD.conSpell[spell.casterID]) {
+                EndSpell(state.DnD.conSpell[spell.casterID]);
+            } 
+            state.DnD.conSpell[spell.casterID] = spell.spellID;
+            outputCard.body.push(ModelArray[spell.casterID].name + " is now Concentrating on this Spell")
+        } else {
+            if (!state.DnD.regSpells[spell.casterID]) {
+                state.DnD.regSpells[spell.casterID] = [];
+            }
+            state.DnD.regSpells[spell.casterID].push(spell.spellID);
+        }
+    }
+
+    const CheckDuration = (spellID) => {
+        let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+log("In Check Duration")
+log(spell)
+        if (parseInt(state.DnD.combatTurn) >= parseInt(spell.endTurn)) {
+            EndSpell(spellID);
+        }
+    }
+
+    const EffectCheck = (model,type) => {
+        //interaction of spell and model
+        if (!model) {return}
+        let spellLists = {
+            "Start": ["Moonbeam","Web"],
+            "ModelMove": ["Moonbeam","Web","Spike Growth"],
+            "End": ["Flaming Sphere"],
+            "SpellMove": ["Flaming Sphere"],
+        }
+        let spells = spellLists[type];
+
+        if (type.includes("Spell") && spells.includes(model.name)) {
+            if (model.name === "Flaming Sphere") {FlamingSphere(model)};
+
+
+
+        } else {
+            _.each(ModelArray,m => {
+                if (spells.includes(m.name) && m.id !== model.id) {
+                    if (Venn(m.Squares(),model.Squares()) === true) {
+                        let spellID = m.token.get("gmnotes").toString();
+                        let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
+                        if(!spell) {return};
+                        //area = damage or effect
+                        if (type === "End" || type === "ModelMove") {SetupCard(model.name,m.name,model.displayScheme)}
+                        if (spell.effect.includes("Damage")) {
+                            let rollResults = SD1(spell);
+                            SpellDamage(rollResults,spell,model);
+                        }
+                        if (spell.effect.includes("Effect")) {
+                            SpellEffect(spell,model);
+                        }
+                        if (type === "End" || type === "ModelMove") {PrintCard()};
+                    }
+                }
+            })
+        }
+
+
+
+
+
+
+    }
+
+    const SD1 = (spell) => {
+        let rollResults = RollDamage(spell.damage,false); //total, diceText
+        tip = '[' + rollResults.total + '](#" class="showtip" title="' + rollResults.diceText + ')'
+        outputCard.body.push("Total: " + tip + " " + Capit(spell.damageType) + " Damage");   
+        if (spell.savingThrow && spell.savingThrow != "No") {
+        outputCard.body.push(Capit(spell.savingThrow) + " Save = " + spell.saveEffect);
+        } else {
+            outputCard.body.push("No Saving Throw");
+        }
+        return rollResults;
+    }
+
+
+
+    const EndModelsRound = (lastTurnInfo) => {
+        let model = ModelArray[lastTurnInfo.modelID];
+        let spellIDs = lastTurnInfo.spellIDs;
+        if (!model || !spellIDs) {return};
+        SetupCard(model.name,"",model.displayScheme);
+        for (let i=0;i<spellIDs.length;i++) {
+            let spellID = spellIDs[i];
+            SpellCheck(spellID,model);
+        }
+        PrintCard();
+    }
+
+
+    const SpellDamage = (rollResults,spell,model) => {
+        let damageResults = (ApplyDamage(rollResults,spell.dc,model,spell));
+        let saveTip = "";
+        if (damageResults.save) {
+            saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
+        }
+        outputCard.body.push(model.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
+        if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
+            MoveTarget(ModelArray[spell.casterID],model,10);
+        }
+    }
+
+    const SpellEffect = (spell,model) => {
+        let saved = false;
+        let noun = "Fails";
+        let tip = "";
+        let phrase = spell.failText || "";
+        if (spell.conditionImmune && model.conditionImmunities.includes(spell.conditionImmune)) {
+            saved = true;
+            outputCard.body.push(model.name + " is Immune");
+            return;
+        }
+        if (saved === false && spell.savingThrow) {
+            let saveResult = Save(model,spell.dc,spell.savingThrow,0);
+            saved = saveResult.save;
+            if (saved === true) {
+                noun = "Saves"
+                phrase = spell.saveText || "";
+            };
+            tip = ' [' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+        }
+        if (saved === false) {
+            model.token.set("status_" + Markers[spell.name],true);
+        }
+        outputCard.body.push(model.name + tip + phrase);
+        return saved;
+    }
+
+    const FlamingSphere = (model) => {
+        //check if moved the sphere centre onto someone
+        let spellID = model.token.get("gmnotes").toString();
+        let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
+        let caster = ModelArray[spell.casterID]
+        if(!spell) {
+            log("No Spell")
+            return;
+        }
+        let pt = model.Point();
+        let square = [pt.toSquare()];
+        _.each(ModelArray,m => {
+            if (m.id !== model.id && m.id !== caster.id) {
+                if (Venn(m.Squares(),square) === true) {
+                    SetupCard("Flaming Sphere","Movement",caster.displayScheme);
+                    let rollResults = SD1(spell);
+                    SpellDamage(rollResults,spell,m);
+                    outputCard.body.push("[hr]");
+                    outputCard.body.push("The Flaming Sphere stops Moving");
+                    PrintCard();
+                }
+            };
+        })
+        toBack(model.token);
+    }
+
+
+
+    const ShowSpells = (msg) => {
+        if (!msg.selected) {return};
+        let model = ModelArray[msg.selected[0]._id];
+        if (!model) {return}
+
+log(model.spells)
+        SetupCard(model.name,"Available Spells",model.displayScheme);
+        //cantrips
+        if (model.spells.cantrip) {
+            buttons = [];
+            outputCard.body.push("[B][U]Cantrips[/b][/u]");
+            _.each(model.spells.cantrip,cantrip => {
+                let name = cantrip.name;
+                let macro = "!DisplaySpellInfo;" + model.id + ";" + cantrip.name + ";" + cantrip.desckey;
+                if (SpellInfo[name]) {
+                    macro = SpellInfo[name].macro;
+                    macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target1%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
+                    macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
+
+                    
+
+
+                }
+                if (SpellInfo[name] && SpellInfo[name].bonusAction) {
+                    name = name + " (BA)";
+                }
+                buttons.push({
+                    phrase: name,
+                    action: macro,
+                })
+            })
+            outputCard.body.push(InlineButtons(buttons));
+            outputCard.body.push("<br>");
+            outputCard.body.push("[hr]");
+        }
+
+        let availableSS = [0,0,0,0,0,0,0,0,0,0];
+        let cumulativeSS = [0,0,0,0,0,0,0,0,0,0];
+        for (let i=1;i<10;i++) {
+            let ss = parseInt(SpellSlots(model,i));
+            availableSS[i] = ss
+            for (let j=1;j<=i;j++) {
+                cumulativeSS[j] += ss;
+            }
+        }
+
+log("Spell Slots: " + availableSS)
+log("Cumulative Slots: " + cumulativeSS)
+
+        for (let i=1;i<10;i++) {
+            if (cumulativeSS[i] === 0) {continue};
+            outputCard.body.push("[B][U]Level " + i + "[/b][/u]");
+            outputCard.body.push("Spell Slots: " + SpellSlots(model,i));
+            //show prepared spells for that level with a button
+            let spells = model.spells[i];
+            let buttons = [];
+//
+            _.each(spells,spell => {
+                let name = spell.name;
+                if (Attribute(model.charID,spell.prepared) == 1) {
+                    let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
+                    if (SpellInfo[name]) {
+                        let levelMacro = "?&#123;Level&#124;" + i;
+                        let availLevels = [i];
+                        for (let j=(i+1);j<10;j++) {
+                            if (availableSS[j] > 0) {
+                                availLevels.push(j);
+                                levelMacro += "	&#124;" + j;
+                            }
+                        }
+                        levelMacro += "&#125;";
+                        if (availLevels.length === 1) {
+                            levelMacro = parseInt(availLevels[0]);
+                        }                                 
+                        macro = SpellInfo[name].macro || macro;
+                        macro = macro.replace("%Level%",levelMacro);
+                        macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target1%","&#64;&#123;target&#124;Target1&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target2%","&#64;&#123;target&#124;Target2&#124;token&#95;id&#125;");
+                        macro = macro.replace("%Target3%","&#64;&#123;target&#124;Target3&#124;token&#95;id&#125;");
+                    }
+                    if (SpellInfo[name] && SpellInfo[name].bonusAction) {
+                        name = name + " (BA)";
+                    }
+                    buttons.push({
+                        phrase: name,
+                        action: macro,
+                    })
+                }
+            })
+            outputCard.body.push(InlineButtons(buttons));
+            outputCard.body.push("<br>");
+            outputCard.body.push("[hr]");
+        }
+        outputCard.body.push("[hr]");
+        let ritualCasters = ['artificer', 'bard', 'cleric', 'druid',
+            'wizard']
+
+        if (ritualCasters.includes(model.class)) {
+            outputCard.body.push("[B][U]Rituals[/b][/u]");
+            outputCard.body.push("Out of Combat Only");
+            for (let i=1;i<10;i++) {
+                let spells = model.spells[i];
+                let buttons = [];
+                if (!spells) {continue};
+                _.each(spells,spell => {
+                    if (spell.ritual == true) {
+                        if ((model.class === "cleric" || model.class === "druid") && (Attribute(model.charID,spell.prepared) != 1)) {
+                            return;
+                        } 
+                        let macro = "!DisplaySpellInfo;" + model.id + ";" + spell.name + ";" + spell.desckey;
+                        if (SpellInfo[spell.name]) {                  
+                            macro = SpellInfo[spell.name].macro || macro;
+                            macro = macro.replace("%Level%",i);
+                            macro = macro.replace("%Selected%","&#64;&#123;selected&#124;token&#95;id&#125;");
+                            macro = macro.replace("%Target%","&#64;&#123;target&#124;token&#95;id&#125;");
+                            macro = macro.replace(spell.name,"Ritual" + spell.name);
+                        }
+                        buttons.push({
+                            phrase: spell.name,
+                            action: macro,
+                        })
+                    }
+                })
+                outputCard.body.push(InlineButtons(buttons));
+                outputCard.body.push("<br>");
+                outputCard.body.push("[hr]");
+            }
+        }
+
+
+        PrintCard(); //? maybe make this a whisper to player +/- GM ?
+    }
+
+    const DisplaySpellInfo = (msg) => {
+        let Tag = msg.content.split(";");
+        let id = Tag[1];
+        let spellName = Tag[2];
+        let desckey = Tag[3];
+        let model = ModelArray[id];
+        let description = Attribute(model.charID,desckey);
+        SetupCard(model.name,spellName,model.displayScheme);
+        description = description.split('\n\n')
+        _.each(description,desc => {
+            outputCard.body.push(desc);
+        })
+        PrintCard();
     }
 
 
 
 
 
+    const MiscSpell = (spell) => {
+        let emote = Emote(spell);
+        if (emote) {         
+            outputCard.body.push(emote);
+        }
+        let someoneFailed = false;
 
+        if (spell.name === "Heroism") {
+            let target = ModelArray[spell.targetIDs[0]]
+            let tempHP = parseInt(spell.dc - 10);
+            TempHP(target,tempHP);
+        }
+
+        _.each(spell.targetIDs,targetID => {
+            let saved = false
+            let target = ModelArray[targetID];
+            if (!target) {return};
+            let text = spell.failText || "";
+            if (spell.savingThrow && !spell.friendlySpell) {
+                let saveResult = Save(target,spell.dc,spell.savingThrow,0);
+                saved = saveResult.save;
+                noun = "Fails";
+                if (saved === true) {
+                    noun = "Saves"
+                    text = spell.saveText;
+                };
+                let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+                outputCard.body.push(target.name + " " + tip + text);
+            }
+            if (saved === false) {
+                someoneFailed = true;
+                target.token.set("status_" + Markers[spell.name],true);            
+            }
+            if (spell.name === "Magic Weapon") {
+                let plus = (spell.castLevel < 4) ? true:Math.min(Math.floor(spell.castLevel/2),3);
+                target.token.set("status_" + Markers["Magic Weapon"],plus);
+            }
+
+
+        })
+
+        if (spell.heal) {
+            let rolls = [];
+            let bonus = 0;
+            let bonusText = "";
+            if (spell.heal.includes("Bonus")) {
+                bonus = Math.max(0,(spell.dc - 10));
+            }
+            if (bonus !== 0) {
+                bonusText = (bonus > 0) ? "+" + bonus:bonus;
+            }
+            let total = bonus;
+            let split = spell.heal.split("d");
+            let num = parseInt(split[0]);
+            if (spell.heal.includes("level")) {
+                num += (spell.castLevel - spell.level);
+            }
+            let diceType = parseInt(split[1].charAt(0));
+            for (i=0;i<num;i++) {
+                let roll = randomInteger(diceType);
+                rolls.push(roll);
+                total += roll;
+            }
+            let tip ="Roll: [" + rolls.toString() + "] " + bonusText + "<br>[" + num + "d" + diceType + bonusText + "]"; 
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+            outputCard.body.push("Spell Heals for " + tip + " HP");
+        }
+
+        if (spell.name === "Flame Blade") {
+            //add ability, store ID in spell
+            let action = "!Attack;@{selected|token_id};@{target|token_id};Flame Blade";
+            let caster = ModelArray[spell.casterID];
+            let abilityID = AddAbility("Flame Blade",action,caster.charID);
+            spell.abilityID = abilityID;
+        }
+
+        if (spell.name === "Dragon's Breath") {
+            //create a 2nd spell to place on target of Dragon's Breath
+            newSpell = DeepCopy(SpellInfo["Breathe"]);
+            newSpell.casterID = spell.casterID;
+            newSpell.targetIDs = spell.targetIDs;
+            newSpell.castLevel = spell.castLevel;
+            newSpell.casterLevel = spell.casterLevel;
+            newSpell.dc = spell.dc;
+            newSpell.damageType = spell.damageType;
+            if (spell.castLevel > 2) {
+                newSpell.base = newSpell.sLevel[spell.castLevel] || 0;
+            }
+            newSpell.damage = newSpell.base + "," + spell.damageType;
+            newSpell.spellID = stringGen();
+
+            let target = ModelArray[spell.targetIDs[0]];
+            let action = "!SpecialAbility;Dragon's Breath;" + target.id + ";" + newSpell.spellID;
+            spell.abilityID = AddAbility("Breathe " + Capit(spell.damageType),action,target.charID);
+            spell.displacedCharID = target.charID;
+            spell.displacedTokenID = target.id;
+            spell.displacedSpellID = newSpell.spellID;
+            newSpell.displacedTokenID = target.id;
+
+            newSpell.fx = "breath-";
+            switch (newSpell.damageType) {
+                case 'Acid':
+                    newSpell.fx += "acid";
+                    break;
+                case 'Cold':
+                    newSpell.fx += "frost";
+                    break;
+                case 'Fire':
+                    newSpell.fx += "fire";
+                    break;
+                case 'Lightning':
+                    newSpell.fx += "magic";
+                    break;
+                case 'Poison':
+                    newSpell.fx += "slime";
+                    break;
+            }
+            AddSpell(newSpell);
+        }
+
+        if (someoneFailed === true) {
+            AddSpell(spell);
+        }
+
+        PlaySound(spell.sound);
+        //Use Slot if not ritual
+
+    }
+
+
+
+    const SpellTarget = (spell) => {
+        img = getCleanImgSrc(spell.tempImg);
+        let action = "!AreaSpell";
         
+        let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
 
-
-    const SpellTarget = (caster,spellName,level,charID,img,dim) => {
         let abilArray = findObjs({_type: "ability", _characterid: charID});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
             abilArray[a].remove();
         } 
-        let action = "!CastSpell;" + spellName + ";" + caster.id + ";" + level;
-        AddAbility("Cast " + spellName,action,charID);
 
-        dim = (dim * 70) / pageInfo.scaleNum;
+        if (spell.spellType !== "Ongoing") {
+            AddAbility("Cast " + spell.name,action,charID);
+            if (isNaN(spell.tempSize)) {
+                if (spell.tempSize.includes("Level")) {
+                    if (spell.tempSize.includes("*")) {
+                        spell.tempSize = parseInt(spell.tempSize.replace(/[^\d]/g,""));
+                        spell.tempSize = spell.level * spell.tempSize;
+                    }
+                }
+            }
+        } 
+
+        spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
+
+        let tok = ModelArray[spell.casterID].token; //place new token on casters token
+        if (spell.displacedTokenID) {
+            tok = ModelArray[spell.displacedTokenID].token;
+        }
 
         let newToken = createObj("graphic", {
-            left: caster.token.get("left"),
-            top: caster.token.get("top"),
+            left: tok.get("left"),
+            top: tok.get("top"),
             disableTokenMenu: true,
-            width: dim, 
-            height: dim,  
-            name: spellName,
-            pageid: caster.token.get("_pageid"),
+            width: spell.tempSize, 
+            height: spell.tempSize,  
+            name: spell.name || "",
+            pageid: tok.get("_pageid"),
             imgsrc: img,
             layer: "objects",
             represents: charID,
+            
         })
-        toFront(newToken);
+
+
         if (newToken) {
+            toFront(newToken);
             let target = new Model(newToken);
+            target.isSpell = spell.casterID;
+
+            state.DnD.areaSpell = spell;
             return target;
         } else {
             sendChat("","Error in CreateObj")
         }
     }
 
+    const ClearSpellTarget = (spell) => {
+        if (!spell) {return};
+        let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
+        
+        let tokens = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
+            layer: "objects",
+            represents: charID,
+        });
+        _.each(tokens,token => {
+            token.remove();
+        })
+    }
 
-    const Info = (msg) => {
+    const AreaSpell = (msg) => {
+        let targetID = msg.selected[0]._id;
+        let spellTarget = ModelArray[targetID];
+        let spell = state.DnD.areaSpell;
+
+        let caster = ModelArray[spell.casterID];
+        let level = spell.castLevel;
+
+        if (spell.name === "Breathe") {
+            caster = ModelArray[spell.displacedTokenID];
+        }
+
+        SetupCard(caster.name,spell.name,caster.displayScheme);
+
+        let squares = caster.Distance(spellTarget);
+        let spellDistance = squares * pageInfo.scaleNum;
+
+        if (spellDistance > spell.range) {
+            outputCard.body.push("Out of Range of Spell");
+            PrintCard();
+            return;
+        }
+
+        let targets = [];
+
+        if (spell.area.includes("Square")) {
+            targets = AOETargets(spellTarget);
+        } else if (spell.area.includes("Cone")) {
+            targets = Cone(caster,spellTarget,spellDistance);
+        }
+
+        if (spell.name === "Sleep") {
+            targets = Sleep(targets,level); //refine based on hp
+        }
+        let targetIDs = [];
+        if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
+            _.each(targets,target => {
+                let saved = SpellEffect(spell,target);
+                if (saved === false) {
+                    targetIDs.push(target.id);
+                }
+            })            
+        }
+
+        if (spell.areaEffect && spell.areaEffect.includes("Damage")) {
+            let rollResults = SD1(spell);
+            outputCard.body.push("[hr]")
+            outputCard.body.push("[hr]")
+            _.each(targets,target => {
+                SpellDamage(rollResults,spell,target);
+                targetIDs.push(target.id);
+            })
+        }
+        FX(spell.fx,caster,spellTarget)
+        PlaySound(spell.sound);
+
+        spell.targetIDs = targetIDs;
+
+        spell.ongoingID = targetID;
+
+        AddSpell(spell);
+
+        if (spell.moveEffect) {
+            spellTarget.token.set({
+                name: spell.name || "",
+                layer: spell.moveEffect,
+            })
+            spellTarget.name = spell.name;
+            spellTarget.layer = spell.moveEffect;
+        } else {
+            spellTarget.Destroy();
+        }
+
+        let emote = Emote(spell);
+        if (emote) {
+            outputCard.body.push("[hr]");
+            outputCard.body.push(emote);
+        }
+        PrintCard();
+//state.DnD.areaSpell = "";
+
+    }
+
+
+
+    const Sleep = (targets,level) => {
+        let finalTargets = [];
+        targets.sort((a,b) => parseInt(a.token.get("bar1_value")) - parseInt(b.token.get("bar1_value"))); // b - a for reverse sort
+        let dice = 2 * level + 3;
+        let hp = 0;
+        let rolls = [];
+        for (let i=0;i<dice;i++) {
+            let roll = randomInteger(8);
+            rolls.push(roll);
+            hp += roll;
+        }
+        let tip = "[" + rolls.toString() + "]<br>[" + dice + "d8]";
+        tip = '[' + hp + '](#" class="showtip" title="' + tip + ')';
+        outputCard.body.push(tip + " HP Affected");
+        for (let i = 0;i<targets.length; i++) {
+            let target = targets[i];
+            if (target.type.includes("undead") || target.conditionImmunities.includes("charmed") || findCommon(Incapacitated,target.Markers()).length > 0) {
+                continue;
+            };
+            let phb = parseInt(target.token.get("bar1_value"));
+            if (phb > hp) {
+                break
+            };
+            hp -= phb;
+            finalTargets.push(target);
+        }
+        return finalTargets;
+    }
+
+    const Paladin = (msg) => {
+        let id = msg.selected[0]._id;
+        if (!id) {return};
+        let model = ModelArray[id];
+        let ability = msg.content.split(";")[1];
+        SetupCard(model.name,ability,model.displayScheme);
+        if (ability === "Lay on Hands") {
+            outputCard.body.push("As an action, drawing upon your Holy Power, you can heal wounds");
+//resource
+            outputCard.body.push("Each point can heal 1 HP, 5 points can heal a disase or cure a poison");
+        }
+        if (ability === "Divine Sense") {
+            outputCard.body.push("Until the end of your next turn, you know the location of any celestial, fiend, or undead within 60 feet of you that is not behind total cover. You know the type (celestial, fiend, or undead) of any being whose presence you sense, but not its identity. Within the same radius, you also detect the presence of any place or object that has been consecrated or desecrated, as with the hallow spell.");
+//resource
+        }
+        if (ability === "Sacred Weapon") {
+//resource
+            outputCard.body.push("As an action, you imbue your weapon with Positive Energy");
+            outputCard.body.push("For 1 minute, it gains " + model.statBonus.charisma + " to Hit and is a Magical Weapon");
+            outputCard.body.push("It also emits light (20 feet bright, 20 feet dim)");
+            let marker = Markers["Sacred Weapon"];
+            model.token.set("status_" + marker,true);
+        }
+        if (ability === "Turn the Unholy") {
+//resource
+            outputCard.body.push("As an action, you Channel Divinity and Turn Undead and Fiends within 30 feet.");
+            outputCard.body.push("[hr]");
+            Turn(model,["undead","fiend"],30);
+        }
+        PrintCard();
+    }
+
+
+    const Turn = (caster,types,range) => {
+        _.each(ModelArray,model => {
+            if (model.id !== caster.id) {
+                if (types.some(e => model.type.includes(e))) {
+                    let distance = caster.Distance(model) * pageInfo.scaleNum;
+                    if (distance <= range) {
+                        let saveResult = Save(model,caster.spellDC,"wisdom");
+                        let tip = '(#" class="showtip" title="' + saveResult.tip + ')';
+                        if (saveResult.save === true) {
+                            outputCard.body.push(model.name + " " +  '[saves]' + tip);
+                        } else {
+                            outputCard.body.push(model.name + " " + '[fails]'
+                                + tip + " and Flees!");
+                            model.token.set("status_" + Markers["Frightened"],true);
+                        }
+                    }
+                }
+            };
+        })
+    }
+
+
+    const UseItem = (msg) => {
+//change to
+//check resources and create macros
         if (!msg.selected) {return};
         let id = msg.selected[0]._id;
         let model = ModelArray[id];
-        if (!model) {
-            sendChat("","Not in Array")
-        } else {
-            sendChat("",model.name);
+        let Tag = msg.content.split(";");
+        let itemName = Tag[1];
+
+        SetupCard(model.name,itemName,model.displayScheme);
+
+        if (itemName === "Potion of Healing") {
+            let total = 0;
+            let rolls = [];
+            for (let i=0;i<2;i++) {
+                roll = randomInteger(4);
+                rolls.push(roll);
+                total += roll;
+            }
+            total += 2;
+            let tip = "Rolls: " + rolls.toString() + " + 2";
+            tip = '[' + total + '](#" class="showtip" title="' + tip + ')';
+
+            outputCard.body.push("[B]" + tip + "[/b]" + " HP are restored")
         }
 
 
+
+
+
+
+
+            PrintCard();
     }
+
 
     const Compress = (msg) => {
         if (!msg.selected) {return};
         let id = msg.selected[0]._id;
+        Compress2(id);
+    }
+
+    const Compress2 = (id) => {
         let model = ModelArray[id];
         let tokenSize = model.token.get("width");
         dis = false;
@@ -2715,225 +3256,506 @@ log(model.name)
         model.token.set({
             width: tokenSize,
             height: tokenSize,
+            left: model.token.get("left") + 35,
+            top: model.token.get("top") + 35,
         });
         model.token.set("status_Minus::2006420",dis);
     }
 
-    const WildShape = (msg) => {
+    const Rename = (msg) => {
+        //add #s to a group of tokens with same name
+        for (let i=0;i<msg.selected.length;i++) {
+            let id = msg.selected[i]._id;
+            let token = findObjs({_type:"graphic", id: id})[0];
+            let currentName = token.get("name");
+            if (nameArray[currentName]) {
+                nameArray[currentName] += 1;
+                let newName = currentName + " " + nameArray[currentName];
+                token.set("name", newName);
+                ModelArray[id].name = newName;
+            } else {
+                nameArray[currentName] = 1;
+            }
+        }
+    }
+
+
+    const CheckCover = (defender) => {
+        let cover = "None";
+        //Web only so far
+        let defSquares = defender.Squares();
+        //check map layer for possibles
+        _.each(ModelArray,model => {
+            if (model.layer === "map") {
+                if (Venn(defSquares,model.Squares()) === true) {
+                    if (model.name === "Web") {
+                        cover = "Light";
+                    }
+                }
+            }
+        })
+        return cover;
+    }    
+
+    const MoveTarget = (caster,target,distance) => {
+        distance = distance/pageInfo.scaleNum * 70;
+        let pt0 = new Point(caster.token.get("left"),caster.token.get("top"));
+        let pt1 = new Point(target.token.get("left"),target.token.get("top"));
+        let dX = (pt1.x - pt0.x);
+        let dY = (pt1.y - pt0.y);
+        let currentDist = Math.sqrt((dX * dX) + (dY * dY));
+        if (currentDist === 0) {currentDist = 1};
+        let unitX = dX / currentDist;
+        let unitY = dY / currentDist;
+
+        let x2 = pt1.x + unitX * distance;
+        let y2 = pt1.y + unitY * distance;
+
+        let pt2 = new Point(x2,y2);
+        pt2 = pt2.toSquare().toPoint();
+        target.token.set({
+            left: pt2.x,
+            top: pt2.y
+        })
+    }
+
+
+    summonToken = function(cID,left,top,size,pr,markers) {
+        if (!size) {size = 70};
+        if (!pr) {pr = -1};
+        let character = getObj("character", cID);
+        character.get('defaulttoken',function(defaulttoken){
+            const dt = JSON.parse(defaulttoken);
+            let img = dt.imgsrc;
+            img = tokenImage(img);
+            if(dt && img){
+                dt.imgsrc=img;
+                dt.left=left;
+                dt.top=top;
+                dt.pageid = pageInfo.page.get('id');
+                dt.layer = "objects";
+                dt.width = size;
+                dt.height = size;
+                dt.statusmarkers = markers;
+                let newToken = createObj("graphic", dt);
+                let newModel = new Model(newToken);
+                if (pr > -1) {
+                    turnorder = JSON.parse(Campaign().get("turnorder"));
+                    turnorder.unshift({
+                        _pageid:    newToken.get("_pageid"),
+                        id:         newToken.get("id"),
+                        pr:         pr,
+                    });
+                    //assumes is that players turn, so places this init at start
+                    Campaign().set("turnorder", JSON.stringify(turnorder));
+                }
+            } else {
+                sendChat('','/w gm Cannot create token for <b>'+character.get('name')+'</b>');
+            }
+        });
+    }
+
+    const WildShape2 = (msg) => {
         let id = msg.selected[0]._id;
         let model = ModelArray[id];
         let Tag = msg.content.split(";");
-        let cName = Tag[1];
-        let shape = Tag[2];
+        let cName = Tag[1]; //character shifting FROM
+        let shape = Tag[2]; //Shape Shifting TO
         let shapes = {
         "Haevan": 
             {
                 "Human": {
                     cID: "-Ody8dmoHKTxM6niN9LG",
-                    img: "https://files.d20.io/images/463992132/4sKX1Ac0NcxdpxAX9018ng/thumb.png?1763068152",
-                    bar1: "-OdyYc7uqKpGg597yvCO",
-                    size: 1,
+                    size: 70,
                 },
                 "Brown Bear": {
                     cID: "-Odyv5HzmAOpBiY_xqLO",
-                    img: "https://files.d20.io/images/463990089/Iqk-2aGyGG0vePsk4grc3w/thumb.png?1763066944",
-                    bar1: "-OdyvFotPve1EeYo5MkH",
-                    size: 2,
+                    size: 140,
                     hp: 34,
                 },
                 "Dire Wolf": {
                     cID: "-OdyaMtaDE-mfvTYRU-r",
-                    img: "https://files.d20.io/images/464891291/fS-Ml9i2lwAka5on3lcqZQ/thumb.png?1763664881", 
-                    bar1: "-OdyaNgSlFfkYRS5u2_4",
-                    size: 2,     
-                    hp: 37,     
+                    size: 140,     
+                    hp: 37,
                 }
             },
-        
 
         }
 
         SetupCard(model.name,"Wild Shape",model.displayScheme);
-        if (!shapes[cName][shape]) {
-            outputCard.body.push("Shape not yet in Array");
-            PrintCard();
-            return;
-        }
+
         if (model.race.includes(shape.toLowerCase())) {
             outputCard.body.push("Already in that Form");
             PrintCard();
             return;
         }
-
+        if (model.token.get("status_Minus::2006420") === true) {
+            Compress2(id);
+        }
+        let markers = model.token.get("statusmarkers");
 
         let cID = shapes[cName][shape].cID;
-        let img = getCleanImgSrc(shapes[cName][shape].img);
         let size = shapes[cName][shape].size;
-        let bar1Link = shapes[cName][shape].bar1;
 
-        if (shape !== "Human") {
-            let resource = parseInt(Attribute(cID,"class_resource"));
-            if (resource <= 0) {
-                outputCard.body.push("Unable to Wild Shape");
-                PrintCard();
-                return;
+        let left= Math.max(model.token.get("left") - 35,35*size/70);
+        let top = Math.max(model.token.get("top") - 35,35*size/70);
+        let pr = -1;
+        if (Campaign().get("turnorder")) {
+            turnorder = JSON.parse(Campaign().get("turnorder"));
+            let item = turnorder.filter(obj => obj.id === id)[0];
+            if (item) {
+                pr = item.pr;
             }
         }
 
-        let newChar = getObj("character", cID);
-        if (!newChar)  {
-            sendChat("","No Char")
-            return;
-        }
+        summonToken(cID,left,top,size,pr,markers);
 
-        let hp,hpMax,ac;
-        if (shape === "Human") {
-            ac = Attribute(cID,"ac");
-            hp = parseInt(state.Strahd.wildshape[cName]["hp"]);
-            hpMax = parseInt(state.Strahd.wildshape[cName]["hpMax"]);
-        } else {
-            state.Strahd.wildshape[cName] = {
-                hp: model.token.get("bar1_value"),
-                hpMax: model.token.get("bar1_max"),
-            }
-            hp = shapes[cName][shape].hp;
-            hpMax = hp;
-            ac = Attribute(cID,"npc_ac");
-        }
-
-        //create token and link
-
-        let newToken = createObj("graphic", {
-            left: model.token.get("left"),
-            top: model.token.get("top"),
-            width: size * 70, 
-            height: size * 70,  
-            name: newChar.get("name"),
-            showname: true,
-            showplayers_name: true,
-            showplayers_bar1: true,
-            pageid: model.token.get("_pageid"),
-            imgsrc: img,
+        let newToken = findObjs({
+            _pageid: Campaign().get("playerpageid"),
+            _type: "graphic",
+            _subtype: "token",
             layer: "objects",
             represents: cID,
-            bar1_link: bar1Link,
-            bar2_value: ac,
-            statusmarkers: model.token.get("statusmarkers"),
-        });
+        })[0];
 
-        newToken.set({
-            bar1_value: hp,
-            bar1_max: hpMax,
+        if (shape !== "Human") {
+            PlaySound("Growl");
+            hp = shapes[cName][shape].hp;
+            AttributeSet(cID,"hp",hp);
+            newToken.set("bar1_value",hp);
+        }
+
+        let newTokenID = newToken.get("id");
+
+        //spells cast by character have tokenIDs changed, and if target also changed
+        if (state.DnD.conSpell[id]) {
+            state.DnD.conSpell[newTokenID] = state.DnD.conSpell[id];
+            state.DnD.conSpell[id] = "";
+        }
+        if (state.DnD.regSpells[id]) {
+            state.DnD.regSpells[newTokenID] = state.DnD.regSpells[id];
+            state.DnD.regSpells[id] = [];
+        }
+        _.each(state.DnD.spellList,spell => {
+            if (spell.casterID === id) {
+                spell.casterID = newTokenID;
+            }
+            let index = spell.targetIDs.indexOf(id)
+            if (index > -1) {
+                spell.targetIDs.splice(index,1,newTokenID);
+            }
         })
-        if (model.token.get("status_Minus::2006420") === true && shape === "Human") {
-            newToken.set("status_Minus::2006420",false);
-        }
+        _.each(ModelArray,m => {
+            if (m.isSpell && m.isSpell === id) {
+                m.isSpell = newTokenID;
+            }
+        })
 
-        toFront(newToken);
-        if (newToken) {
-            let newModel = new Model(newToken);
-        } else {
-            sendChat("","Error in CreateObj")
-        }
 
-        //remove old token/model
-        model.Destroy();
 
-        PlaySound("Roar");
+
         outputCard.body.push("Wild Shape to " + shape);
         PrintCard();
 
-        //use resource
+        model.Destroy();
 
     }
 
+    const StartCombat = () => {
+        //api macro feeds in here and starts combat
+        //add in all NPCs, sort turn order, then go to the combat routine
+        if (Campaign().get("turnorder") == "") {
+            turnorder = [];
+        } else {
+            turnorder = JSON.parse(Campaign().get("turnorder"));
+        }
+        Campaign().set("initiativepage",true);
 
+        _.each(ModelArray,model => {
+            let item = turnorder.filter(item => item.id === model.id)[0];
+            if (!item) {
+                let total = D20(0).roll + model.initBonus + (model.initBonus/10);
+                turnorder.push({
+                    _pageid:    model.token.get("_pageid"),
+                    id:         model.token.get("id"),
+                    pr:         total,
+                })
+            }
+        })
+        turnorder.sort((a,b) => b.pr - a.pr);
+        turnorder.unshift({
+            _pageid:    Campaign().get("playerpageid"),
+            id:         "-1",
+            custom: "Turn",
+            pr:         1,
+            formula:    "+1",
+        })
 
-    const Save = (model,dc,stat,adv) => {
-        let saved = false;
-        if (!adv) {adv = 0;}
-        let fail = false;
-        let advReasons = [];
-        let disAdvReasons = [];
-        let failReason = "";
-        let bonus = model.saveBonus[stat];
-        let saveRoll1 = randomInteger(20);
-        let saveRoll2 = randomInteger(20);
-        let sm = Markers(model.token.get("statusmarkers"));
-        let inc = ["Paralyzed","Stunned","Unconscious"];
-        if (stat === "strength" || stat === "dexterity") {
-            _.each(inc,c => {
-                if (sm.includes(c)) {
-                    fail = true;
-                    failReason = c;
+        Campaign().set("turnorder", JSON.stringify(turnorder));
+        state.DnD.combatTurn = 1;
+        state.DnD.conSpell = {};
+        state.DnD.regSpells = {};
+        state.DnD.areaSpell = "";
+        state.DnD.moveID = "";
+        state.DnD.lastMoved = "";
+
+        //precast spells - drop duration by 1 round
+        _.each(ModelArray,model => {
+            let markers = model.Markers();
+            _.each(markers,marker => {
+                let spell = SpellInfo[marker];
+                if (spell) {
+                    AddSpell(spell,spell.level,model,[model.id],true);
                 }
             })
+        })
+        Combat();
+    }
+
+    const Combat = () => {
+        if (!state.DnD.combatTurn || state.DnD.combatTurn === 0) {return};
+        turnorder = JSON.parse(Campaign().get("turnorder"));
+        if (!turnorder) {EndCombat();return};
+        //advance
+        turnorder = JSON.parse(Campaign().get("turnorder"));
+        let currentTurnItem = turnorder[0];
+        if (!currentTurnItem) {EndCombat();return};
+
+        if (state.DnD.moveID !== "") {
+            let s = ModelArray[state.DnD.moveID];
+            if (s) {
+                s.layer = "map";
+                s.token.set("layer","map");
+            }
+            state.DnD.moveID = "";
+        }
+        
+        if (state.DnD.lastMoved) {
+            EffectCheck(ModelArray[state.DnD.lastMoved],"End");
         }
 
-        if (sm.includes("Dodge") && stat === "dexterity") {
-            adv = Math.min(adv + 1,1);
-            advReasons.push("Dodge");
+        let id = currentTurnItem.id;
+        let model = ModelArray[id];
+        if (currentTurnItem.custom === "Turn") {
+            state.DnD.combatTurn = currentTurnItem.pr
+        }
+        //ping model's token
+        if (model) {
+            //skip if on GM Layer
+            if (model.token.get("layer") === "objects") {
+                toFront(model.token);
+                sendPing(model.token.get("left"),model.token.get("top"),Campaign().get("playerpageid"),null,true);
+                SetupCard(model.name,"Turn " + state.DnD.combatTurn,model.displayScheme);
+                ModelsRound(model);
+                state.DnD.lastMoved = model.id;
+            }
+        } else {
+            SetupCard("Turn " + state.DnD.combatTurn,"","Red");
+            state.DnD.lastMoved = "";
+            //Start of Turn things
+        }
+        PrintCard();
+    }
+
+    const EndCombat = () => {
+        let turnorder = [];
+        Campaign().set("turnorder", JSON.stringify(turnorder));
+        state.DnD.combatTurn = 0;
+        Campaign().set("initiativepage",false);
+        for (let i=0;i<state.DnD.spellList.length;i++) {
+            let item = state.DnD.spellList[i];
+            if (item.spellID) {
+                EndSpell(item.spellID);
+            }
         }
 
-        if (sm.includes("Restrained") && stat === "dexterity") {
-            adv = Math.max(adv - 1, -1);
-            disAdvReasons.push("Restrained");
+        sendChat("API","/w GM End Combat")
+        state.DnD.combatTurn = 0;
+        state.DnD.conSpell = {};
+        state.DnD.regSpells = {};
+        state.DnD.spellList = [];
+        state.DnD.lastMoved = "";
+    }
+
+    const ModelsRound = (model) => {
+        //check any spell areas model is in, eg Moonbeam, entangle etc
+log("Start Models Round: " + model.name)
+        EffectCheck(model,"Start");
+        //Spells cast by model and ongoing - check duration
+        let spellIDs = [];
+        if (state.DnD.conSpell[model.id]) {
+            spellIDs.push(state.DnD.conSpell[model.id]);
+        }
+        let arr2 = state.DnD.regSpells;
+        if (arr2.length > 0) {
+            spellIDs.concat(arr2);
+        }
+log("Own Spell IDs")
+log(spellIDs)
+        for (let i=0;i<spellIDs.length;i++) {
+            let spellID = spellIDs[i];
+            CheckDuration(spellID);
+        }
+        if (state.DnD.conSpell[model.id]) {
+            let spellID = state.DnD.conSpell[model.id];
+            let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+            if (spell) {
+                outputCard.body.push("Concentrating on " + spell.name)
+            }
         }
 
-        let saveRoll = saveRoll1;
-        let altRoll;
-        if (adv === 1) {
-            saveRoll = Math.max(saveRoll1,saveRoll2);
-            altRoll = Math.min(saveRoll1,saveRoll2);
-        }
-        if (adv === -1) {
-            saveRoll = Math.min(saveRoll1,saveRoll2);
-            altRoll = Math.max(saveRoll1,saveRoll2);
-        }
-        let saveTotal = Math.max(saveRoll + bonus,1);
+        //spells on model based on markers, then check spell to see if/when save/ends
+        let spellNames = model.Markers(); //could also be conditions, will screen out below
+        for (let i=0;i<spellNames.length;i++) {
+log("Marker on Model")
+            let spellName = spellNames[i];
+log(spellName)
+            let spell = FindSpell(spellName,model.id);
+            if (!spell) {continue};
 
-        let saveTip = "<br>Roll: " + saveRoll + " + " + bonus;
-
-        if (adv === 1) {
-            saveTip += "<br>Advantage: " + saveRoll1 + "/" + saveRoll2;
-        }
-        if (adv === -1) {
-            saveTip += "<br>Disadvantage: " + saveRoll1 + "/" + saveRoll2;
-        }
-        if (advReasons.length > 0) {
-            saveTip += "<br>" + advReasons.toString();
-        }
-        if (disAdvReasons.length > 0) {
-            saveTip += "<br>" + disAdvReasons.toString();
-        }
-
-        if (dc !== false) {
-            if ((saveTotal >= dc || saveRoll === 20) && saveRoll !== 1) {
-                saved = true;
-            } 
-            saveTip = "Save: " + saveTotal + " vs. DC " + dc + saveTip;
-            if (fail === true) {
-                save = false,
-                saveTip = "Automatically Failed Save due to " + failReason;
+            if (spell.name === "Heroism") {
+                let tempHP = parseInt(spell.dc - 10);
+                TempHP(model,tempHP);
             }
 
-        } 
 
-        let result = {
-            save: saved,
-            saveRoll: saveRoll,
-            altRoll: altRoll,
-            bonus: bonus,
-            saveTotal:saveTotal,
-            advReasons: advReasons,
-            disAdvReasons: disAdvReasons,
-            tip: saveTip,
-            fail: fail,
-            failReason: failReason,
-            finalAdv: adv,
+            if (spell.savingThrow && !spell.beneficial) {
+                if (spell.name === "Heat Metal") {
+                    //ongoing damage
+                    let rollResults = RollDamage(spell.damage);
+                    let damageResults = ApplyDamage(rollResults,spell.dc,model,spell);
+                    let tip = rollResults.diceText;  
+                    tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
+                    outputCard.body.push("Heat Metal: " + tip + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+                    continue;
+                };
+                if (spell.savingThrow === "auto" && spell.when === "start") {
+                    outputCard.body.push(spell.saveText);
+                    model.token.set("status_" + Markers[spellName],false);
+                    continue;
+                }
+
+                if (model.isParty === true) {
+                    outputCard.body.push("The character is affected by " + spell.name + ", requiring a " + Capit(spell.savingThrow) + " Save with a DC of " + spellInfo.dc);
+                    if (spell.when === "action") {
+                        outputCard.body.push("The Character can use its Action to make the Save");
+                    } else if (spell.when === "endAll" || spell.when === "end") {
+                        outputCard.body.push("The Save occurs at the end of its round");
+                    } else if (spell.when === "start") {
+                        outputCard.body.push("The Save is made at the start of the Character's round");
+                    }
+                } else {
+                    let spellEnds = SpellCheck(spell.spellID,model);
+                    if (spell.when === "start" && spellEnds === true) {
+                        outputCard.body.push(model.name + " can act normally");
+                    }
+                    if (spell.when === "action") {
+                        let line = model.name + ' has used its Action';
+                        if (Restrained.includes(spellName)) {
+                            line += ", and is restrained by " + spellName + " from moving";
+                        } else {
+                            line += " but may Move";
+                        }
+                        outputCard.body.push(line);
+                    }
+                    if (spell.when === "endAll") {
+                        outputCard.body.push(model.name + "'s turn is over");
+                    }
+                    if (spell.when === "end") {
+                        outputCard.body.push("The Save is made at the end of its turn");
+                    }
+                }
+            } 
+
+
+
+
+
+
         }
-        return result;
     }
+
+    const FindSpell = (spellName,modelID) => {
+        let spell = SpellInfo[spellName];
+        for (let i=0;i<state.DnD.spellList.length;i++) {
+            if (state.DnD.spellList[i].name === spellName && state.DnD.spellList[i].targetIDs.includes(modelID)) {
+                spell = state.DnD.spellList[i];
+                break;
+            }
+        }
+        return spell;
+    }
+
+    const SpellCheck = (spellID,model) => {
+        let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+log("In Spell Check")
+log("Pre")
+log(spell)
+        let savingThrow = (spell.actionSave) ? spell.actionSave:(spell.savingThrow) ? spell.savingThrow:false;
+        let spellEnds = (savingThrow === "auto") ? true:false;
+
+        let text = "";
+        if (savingThrow !== false && savingThrow !== "auto") {
+            let saveResult = Save(model,spell.dc,savingThrow);
+            saved = saveResult.save;
+            noun = "Failed Save";
+            if (saved === true) {noun = "Saves"};
+            if (noun === "Saves") {spellEnds = true};
+            let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
+            text += spell.name + ": " + tip;
+        }
+        if (spellEnds === true) {
+            model.token.set("status_" + Markers[spell.name],false);
+            text += spell.saveText;
+            if (spell) {
+                let index = spell.targetIDs.indexOf(model.id);
+                if (index > -1) {
+                    spell.targetIDs.splice(index,1);
+                    if (spell.targetIDs.length === 0) {
+                        EndSpell(spellID);
+                    }
+                }
+            }
+        }
+log("Post")
+log(state.DnD.spellList)
+        outputCard.body.push(text);
+        return spellEnds;
+    }
+
+    const EndConSpell = (msg) => {
+        if (!msg.selected) {return};
+        spellName = EndSpell(state.DnD.conSpell[msg.selected[0]._id]);
+        if (!spellName) {spellName = "No Spell"}
+        sendChat("","/w GM " + spellName + " Ended");
+    }
+
+    const TempHP = (model,tempHP,gain = true) => {
+        if (gain === true) {
+            let currentTemp = parseInt(Attribute(model.charID,"hp_temp")) || 0;
+            tempHP = Math.max(currentTemp,tempHP);
+            AttributeSet(model.charID,"hp_temp",tempHP);
+            model.token.set({
+                showplayers_bar3: true,
+                bar3_value: tempHP,
+            })
+            outputCard.body.push(model.name + " has " + tempHP + " Temporary HP");
+        } else {
+            AttributeSet(model.charID,"hp_temp",0);
+            model.token.set({
+                showplayers_bar3: true,
+                bar3_value: 0,
+            })
+        }
+    }
+
+
+
+
+
+
+
+
 
 
     const changeGraphic = (tok,prev) => {
@@ -2944,13 +3766,18 @@ log(model.name)
                 addGraphic(tok);
             }
         }
+        //check if entered area effect such as Moonbeam, Web
+        if (model && (tok.get("left") !== prev.left || tok.get("top") !== prev.top) && state.DnD.combatTurn > 0) {
+log("Is Spell: " + model.isSpell)
+            if (model.isSpell) {
+                EffectCheck(model,"SpellMove");
+            } else {
+                EffectCheck(model,"ModelMove");
+            }
+        }
     }
 
-
-
-
     const addGraphic = (obj) => {
-        log("Add")
         if (obj.get(["pageid"]) === pageInfo.id) {
             if (!obj.get("name")) {
                 let char = getObj("character", obj.get("represents")); 
@@ -2959,6 +3786,7 @@ log(model.name)
                     name: char.get("name")
                 })
             }
+            log("Add " + obj.get("name"))
             let model = new Model(obj);
         }
     }
@@ -2977,8 +3805,6 @@ log(model.name)
         sendChat("","Page Change");
     }
 
-
-
     const handleInput = (msg) => {
         if (msg.type !== "api") {
             return;
@@ -2993,26 +3819,17 @@ log(model.name)
                     names.push(model.name)
                 })
                 log(names);
+                log(state.DnD)
 
-
                 break;
-            case '!Smite':
-                Smite(msg);
-                break;
-            case '!ShieldShove':
-                ShieldShove(msg);
-                break;
-            case '!SpellAttack':
-                SpellAttack(msg);
+            case '!SpecialAbility':
+                SpecialAbility(msg);
                 break;
             case '!SetCondition':
                 SetCondition(msg);
                 break;
             case '!Spell':
                 Spell(msg);
-                break;
-            case '!CastSpell':
-                CastSpell(msg);
                 break;
             case '!Attack':
                 Attack(msg);
@@ -3032,17 +3849,45 @@ log(model.name)
             case '!Compress':
                 Compress(msg);
                 break;
-            case '!WildShape':
-                WildShape(msg);
-                break;
             case '!ClearState':
                 ClearState();
                 break;
-            case '!CastSpell2':
-                CastSpell2(msg);
+            case '!ReloadTokens':
+                ReloadTokens(msg);
                 break;
-
-
+            case '!UseItem':
+                UseItem(msg);
+                break;
+            case '!MakeParty':
+                MakeParty(msg);
+                break;
+            case '!ShowSpells':
+                ShowSpells(msg);
+                break;
+            case '!DisplaySpellInfo':
+                DisplaySpellInfo(msg);
+                break;
+            case '!AreaSpell':
+                AreaSpell(msg);
+                break;
+            case '!Paladin':
+                Paladin(msg);
+                break;
+            case '!Rename':
+                Rename(msg);
+                break;
+            case '!WildShape2':
+                WildShape2(msg);
+                break;
+            case '!StartCombat':
+                StartCombat();
+                break;
+            case '!EndCombat':
+                EndCombat();
+                break;
+            case '!EndConSpell':
+                EndConSpell(msg);
+                break;
 
 
         }
@@ -3057,11 +3902,10 @@ log(model.name)
         on('add:graphic',addGraphic);
         on('change:graphic',changeGraphic);
         on('change:campaign:playerpageid',changePage);
-
-
+        on('change:campaign:turnorder',Combat);
     };
     on('ready', () => {
-        log("===> CoS <===");
+        log("===> DnD 5e <===");
         log("===> Software Version: " + version + " <===");
         LoadPage();
         BuildArrays();
@@ -3078,6 +3922,9 @@ log(model.name)
 
 
 
+
+
+
+
+
 })();
-
-
