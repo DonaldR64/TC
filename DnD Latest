@@ -1,5 +1,5 @@
 const DnD = (() => {
-    const version = '2025.12.16';
+    const version = '2025.12.31';
     if (!state.DnD) {state.DnD = {}};
 
     //various constants used in game
@@ -186,6 +186,7 @@ const DnD = (() => {
             this.charID = char.id;
             this.type = (aa.npc_type || " ").toLowerCase();
             this.class = aa.class || " ";
+            this.level = parseInt(aa.level);
 
             this.immunities = (aa.npc_immunities || " ").toLowerCase();
             this.conditionImmunities = (aa.npc_condition_immunities || " ").toLowerCase();
@@ -2065,7 +2066,19 @@ log(spell)
 //resource
         }
 
+        if (abilityName === "Healer") {
+            let defID = Tag[3];
+            let defender = ModelArray[defID];
+            SetupCard(attacker.name,"Healer",attacker.displayScheme);
+            let roll = randomInteger(6);
+            let healed = roll + 4 + defender.level
+            let tip = "Roll: [" + roll + "] + 4 + " + defender.level;
+            tip += "<br>[d6] + 4 + Target's HD";
+            tip = '[' + healed + '](#" class="showtip" title="' + tip + ')';
 
+            outputCard.body.push(defender.name + " is Healed for " + tip + " Wounds");
+            outputCard.body.push("This feat can't be used on the recipient until that character does a short or long rest");
+        }
 
 
 
