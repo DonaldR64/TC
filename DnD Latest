@@ -2264,6 +2264,7 @@ log(spell)
             spell.base = spell.sLevel[level];
         }
 
+
         spell.damage = spell.base + "," + spell.damageType;
         spell.type = "Spell";
 
