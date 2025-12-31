@@ -123,6 +123,21 @@
             alternates: ["damageType"],
         },
 
+        "Eldritch Blast": {
+            //need to modify the macro at level 5 to have 2 targets
+            name: "Eldritch Blast",
+            level: 0,
+            range: 120,
+            spellType: "DirectAttack",
+            autoHit: "No",
+            base: '1d10',
+            damageType: "force",
+            emote: '%%Caster%% fires a beam of eldritch energy at the target',
+            sound: "Plasma",
+            macro: '!Spell;Eldritch Blast;0;%Selected%;%Target%',
+        },
+
+
         "Entangle": {
             name: "Entangle",
             level: 1,
