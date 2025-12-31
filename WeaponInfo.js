@@ -99,7 +99,12 @@
             type: "Melee",
             sound: "Sword",
         },
-
+        Battleaxe: {
+            base1: '1d10,slashing',
+            properties: "",
+            type: "Melee",
+            sound: "Sword",
+        },
 
 
     }

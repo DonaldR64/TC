@@ -1,5 +1,5 @@
 
-
+    //Dec 31
     const SpellInfo = {
 
         "Acid Splash": {
@@ -161,6 +161,28 @@
             fx: "explode-slime",
         },
 
+        "Explosive Blast": {
+            //Izek
+            name: "Explosive Blast",
+            level: 0,
+            range: 90,
+            spellType: "Area",
+            area: "Square",
+            areaEffect: "Damage",
+            base: '2d6',
+            damageType: "fire",
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",       
+            sound: "",
+            macro: '!Spell;Explosive Blast;0',
+            tempImg: "https://files.d20.io/images/469625735/mK7gnOSOteATSiJs5Z7riA/thumb.png?1767216572",
+            tempSize: 10,
+            emote: "A target that fails the save is also knocked prone.",
+            fx: 'explode-fire',
+        },
+
+
+
         "Faerie Fire": {
             name: "Faerie Fire",
             level: 1,
@@ -179,6 +201,21 @@
             fx: 'explode-magic',
         },
 
+        "Fire Bolt": {
+            name: "Fire Bolt",
+            level: 0,
+            spellType: "DirectAttack",
+            range: 120,
+            autoHit: "No",
+            base: '1d10',
+            cLevel: {5: '2d10', 11: '3d10'},
+            damageType: "fire",
+            sound: "Laser",
+            emote: "A mote of fire is hurled toward the target",
+            fx: "",
+            macro: '!Spell;Fire Bolt;0;%Selected%;%Target%',
+        },
+
         "Flame Blade": {
             name: "Flame Blade",
             level: 2,
@@ -191,6 +228,44 @@
             fx: 'burn-fire',
             emote: "%%Caster%% evokes a Fiery Blade as a Bonus Action",            
         },
+
+        "Flame Volley": {
+            //Izek
+            name: "Flame Volley",
+            level: 0,
+            range: 60,
+            spellType: "Area",
+            area: "Square",
+            areaEffect: "Damage",
+            base: '2d6',
+            damageType: "fire",
+            savingThrow: "dexterity",
+            saveEffect: "No Damage",       
+            sound: "",
+            macro: '!Spell;Flame Volley;0',
+            tempImg: "https://files.d20.io/images/469625735/mK7gnOSOteATSiJs5Z7riA/thumb.png?1767216572",
+            tempSize: 10,
+            fx: 'explode-fire',
+        },
+        "Flaming Wave": {
+            //Izek
+            name: "Flaming Wave",
+            level: 0,
+            range: 60,
+            spellType: "Area",
+            area: "Line",
+            areaEffect: "Damage",
+            base: '2d10',
+            damageType: "fire",
+            savingThrow: "dexterity",
+            saveEffect: "No Damage",       
+            sound: "Laser",
+            macro: '!Spell;Flaming Wave;0',
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            tempSize: 5,
+            fx: 'beam-fire',
+        },
+
 
         "Flaming Sphere": {
             level: 2,

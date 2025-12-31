@@ -279,6 +279,9 @@ const DnD = (() => {
             this.pb = parseInt(aa.pb) || 0;
             if (this.sheetType === "NPC") {
                 this.pb = parseInt(aa.npc_pb) || 0;
+                if (aa.pb_type === "custom") {
+                    this.pb = parseInt(aa.pb_custom);
+                }
             }
 
             this.special = aa.special || " ";
@@ -587,6 +590,25 @@ log(model.name + ": " + id)
         })
         return array;
     }
+
+    const LineTargets = (caster,target) => {
+        let temp = [];
+        let squares = Line(caster.Point(),target.Point());
+        if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
+        if (Venn(squares,model.Squares()) === true) {
+            temp.push(model.id);
+        }
+        temp = [...new Set(temp)];
+        let array = [];
+        _.each(temp,id => {
+            let model = ModelArray[id];
+log(model.name + ": " + id)
+            array.push(model);
+        })
+        return array;
+    }
+
+
 
 
     const Cone = (caster,target,length) => {
@@ -2080,6 +2102,16 @@ log(spell)
             outputCard.body.push("This feat can't be used on the recipient until that character does a short or long rest");
         }
 
+        if (abilityName === "SW") {
+            SetupCard(attacker.name,"Slicing Whirlwind",attacker.displayScheme);
+            let damage = randomInteger(4) + randomInteger(4);
+            outputCard.body.push("All adjacent opponents must take a DC16 Dex Save or take " + damage + " Damage");
+        }
+        if (abilityName === "FB") {
+            SetupCard(attacker.name,"Flame Burst",attacker.displayScheme);
+            let damage = randomInteger(6) + randomInteger(6);
+            outputCard.body.push("All adjacent opponents must take a DC13 Dex Save or take " + damage + " Damage");
+        }
 
 
 
@@ -3075,6 +3107,8 @@ log("Cumulative Slots: " + cumulativeSS)
             targets = AOETargets(spellTarget);
         } else if (spell.area.includes("Cone")) {
             targets = Cone(caster,spellTarget,spellDistance);
+        } else if (spell.area.includes("Line")) {
+            targets = LineTargets(caster,spellTarget);
         }
 
         if (spell.name === "Sleep") {
