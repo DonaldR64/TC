@@ -594,10 +594,12 @@ log(model.name + ": " + id)
     const LineTargets = (caster,target) => {
         let temp = [];
         let squares = Line(caster.Point(),target.Point());
-        if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
-        if (Venn(squares,model.Squares()) === true) {
-            temp.push(model.id);
-        }
+        _.each(ModelArray,model => {
+            if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
+            if (Venn(squares,model.Squares()) === true) {
+                temp.push(model.id);
+            }
+        })
         temp = [...new Set(temp)];
         let array = [];
         _.each(temp,id => {
