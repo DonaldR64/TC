@@ -1600,12 +1600,12 @@ log(state.DnD.spells)
                 base2: Tag[5],
                 type: Tag[6],
                 properties: Tag[7],
-                range: Tag[8],
+                range: Tag[8].split(",").map((e) => parseInt(e.replace("[","").replace("]",""))),
                 text: Tag[9],
                 sound: Tag[10],
             }
         }
-
+log(weapon)
         //set some defaults
         if (!weapon.critOn) {weapon.critOn = 20};
         if (!weapon.range) {weapon.range = [0,0]};
@@ -1938,7 +1938,7 @@ log(weapon)
         let disadvantage = false;
         let disText = [];
 
-        if (damageInfo.type.includes("Melee") === false) {
+        if (damageInfo.type.includes("Melee") === false && attacker.special.includes("Close Quarters Fighter") === false) {
             //check if any adjacent enemies that arent incapacitated, as they will impose disadvantage
             for (let i=0;i<ids.length;i++) {
                 let model2 = ModelArray[ids[i]];
@@ -3463,8 +3463,23 @@ log(rituals)
                     hp: 37,
                 }
             },
+        "Volenta": 
+            {
+                "Two": {
+                    cID: "-OhrNuddNw_ij03ubJIx",
+                    size: 70,
+                    hp: 82,
+                    change: true,
+                },
+
+            },
+
+
 
         }
+
+
+        let change = shapes[cName][shape].change || false;
 
         SetupCard(model.name,"Wild Shape",model.displayScheme);
 
@@ -3537,8 +3552,9 @@ log(rituals)
 
 
 
-
-        outputCard.body.push("Wild Shape to " + shape);
+        if (!change || change === false) {
+            outputCard.body.push("Wild Shape to " + shape);
+        }
         PrintCard();
 
         model.Destroy();

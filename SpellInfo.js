@@ -620,7 +620,7 @@
             fx: "glow-holy",
             macro: '!Spell;Spirit Guardians;%Level%',
             emote: "Angelic Spirits surround the Caster. Enemies in the area will take damage and have their speed halved.",
-            charID: '-Ohr-wHtPowLV9D33WIz',
+            charID: '',
         },
 
 
