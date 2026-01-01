@@ -2079,12 +2079,41 @@ log(weapon)
         return result;
     }
 
+    const EmoteAbility = (msg) => {
+        if (!msg.selected) {return}
+        let id = msg.selected[0]._id;
+        let model = ModelArray[id];
+        let Tag = msg.content.split(";");
+        let abilName = Tag[1];
+        let emote = Tag[2];
+        emote = emote.replace(/"/g,"");
+        if (emote.includes("<<")) {
+            let char1 = emote.indexOf("<<") + 2;
+            let char2 = emote.indexOf(">>");
+            let substring = emote.substring(char1,char2);
+            let damageResults = RollDamage(substring)
+            let tip = damageResults.diceText;
+            tip = '[' + damageResults.total + " " + damageResults.damageType + '](#" class="showtip" title="' + tip + ')';
+            emote = emote.replace("<<" + substring + ">>",tip);
+        }
+
+
+        SetupCard(model.name,abilName,model.displayScheme);
+        outputCard.body.push(emote);
+        PrintCard();
+    }
+
+
+
+
 
     const SpecialAbility = (msg) => {
         let Tag = msg.content.split(";");
         let abilityName = Tag[1];
         let attID = Tag[2];
         let attacker = ModelArray[attID];
+log("In Special Ability")
+log(abilityName)
 
         if (abilityName === "Shield Bash") {
             let defID = Tag[3];
@@ -2101,8 +2130,7 @@ log(weapon)
         if (abilityName === "Dragon's Breath") {
             let spellID = Tag[3];
             let spell = (state.DnD.spellList.find((e) => e.spellID === spellID));
-log("In Special Ability")
-log(spell)
+
 
             ClearSpellTarget(spell);
             spell.displacedTokenID = attID;
@@ -2133,18 +2161,7 @@ log(spell)
             outputCard.body.push("This feat can't be used on the recipient until that character does a short or long rest");
         }
 
-        if (abilityName === "SW") {
-            SetupCard(attacker.name,"Slicing Whirlwind",attacker.displayScheme);
-            let damage = randomInteger(4) + randomInteger(4);
-            outputCard.body.push("All adjacent opponents must take a DC16 Dex Save or take " + damage + " Damage");
-        }
-        if (abilityName === "FB") {
-            SetupCard(attacker.name,"Flame Burst",attacker.displayScheme);
-            let damage = randomInteger(6) + randomInteger(6);
-            outputCard.body.push("All adjacent opponents must take a DC13 Dex Save or take " + damage + " Damage");
-        }
 
-        if (abilityName === "")
 
 
 
@@ -3495,7 +3512,17 @@ log(rituals)
                 },
 
             },
+        "Izek": 
+            {
+                type: "Transform",
+                "Two": {
+                    cID: "-OhqNSUsDN4DMsVo4lIr",
+                    size: 70,
+                    hp: 112,
+                    change: true,
+                },
 
+            },
 
 
         }
@@ -3887,8 +3914,11 @@ log(state.DnD.spellList)
         let pronoun = msg.content.split(";")[1];
         pronoun = " " + pronoun + " ";
         let model = ModelArray[id];
-        AttributeSet(model.charID,"pronoun",pronoun);
-        sendChat("","Set to " + pronoun);
+        if (model) {
+            AttributeSet(model.charID,"pronoun",pronoun);
+            sendChat("","Set to " + pronoun);        
+        }
+
     }
 
     const SpawnToken = (msg) => {
@@ -4051,7 +4081,9 @@ log("Is Spell: " + model.isSpell)
             case '!SetPronoun':
                 SetPronoun(msg);
                 break;
-
+            case '!EmoteAbility':
+                EmoteAbility(msg);
+                break;
 
         }
     };
