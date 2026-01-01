@@ -318,7 +318,7 @@
             damageType: "radiant",
             note: "",
             sound: "Laser",
-            emote: "A flash of bright light streaks toward the target. The next attack against this creature has Advantage",
+            emote: "A flash of bright light streaks toward the target. If it hits, the next attack against this creature has Advantage",
             fx: "beam-magic",
             macro: '!Spell;Guiding Bolt;%Level%;%Selected%;%Target%',
         },

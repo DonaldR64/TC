@@ -2419,7 +2419,6 @@ log(abilityName)
     }
 
     const Spell = (msg) => {
-        if (!msg.selected) {return};
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
         let level = parseInt(Tag[2]);
