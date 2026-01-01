@@ -1662,6 +1662,18 @@ log(weapon)
                 }
             }
         }
+        if (attMarkers.includes("Shillelagh") && weaponName.toLowerCase().includes("staff") || weaponName.toLowerCase().includes("club")) {
+            statBonus = attacker.statBonus["wisdom"];
+            weapon.magic = "magic";
+            weapon.base1 = "1d8,bludgeoning";
+        }
+
+log(weapon)
+log(statBonus)
+
+
+
+
 
         if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
             errorMsg.push("Target is Out of Max Range");

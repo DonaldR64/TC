@@ -573,7 +573,7 @@
             sound: "Woosh",
             macro: '!Spell;Shillelagh;0;%Selected%;%Selected%',
             fx: '',
-            emote: "%%Caster%% imbues his staff with the Power of Nature!",            
+            emote: "%%Caster%% imbues his weapon with the Power of Nature!",            
         },
 
 
