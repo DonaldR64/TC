@@ -24,6 +24,11 @@
             type: "Melee",
             sound: "Staff",
         },
+        'Quarterstaff (1H)': {
+            base1: '1d6,bludgeoning',
+            type: "Melee",
+            sound: "Staff",
+        },
         'Scimitar': {
             base1: "1d6,slashing",
             properties: "Finesse",

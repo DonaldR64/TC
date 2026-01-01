@@ -563,6 +563,21 @@
             sound: "Angels",
         },
 
+        "Shillelagh": {
+            name: "Shillelagh",
+            level: 0,
+            bonusAction: true,
+            duration: 10,
+            concentration: false,
+            spellType: "Misc",
+            sound: "Woosh",
+            macro: '!Spell;Shillelagh;0',
+            fx: '',
+            emote: "%%Caster%% imbues his staff with the Power of Nature!",            
+        },
+
+
+
         "Sleep": {
             name: "Sleep",
             emote: "Using a pinch of fine sand, %%Caster%% sends creatures into a magical slumber. They remain asleep unless they take damage or are delliberately awakened",
