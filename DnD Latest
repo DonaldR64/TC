@@ -3151,8 +3151,10 @@ log(rituals)
             toFront(newToken);
             let target = new Model(newToken);
             target.isSpell = spell.casterID;
-
+            target.inParty = spell.inParty;
             state.DnD.areaSpell = spell;
+            spell.tokenID = newToken.get("id");
+
             return target;
         } else {
             sendChat("","Error in CreateObj")
@@ -3945,27 +3947,39 @@ log(state.DnD.spellList)
 
     }
 
-    const SpawnToken = (msg) => {
-        if (!msg.selected) {return};
-        let id = msg.selected[0]._id;
-        let Tag = msg.content.split(";");
-        let name = Tag[1];
-        let spawningModel = ModelArray[id];
-        let left = spawningModel.token.get("left");
-        let top = spawningModel.token.get("top");
+    const SpellMove = (model) => {
+        let spellIDs = [];
+        if (state.DnD.conSpell[model.id]) {
+            spellIDs.push(state.DnD.conSpell[model.id]);
+        }
+        let arr2 = state.DnD.regSpells;
+        if (arr2.length > 0) {
+            spellIDs.concat(arr2);
+        }
+        for (let i=0;i<spellIDs.length;i++) {
+            let spellID = spellIDs[i];
+            let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+            if (spell.moveWithCaster && spell.moveWithCaster === true) {
+                let spellToken = findObjs({
+                    _pageid: Campaign().get("playerpageid"),
+                    _type: "graphic",
+                    _subtype: "token",
+                    id: spell.tokenID,
+                })[0];
+                if (spellToken) {
+                    spellToken.set({
+                        left: model.token.get("left"),
+                        top: model.token.get("top"),
+                    })
+                }
 
-        let char = findObjs({
-            _pageid: Campaign().get("playerpageid"),
-            _type: "graphic",
-            _subtype: "token",
-            layer: "objects",
-            represents: cID,
-        })[0];
-
-
-
-
+            }
+        }
     }
+
+
+
+
 
 
 
@@ -3987,7 +4001,13 @@ log("Is Spell: " + model.isSpell)
                 EffectCheck(model,"SpellMove");
             } else {
                 EffectCheck(model,"ModelMove");
+                SpellMove(model);
             }
+
+
+
+
+
         }
     }
 

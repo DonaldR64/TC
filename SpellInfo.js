@@ -626,6 +626,8 @@
             sLevel: [0,0,0,"3d8","4d8","5d8","6d8","7d8"],
             damageType: "radiant",
             savingThrow: "wisdom",
+            moveEffect: "map",
+            moveWithCaster: true,
             saveEffect: "Half Damage",
             area: 'special',
             effect: "Damage",
