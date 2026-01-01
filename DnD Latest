@@ -117,7 +117,7 @@ const DnD = (() => {
         "Searing Smite": "400-Bordeaux::5818060",
         "Thunderous Smite": "600-kakadoi::5818087",
         "Wrathful Smite": "700-Grey::5818092",
-
+        "Guiding Bolt": "Aid::1431844",
 
 
 
@@ -1901,6 +1901,11 @@ log(weapon)
             outputCard.body.push("[B]Miss[/b]");
         }
 
+        defender.token.set("status_" + Markers["Guiding Bolt"],false);
+
+
+
+
         PlaySound(weapon.sound);
 
         PrintCard();
@@ -2005,6 +2010,10 @@ log(weapon)
         if (defMarkers.includes("Faerie Fire")) {
             advantage = true;
             advText.push("Faerie Fire");
+        };
+        if (defMarkers.includes("Guiding Bolt")) {
+            advantage = true;
+            advText.push("Guiding Bolt");
         };
         if (defMarkers.includes("Dodge")) {
             disText.push("Defender taking Dodge Action");
@@ -2822,8 +2831,7 @@ log("Cumulative Slots: " + cumulativeSS)
             'wizard']
 
         if (ritualCasters.includes(model.class)) {
-            outputCard.body.push("[B][U]Rituals[/b][/u]");
-            outputCard.body.push("Out of Combat Only");
+            let rituals = [];
             for (let i=1;i<10;i++) {
                 let spells = model.spells[i];
                 let buttons = [];
@@ -2847,9 +2855,19 @@ log("Cumulative Slots: " + cumulativeSS)
                         })
                     }
                 })
-                outputCard.body.push(InlineButtons(buttons));
-                outputCard.body.push("<br>");
-                outputCard.body.push("[hr]");
+                if (buttons.length > 0) {
+                    rituals.push(InlineButtons(buttons));
+                    rituals.push("<br>");
+                    rituals.push("[hr]");
+                }
+            }
+log(rituals)
+            if (rituals.length > 0) {
+                outputCard.body.push("[B][U]Rituals[/b][/u]");
+                outputCard.body.push("Out of Combat Only");
+                _.each(rituals,rit => {
+                    outputCard.body.push(rit);
+                })
             }
         }
 

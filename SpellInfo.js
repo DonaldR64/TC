@@ -307,6 +307,27 @@
             tempSize: 'Level * 40',
         },
 
+        "Guiding Bolt": {
+            name: "Guiding Bolt",
+            level: 1,
+            spellType: "DirectAttack",
+            range: 120,
+            autoHit: "No",
+            saveText: "The next attack against this creature has Advantage",
+            base: '4d6',
+            sLevel: [0,'4d6',"5d6","6d6","7d6","8d6","9d6"],
+            damageType: "radiant",
+            note: "",
+            sound: "Laser",
+            emote: "A flash of bright light streaks toward the target",
+            fx: "beam-magic",
+            macro: '!Spell;Guiding Bolt;%Level%;%Selected%;%Target%',
+        },
+
+
+
+
+
          "Healing Word": {
             name: "Healing Word",
             level: 1,
@@ -482,6 +503,25 @@
             fx: "",
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
+
+        "Sacred Flame": {
+            name: "Sacred Flame",
+            level: 0,
+            spellType: "DirectAttack",
+            range: 60,
+            autoHit: "No",
+            savingThrow: "dexterity",
+            saveEffect: "No Damage",
+            base: '1d8',
+            cLevel: {5: '2d8', 11: '3d8'},
+            damageType: "radiant",
+            sound: "Angels",
+            emote: "Flame-like radiance descends on the Target",
+            fx: "glow-fire",
+            macro: '!Spell;Sacred Flame;0;%Selected%;%Target%',
+        },
+
+
 
         "Sanctuary": {
             name: "Sanctuary",
