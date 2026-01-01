@@ -29,6 +29,13 @@
             type: "Melee",
             sound: "Staff",
         },
+        'Club': {
+            base1: '1d4,bludgeoning',
+            type: "Melee",
+            sound: "Club",
+        },
+
+
         'Scimitar': {
             base1: "1d6,slashing",
             properties: "Finesse",

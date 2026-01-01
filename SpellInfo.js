@@ -571,7 +571,7 @@
             concentration: false,
             spellType: "Misc",
             sound: "Woosh",
-            macro: '!Spell;Shillelagh;0',
+            macro: '!Spell;Shillelagh;0;%Selected%;%Selected%',
             fx: '',
             emote: "%%Caster%% imbues his staff with the Power of Nature!",            
         },
