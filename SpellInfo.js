@@ -313,13 +313,12 @@
             spellType: "DirectAttack",
             range: 120,
             autoHit: "No",
-            saveText: "The next attack against this creature has Advantage",
             base: '4d6',
             sLevel: [0,'4d6',"5d6","6d6","7d6","8d6","9d6"],
             damageType: "radiant",
             note: "",
             sound: "Laser",
-            emote: "A flash of bright light streaks toward the target",
+            emote: "A flash of bright light streaks toward the target. The next attack against this creature has Advantage",
             fx: "beam-magic",
             macro: '!Spell;Guiding Bolt;%Level%;%Selected%;%Target%',
         },
@@ -600,6 +599,32 @@
             emote: "The ground erupts in hard spikes and thorns. The area become difficult terrain and causes damage for any creature moving within.",
             charID: '-OgPtm6w70voqIqyYk1X',
         },
+
+        "Spirit Guardians": {
+            level: 3,
+            name: "Spirit Guardians",
+            range: 0,
+            spellType: "Ongoing",
+            duration: 100,
+            concentration: true,
+            base: '3d8',
+            sLevel: [0,0,0,"3d8","4d8","5d8","6d8","7d8"],
+            damageType: "radiant",
+            savingThrow: "wisdom",
+            saveEffect: "Half Damage",
+            area: 'special',
+            effect: "Damage",
+            tempImg: 'https://files.d20.io/images/469636544/3188t5F5Z-oDCN7qS9VUhg/thumb.png?1767228260',
+            tempSize: 30,
+            sound: "Angels",
+            fx: "glow-holy",
+            macro: '!Spell;Spirit Guardians;%Level%',
+            emote: "Angelic Spirits surround the Caster. Enemies in the area will take damage and have their speed halved.",
+            charID: '-Ohr-wHtPowLV9D33WIz',
+        },
+
+
+
 
         "Thunderous Smite": {
             name: "Thunderous Smite",

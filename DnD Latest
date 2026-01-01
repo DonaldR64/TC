@@ -2446,6 +2446,7 @@ log(spell)
         spell.casterLevel = casterLevel;
         spell.isRitual = ritual;
         spell.dc = caster.spellDC;
+        spell.inParty = caster.inParty;
 
         if (spell.cLevel && spell.cLevel[casterLevel]) {
             spell.base = spell.cLevel[casterLevel] || 0;
@@ -2594,7 +2595,7 @@ log(spell)
         //interaction of spell and model
         if (!model) {return}
         let spellLists = {
-            "Start": ["Moonbeam","Web"],
+            "Start": ["Moonbeam","Web","Spirit Guardians"],
             "ModelMove": ["Moonbeam","Web","Spike Growth"],
             "End": ["Flaming Sphere"],
             "SpellMove": ["Flaming Sphere"],
@@ -2604,11 +2605,14 @@ log(spell)
         if (type.includes("Spell") && spells.includes(model.name)) {
             if (model.name === "Flaming Sphere") {FlamingSphere(model)};
 
-
-
         } else {
+log(model.name)
+log("in party: " + model.inParty)
             _.each(ModelArray,m => {
                 if (spells.includes(m.name) && m.id !== model.id) {
+log(m.name)
+log("in party: " + m.inParty)
+                    if (m.inParty === model.inParty && m.name === "Spirit Guardians") {return};
                     if (Venn(m.Squares(),model.Squares()) === true) {
                         let spellID = m.token.get("gmnotes").toString();
                         let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
@@ -3704,7 +3708,7 @@ log(spellName)
                     continue;
                 }
 
-                if (model.isParty === true) {
+                if (model.inParty === true) {
                     outputCard.body.push("The character is affected by " + spell.name + ", requiring a " + Capit(spell.savingThrow) + " Save with a DC of " + spellInfo.dc);
                     if (spell.when === "action") {
                         outputCard.body.push("The Character can use its Action to make the Save");
