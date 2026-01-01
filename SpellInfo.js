@@ -638,6 +638,26 @@
             charID: '',
         },
 
+        "Spiritual Weapon": {
+            level: 2,
+            name: "Spiritual Weapon",
+            range: 60,
+            spellType: "Ongoing",
+            duration: 10,
+            concentration: false,
+            base: '1d8',
+            sLevel: [0,"1d8","2d8","3d8","4d8","5d8","6d8","7d8"],
+            damageType: "force",
+            area: 'special',
+            effect: "Damage",
+            tempImg: 'https://files.d20.io/images/469703229/QMOjuEu7LjRvI49jnuwftg/thumb.png?1767301303',
+            tempSize: 5,
+            sound: "Angels",
+            macro: '!Spell;Spiritual Weapon;%Level%;%Selected%',
+            emote: "A Weapon of pure Force appears and can be moved to attack any target within range (60 feet)",
+            charID: '-OhvKvkbLTJaap8L0gQl',
+        },
+
 
 
 

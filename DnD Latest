@@ -178,6 +178,10 @@ const DnD = (() => {
     class Model {
         constructor(token) {
             let char = getObj("character", token.get("represents")); 
+            if (!char) {
+                log("No Assoc Character")
+                return;
+            }
             this.token = token;
             this.id = token.get("id");
             this.name = token.get("name");
@@ -1668,7 +1672,18 @@ log(weapon)
             weapon.base1 = "1d8,bludgeoning";
         }
 
-
+        if (weaponName === "Spiritual Weapon") {
+            let spellID = attacker.token.get("gmnotes").toString();
+            let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
+            if(!spell) {
+                sendChat("","Error with Routine")
+                return
+            };
+            attacker = ModelArray[spell.casterID];
+            statBonus = attacker.statBonus["wisdom"];
+            weapon.magic = "magic";
+            weapon.base1 = spell.damage;
+        }
 
         if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
             errorMsg.push("Target is Out of Max Range");
@@ -2404,6 +2419,7 @@ log(abilityName)
     }
 
     const Spell = (msg) => {
+        if (!msg.selected) {return};
         let Tag = msg.content.split(";");
         let spellName = Tag[1];
         let level = parseInt(Tag[2]);
@@ -2522,18 +2538,22 @@ log(abilityName)
         if (spell.spellType === "Ongoing") {
             ClearSpellTarget(spell);
             let target = SpellTarget(spell);
-            let emote = Emote(spell);
-            if (emote) {
-                outputCard.body.push(emote);
-            }
-            spell.ongoingID = target.id;
-            spell.targetIDs = [target.id];
-            outputCard.body.push("Move Target to Location");
-            AddSpell(spell);
-            target.token.set("gmnotes",spell.spellID);
-            if (spell.moveEffect) {
-                //moves it at start of next turn, ie after player moves
-                state.DnD.moveID = target.id;
+            if (target) {
+                let emote = Emote(spell);
+                if (emote) {
+                    outputCard.body.push(emote);
+                }
+                spell.ongoingID = target.id;
+                spell.targetIDs = [target.id];
+                outputCard.body.push("Move Target to Location");
+                AddSpell(spell);
+                if (target.token) {
+                    target.token.set("gmnotes",spell.spellID);
+                }
+                if (spell.moveEffect) {
+                    //moves it at start of next turn, ie after player moves
+                    state.DnD.moveID = target.id;
+                }
             }
         }
         PrintCard();
@@ -3082,7 +3102,6 @@ log(rituals)
         let action = "!AreaSpell";
         
         let charID = (spell.charID) ? spell.charID:'-Oe8qdnMHHQEe4fSqqhm';
-
         let abilArray = findObjs({_type: "ability", _characterid: charID});
         //clear old abilities
         for(let a=0;a<abilArray.length;a++) {
@@ -3100,6 +3119,12 @@ log(rituals)
                 }
             }
         } 
+
+        if (spell.name === "Spiritual Weapon") {
+            action = "!Attack;@{selected|token_id};@{target|token_id};Spiritual Weapon;" + spell.base + ",force;;Melee;;;;Smite";
+            AddAbility("Attack",action,charID);
+        }
+
 
         spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
