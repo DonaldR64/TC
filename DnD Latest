@@ -1670,9 +1670,6 @@ log(weapon)
 
 
 
-
-
-
         if (distance > weapon.range[1] && weapon.type.includes("Ranged")) {
             errorMsg.push("Target is Out of Max Range");
         }
