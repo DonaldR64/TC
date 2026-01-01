@@ -1668,8 +1668,6 @@ log(weapon)
             weapon.base1 = "1d8,bludgeoning";
         }
 
-log(weapon)
-log(statBonus)
 
 
 
