@@ -1247,7 +1247,7 @@ log(defender.vulnerabilities)
             return;
         }
         let condition = Tag[1];
-        let marker = Marker[condition];
+        let marker = Markers[condition];
         let status = Tag[2];
         if (!marker) {
             return;
@@ -1930,7 +1930,7 @@ log(weapon)
         let ids = Object.keys(ModelArray);
 
         let positive = ["Invisible","Advantage"];
-        let attNegative = ["Blind","Frightened","Poison","Disadvantage","Heat Metal"];
+        let attNegative = ["Blind","Frightened","Poisoned","Disadvantage","Heat Metal"];
         let defNegative = ["Blind","Disadvantage"];
 
         let advantage = false;
@@ -2424,6 +2424,17 @@ log(spell)
             outputCard.body.push("[B]Ritual[/b]");
             spell.exempt = true;
         }
+
+        if (spellName === "Hold Person") {
+            let target = ModelArray[targetIDs[0]];
+            if (target.type.includes("humanoid") === false) {
+                errorMsg.push("Spell is cast but fails, as target is not Humanoid");
+            }
+        }
+
+
+
+
 
         if (errorMsg.length > 0) {
             _.each(errorMsg,error => {
