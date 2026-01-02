@@ -1,5 +1,5 @@
 const DnD = (() => {
-    const version = '2025.12.31';
+    const version = '2026.1.2';
     if (!state.DnD) {state.DnD = {}};
 
     //various constants used in game
@@ -1621,9 +1621,11 @@ log(state.DnD.spells)
                 range: Tag[8].split(",").map((e) => parseInt(e.replace("[","").replace("]",""))),
                 text: Tag[9],
                 sound: Tag[10],
+                info: Tag[11] || "Non-Magic",
             }
         }
 log(weapon)
+
         //set some defaults
         if (!weapon.critOn) {weapon.critOn = 20};
         if (!weapon.range) {weapon.range = [0,0]};
@@ -1723,15 +1725,15 @@ log(weapon)
 
         //Magic Items
         let magicBonus;
-        if (extra !== "Non-Magic" && extra !== "No") {
-            if (extra.includes("+")) {
-                magicBonus = parseInt(magicInfo.characterAt(magicInfo.indexOf("+") + 1)) || 0;
+        if (weapon.info !== "Non-Magic" && weapon.info !== "No") {
+            if (weapon.info.includes("+")) {
+                magicBonus = parseInt(weapon.info.characterAt(weapon.info.indexOf("+") + 1)) || 0;
                 attackBonus += magicBonus;
                 weapon.base1 = weapon.base1.replace(",","+"+ magicBonus + ",");
                 weapon.magic = "magic";
             }
         }
-        if (extra.includes("Silver") && weapon.magic.includes("magic") === false) {
+        if (weapon.info.includes("Silver") && weapon.magic.includes("magic") === false) {
             weapon.magic = "silver";
         }
 
@@ -3549,15 +3551,23 @@ log(rituals)
                 },
 
             },
+        "Rahadin": 
+            {
+                type: "Transform",
+                "Two": {
+                    cID: "-Oi-B4PGHb5d18vArbb-",
+                    size: 70,
+                    hp: 180,
+                    change: true,
+                },
 
+            },
 
         }
 
-
         let change = shapes[cName][shape].change || false;
-        let subtitle = shapes[cName].type || "Wild Shape";
 
-        SetupCard(model.name,subtitle,model.displayScheme);
+        SetupCard(model.name,"Wild Shape",model.displayScheme);
 
         if (model.race.includes(shape.toLowerCase())) {
             outputCard.body.push("Already in that Form");
@@ -3635,8 +3645,8 @@ log(rituals)
 
         if (!change || change === false) {
             outputCard.body.push("Wild Shape to " + shape);
+            PrintCard();
         }
-        PrintCard();
 
         model.Destroy();
 
