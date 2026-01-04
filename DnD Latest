@@ -739,9 +739,13 @@ log(model.name + ": " + id)
     const PrintCard = (id) => {
         let output = "";
         if (id) {
-            let playerObj = findObjs({type: 'player',id: id})[0];
-            let who = playerObj.get("displayname");
-            output += `/w "${who}"`;
+            if (id === "GM") {
+                output += `/w "Don"`
+            } else {
+                let playerObj = findObjs({type: 'player',id: id})[0];
+                let who = playerObj.get("displayname");
+                output += `/w "${who}"`;
+            }
         } else {
             output += "/desc ";
         }
@@ -1064,7 +1068,7 @@ log(model.name + ": " + id)
             areaSpell: "",
             moveID: "",
             lastMoved: "",
-            saves: {},
+            saveMarkers: {},
         }
         nameArray = {};
     }
@@ -1243,12 +1247,23 @@ log(defender.vulnerabilities)
 
 
                 saveTip += "<br>" + result.tip
-            } else {
+            } else if (result.save === false) {
                 saveTip = "Fails<br>" + result.tip;
-                save = "Fails:";
+                save = "Fails: ";
                 if (saveEffect === 'Special') {
                     save = "Fails " +  damageInfo.failText; 
                 }
+            } else if (result.save === "NA") {
+                if (saveEffect === "No Damage") {
+                    saveTip = "No Damage";
+                }
+                if (saveEffect === "Half Damage") {
+                    saveTip = "Half Damage (" + Math.round(total/2) + ")";
+                }
+                if (saveEffect === 'Special') {
+                    saveTip = damageInfo.saveText;
+                }
+                save = "NA";
             }
         }
 
@@ -2426,22 +2441,38 @@ log(abilityName)
                 let tip = rollResults.diceText;      
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
                 let saveTip = "";
-                if (damageResults.save) {
-                    saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
+                if (defender.inParty) {
+                    if (damageResults.save) {
+                        outputCard.body.push("Fail = " + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+                        outputCard.body.push("Save = " + damageResults.saveTip);
+                        //place marker info into state          
+                        if (Markers[spell.name]) {
+                            state.DnD.saveMarkers[defender.tokenID] = spell.name;
+                        }          
+                    } else {
+                        outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+                        defender.token.set("status_" + Markers[spell.name],true);
+                    }
+                } else {
+                    if (damageResults.save) {
+                        saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
+                    }
+                    outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
+                    if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
+                        defender.token.set("status_" + Markers[spell.name],true);
+                    }
                 }
-                outputCard.body.push(saveTip + tip + " " + Capit(rollResults.damageType) + " Damage" + damageResults.irv);
                 if (spell.note) {
                     outputCard.body.push("[hr]");
                     outputCard.body.push(spell.note);
                 }
-                if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
-                    defender.token.set("status_" + Markers[spell.name],true);
-                }
             } else {
                 outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
             }
+            defender.token.set("status_" + Markers["Guiding Bolt"],false);
             FX(spell.fx,caster,defender);
         }
+
         PlaySound(spell.sound);
     }
 
@@ -2453,7 +2484,7 @@ log(abilityName)
         if (!casterID) {casterID = msg.selected[0]._id};
         let targetIDs = [];
         let errorMsg = [];
-
+        state.DnD.saveMarkers = {};
         let caster = ModelArray[casterID];
 
         let ritual = false;
@@ -2763,10 +2794,12 @@ log("in party: " + m.inParty)
     const SpellDamage = (rollResults,spell,model) => {
         let damageResults = (ApplyDamage(rollResults,spell.dc,model,spell));
         let saveTip = "";
-        if (damageResults.save) {
-            saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
+        if (!damageResults.save) {
+            outputCard.body.push(model.name + " takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
+        } else if (damageResults.save !== "NA") {
+            outputCard.body.push(model.name + ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and" +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
         }
-        outputCard.body.push(model.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
+
         if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
             MoveTarget(ModelArray[spell.casterID],model,10);
         }
@@ -2785,8 +2818,9 @@ log("in party: " + m.inParty)
         if (saved === false && spell.savingThrow) {
             let saveResult = Save(model,spell.dc,spell.savingThrow,0);
             saved = saveResult.save;
-            if (saved == "NA") {
+            if (saved === "NA") {
                 //needs player to roll
+log("Here")
 
 
             } else {            
@@ -2801,7 +2835,10 @@ log("in party: " + m.inParty)
             model.token.set("status_" + Markers[spell.name],true);
         }
         if (saved === "NA") {
-            state.DnD.saves[model.tokenID] = phrase;
+log("Here2")
+            if (Markers[spell.name]) {
+                 state.DnD.saveMarkers[model.tokenID] = spell.name;
+            }
         } else {
             outputCard.body.push(model.name + tip + phrase);
         }
@@ -3024,6 +3061,8 @@ log(rituals)
                 if (saved !== "NA") {
                     let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                     outputCard.body.push(target.name + " " + tip + text);
+                } else if (saved === "NA" && Markers[spell.name]) {
+                 state.DnD.saveMarkers[targetID] = spell.name;
                 }
             }
             if (saved === false) {
@@ -3729,6 +3768,8 @@ log(rituals)
         state.DnD.areaSpell = "";
         state.DnD.moveID = "";
         state.DnD.lastMoved = "";
+        state.DnD.saveMarkers = {};
+
 
         //precast spells - drop duration by 1 round
         _.each(ModelArray,model => {
@@ -3806,6 +3847,7 @@ log(rituals)
         state.DnD.regSpells = {};
         state.DnD.spellList = [];
         state.DnD.lastMoved = "";
+        state.DnD.saveMarkers = {};
     }
 
     const ModelsRound = (model) => {
@@ -4063,6 +4105,26 @@ log("Is Spell: " + model.isSpell)
         }
     }
 
+
+    const ApplyMarker = (msg) => {
+        if (!msg.selected) {
+            sendChat("API","/w GM Select PC")
+            return
+        } 
+        let id = msg.selected[0]._id;
+        if (state.DnD.saveMarkers[id]) {
+            let marker = "status_" + Markers[state.DnD.saveMarkers[id]];
+            ModelArray[id].token.set(marker,true);
+            state.DnD.saveMarkers[id] = "";
+        } else {
+            sendChat("API","/w GM No Marker")
+        }
+    }
+
+
+
+
+
     const addGraphic = (obj) => {
         if (obj.get(["pageid"]) === pageInfo.id) {
             if (!obj.get("name")) {
@@ -4180,7 +4242,9 @@ log("Is Spell: " + model.isSpell)
             case '!EmoteAbility':
                 EmoteAbility(msg);
                 break;
-
+            case '!ApplyMarker':
+                ApplyMarker(msg);
+                break;
         }
     };
 
