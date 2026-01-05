@@ -119,7 +119,11 @@ const DnD = (() => {
         "Wrathful Smite": "700-Grey::5818092",
         "Guiding Bolt": "Aid::1431844",
         "Shillelagh": "Effect_Nature_Leaf::1431993",
-
+        "Protection from Fire": "Slimed-Red-Transparent::2006582",
+        "Protection from Acid": "Slimed-Mustard-Transparent::2006560",
+        "Protection from Lightning": "Slimed-Gray-Transparent::2006556",
+        "Protection from Cold": "Slimed-Blue_-_Transparent::2006550",
+        "Protection from Thunder": "Slimed-Black-Transparent::2006549",
 
     }
 
@@ -1159,6 +1163,17 @@ log(damageInfo)
 log(defender.immunities)
 log(defender.resistances)
 log(defender.vulnerabilities)
+
+        let extraResistances = [];
+        let resistanceTypes = ["Fire","Cold","Lightning","Thunder","Acid"];
+        let defenderMarkers = defender.Markers();
+        _.each(resistanceTypes,type => {
+            if (defenderMarkers.includes("Protection from " + type)) {
+                extraResistances.push(type.toLowerCase());
+            }
+        })
+
+
         //Immunities
         if (defender.immunities.includes(damageType)) {
             if (weaponTypes.includes(damageType)) {
@@ -1180,7 +1195,7 @@ log(defender.vulnerabilities)
             }
         }
         //Resistances
-        if (immune === false && defender.resistances.includes(damageType)) {
+        if (immune === false && (defender.resistances.includes(damageType) || extraResistances.includes(damageType))) {
             if (weaponTypes.includes(damageType)) {
                 if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
                     resistant = true;
@@ -2193,6 +2208,7 @@ log(abilityName)
             spell.displacedTokenID = attID;
             spell.tempSize = 5;
             let target = SpellTarget(spell);
+            toFront(target.token);
             state.DnD.areaSpell = spell;
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
@@ -2672,6 +2688,13 @@ log(spell)
             let model = ModelArray[spell.targetIDs[0]];
             TempHP(model,0,false); //resets temp hp to 0
         } 
+        if (spell.name === "Protection from Energy") {
+            let marker = spell.marker;
+            let target = ModelArray[spell.targetIDs[0]];
+            target.token.set(marker,false);
+        }
+
+
 
 
         index = state.DnD.spellList.findIndex((e) => e.spellID === spellID);
@@ -3041,7 +3064,8 @@ log(rituals)
 
     const MiscSpell = (spell) => {
 
-        let someoneFailed = false;
+        let list = ["Conjure Animals"]; //dont need targets
+        let someoneFailed = (list.includes(spell.name)) ? true:false;
 
         if (spell.name === "Heroism") {
             let target = ModelArray[spell.targetIDs[0]]
@@ -3053,7 +3077,7 @@ log(rituals)
             let saved = false
             let target = ModelArray[targetID];
             if (!target) {return};
-            if (spell.savingThrow && !spell.friendlySpell) {
+            if (spell.savingThrow && !spell.beneficial) {
                 let saveResult = Save(target,spell.dc,spell.savingThrow,0);
                 saved = saveResult.save;
                 let noun = (saved === true) ? "Saves":"Fails";
@@ -3062,7 +3086,7 @@ log(rituals)
                     let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                     outputCard.body.push(target.name + " " + tip + text);
                 } else if (saved === "NA" && Markers[spell.name]) {
-                 state.DnD.saveMarkers[targetID] = spell.name;
+                    state.DnD.saveMarkers[targetID] = spell.name;
                 }
             }
             if (saved === false) {
@@ -3113,6 +3137,16 @@ log(rituals)
             let abilityID = AddAbility("Flame Blade",action,caster.charID);
             spell.abilityID = abilityID;
         }
+
+        if (spell.name === "Protection from Energy") {
+            let type = spell.energyType;
+            let marker = "status_" + Markers["Protection from " + type];
+            spell.marker = marker;
+            let target = ModelArray[spell.targetIDs[0]];
+            target.token.set(marker,true);
+        }
+
+
 
         if (spell.name === "Dragon's Breath") {
             //create a 2nd spell to place on target of Dragon's Breath
@@ -3204,7 +3238,6 @@ log(rituals)
             action = "!Attack;@{selected|token_id};@{target|token_id};Spiritual Weapon;" + spell.base + ",force;;Melee;;;;Smite";
             AddAbility("Attack",action,charID);
         }
-
 
         spell.tempSize = (spell.tempSize * 70) / pageInfo.scaleNum;
 
@@ -3339,7 +3372,6 @@ log(rituals)
             outputCard.body.push(emote);
         }
         PrintCard();
-//state.DnD.areaSpell = "";
 
     }
 
