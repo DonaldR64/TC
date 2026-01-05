@@ -633,6 +633,25 @@
             fx: "explode-magic",
         },
 
+        "Sleet Storm": {
+            level: 2,
+            name: "Sleet Storm",
+            range: 150,
+            spellType: "Ongoing",
+            duration: 10,
+            concentration: true,
+            area: 'special',
+            effect: "Effect",
+            moveEffect: "map",
+            tempImg: 'https://files.d20.io/images/470245401/Ng752wa8aromwPeXjumBCA/thumb.png?1767632656',
+            tempSize: 80,
+            sound: "Thunder",
+            macro: '!Spell;Sleet Storm;3',
+            emote: "The ground in the area is covered with slick ice, making it difficult terrain. When a creature enters the spell’s area for the first time on a turn or starts its turn there, it must make a Dexterity saving throw. On a failed save, it falls prone. If a creature is concentrating in the spell’s area, the creature must make a successful Constitution saving throw against your spell save DC or lose concentration.", 
+            charID: '-OiE7OCHSibssu2PskVE',
+        },
+
+
         "Spike Growth": {
             level: 2,
             name: "Spike Growth",
