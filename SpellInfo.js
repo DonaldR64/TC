@@ -82,6 +82,30 @@
             fx: "breath-fire",
         },
 
+        "Call Lightning": {
+            name: "Call Lightning",
+            level: 3,
+            range: 120,
+            spellType: "Area",
+            area: "Square",
+            areaEffect: "Damage",
+            base: '3d10',
+            sLevel: [0,0,'3d10','4d10','5d10','6d10','7d10'],
+            damageType: "lightning",
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",
+            concentration: true,
+            sound: "Thunder",
+            macro: '!Spell;Call Lightning;%Level%',
+            tempImg: "https://files.d20.io/images/470243589/MoDHQX6eZBXVXYY0Trj6lA/thumb.png?1767631375",
+            tempSize: 10,
+            emote: "",
+            fx: 'explode-magic',
+        },
+
+
+
+
          "Cure Wounds": {
             name: "Cure Wounds",
             beneficial: true,
@@ -470,6 +494,20 @@
             emote: "%%Caster%% hurls a ball of flame at the target",
             fx: "",
         },
+
+        "Protection from Energy": {
+            level:3,
+            name: "Protection from Energy",
+            duration: 600,
+            beneficial: true,
+            concentration: true,
+            range: 5,
+            spellType: "Misc",
+            emote: "The creature you touch has resistance to one damage type of your choice",
+            macro: "!Spell;Protection from Energy;3;%Selected%;%Target%;?{Energy Type|Acid|Cold|Fire|Lightning|Thunder}",
+            sound: "Angels",
+        },
+
 
         "Protection from Evil and Good": {
             level:1,
