@@ -1,6 +1,17 @@
 
     //Dec 31
     const SpellInfo = {
+        "Aid": {
+            name: "Aid",
+            level: 2,
+            range: 30,
+            beneficial: true,
+            spellType: "Misc",
+            emote: "Each target’s hit point maximum and current hit points increase for the duration of the spell.",
+            macro: "!Spell;Aid;%Level%;%Selected%;%Target1%;%Target2%;%Target3%",
+            sound: "Angels",
+            duration: 4800,
+        },
 
         "Acid Splash": {
             name: "Acid Splash",
@@ -42,6 +53,21 @@
             sound: "Angels",
             concentration: true,
             duration: 10,
+        },
+
+        "Branding Smite": {
+            name: "Branding Smite",
+            level: 2,
+            bonusAction: true,
+            sLevel: [0,'2d6',"3d6","4d6","5d6","6d6","7d6"],
+            range: 5,
+            beneficial: true,
+            duration: 10,
+            concentration: true,
+            spellType: "Misc",
+            emote: "The next hit deals extra Radiant Damage and causes the target to be Illuminated",
+            macro: "!Spell;Branding Smite;%Level%",
+            sound: "Angels",
         },
 
         "Breathe": {

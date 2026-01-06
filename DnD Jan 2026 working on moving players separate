@@ -3037,6 +3037,16 @@ log(rituals)
                 target.token.set("status_" + Markers["Magic Weapon"],plus);
             }
 
+            if (spell.name === "Aid") {
+                let curHP = parseInt(target.token.get("bar1_value"));
+                bonusHP = (spell.castLevel - 1) * 5
+                target.token.set("bar1_value",curHP + bonusHP);
+                outputCard.body.push(target.name + " receives " + bonusHP + " hp from Aid");
+            }
+
+
+
+
 
         })
 
@@ -3122,6 +3132,10 @@ log(rituals)
         if (someoneFailed === true) {
             AddSpell(spell);
         }
+
+
+
+
 
         let emote = Emote(spell);
         if (emote) {    
