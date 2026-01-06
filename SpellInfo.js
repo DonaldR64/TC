@@ -65,7 +65,7 @@
             duration: 10,
             concentration: true,
             spellType: "Misc",
-            emote: "The next hit deals extra Radiant Damage and causes the target to be Illuminated",
+            emote: "The next hit deals extra Radiant Damage and causes the target to be Illuminated, negating Invisibility",
             macro: "!Spell;Branding Smite;%Level%",
             sound: "Angels",
         },
