@@ -1926,6 +1926,12 @@ log(weapon)
                 }
 
 
+
+
+
+
+
+
             }
 
 
@@ -1959,6 +1965,14 @@ log(weapon)
                 outputCard.body.push("[hr]");
                 outputCard.body.push(weapon.text);
             }
+
+            if (finalDamage > 0 && state.DnD.conSpell[defender.id] !== "") {
+                outputCard.body.push("[hr]");
+                outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+            }
+
+
+
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -2437,6 +2451,15 @@ log(abilityName)
                 if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
                     defender.token.set("status_" + Markers[spell.name],true);
                 }
+
+                if (damageResults.total > 0 && state.DnD.conSpell[defender.id] !== "") {
+                    outputCard.body.push("[hr]");
+                    outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+                }
+
+
+
+
             } else {
                 outputCard.body.push("[B]" + defender.name +" is Missed[/b]");
             }
@@ -2770,6 +2793,12 @@ log("in party: " + m.inParty)
         if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
             MoveTarget(ModelArray[spell.casterID],model,10);
         }
+        if (damageResults.total > 0 && state.DnD.conSpell[model.id] !== "") {
+            outputCard.body.push("[hr]");
+            outputCard.body.push(model.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+        }
+
+
     }
 
     const SpellEffect = (spell,model) => {
