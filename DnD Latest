@@ -612,14 +612,20 @@ log(model.name + ": " + id)
         return array;
     }
 
-    const LineTargets = (caster,target) => {
+    const LineTargets = (caster,target,line) => {
         let temp = [];
+        let width = parseInt(line.replace("Line","")) || 1;
+log("Width = " + width)
         let squares = Line(caster.Point(),target.Point());
         _.each(ModelArray,model => {
             if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
             if (Venn(squares,model.Squares()) === true) {
                 temp.push(model.id);
             }
+//width > 1 square
+
+
+
         })
         temp = [...new Set(temp)];
         let array = [];
@@ -2510,7 +2516,7 @@ log(abilityName)
         }
 
         if (!SpellInfo[spellName]) {
-            outputCard.body.push("Error");
+            outputCard.body.push("Not in Database Yet");
             PrintCard();
             return;
         }
@@ -2843,6 +2849,7 @@ log("in party: " + m.inParty)
             saved = saveResult.save;
             if (saved === "NA") {
                 //needs player to roll
+                outputCard.body.push("Failure means " + model.pronoun.toLowerCase() + spell.failText)
 log("Here")
 
 
@@ -3321,7 +3328,7 @@ log(rituals)
         } else if (spell.area.includes("Cone")) {
             targets = Cone(caster,spellTarget,spellDistance);
         } else if (spell.area.includes("Line")) {
-            targets = LineTargets(caster,spellTarget);
+            targets = LineTargets(caster,spellTarget,spell.area);
         }
 
         if (spell.name === "Sleep") {

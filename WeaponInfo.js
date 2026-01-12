@@ -117,7 +117,12 @@
             type: "Melee",
             sound: "Sword",
         },
-
+        'Hag Claws': {
+            base1: '2d8,slashing',
+            properties: "",
+            type: "Melee",
+            sound: "Sword",
+        },
 
 
 

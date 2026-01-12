@@ -387,7 +387,23 @@
             macro: '!Spell;Guiding Bolt;%Level%;%Selected%;%Target%',
         },
 
-
+        "Gust of Wind": {
+            name: "Gust of Wind",
+            level: 2,
+            concentration: true,
+            range: 60,
+            spellType: "Area",
+            area: "Line2",
+            areaEffect: "Effect",
+            savingThrow: "strength",
+            failText: " is pushed 15 feet away",
+            sound: "Wind",
+            macro: "!Spell;Gust of Wing;2",
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            emote: "The gust disperses gas or vapor, and it extinguishes candles, torches, and similar unprotected flames in the area. It causes protected flames, such as those of lanterns, to dance wildly and has a 50 percent chance to extinguish them.",
+            tempSize: 5,
+            fx: "beam-smoke",
+        },
 
 
 
