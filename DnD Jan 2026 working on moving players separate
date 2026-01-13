@@ -119,6 +119,11 @@ const DnD = (() => {
         "Wrathful Smite": "700-Grey::5818092",
         "Guiding Bolt": "Aid::1431844",
         "Shillelagh": "Effect_Nature_Leaf::1431993",
+        "Protection from Fire": "Slimed-Red-Transparent::2006582",
+        "Protection from Acid": "Slimed-Mustard-Transparent::2006560",
+        "Protection from Lightning": "Slimed-Gray-Transparent::2006556",
+        "Protection from Cold": "Slimed-Blue_-_Transparent::2006550",
+        "Protection from Thunder": "Slimed-Black-Transparent::2006549",
         "Fear": "Fear::1432026",
 
     }
@@ -608,15 +613,20 @@ log(model.name + ": " + id)
         return array;
     }
 
-    const LineTargets = (caster,target) => {
+    const LineTargets = (caster,target,line) => {
         let temp = [];
+        let width = parseInt(line.replace("Line","")) || 1;
         let squares = Line(caster.Point(),target.Point());
         _.each(ModelArray,model => {
             if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
             if (Venn(squares,model.Squares()) === true) {
                 temp.push(model.id);
             }
+
+        //width > 1 square
+
         })
+
         temp = [...new Set(temp)];
         let array = [];
         _.each(temp,id => {
@@ -739,9 +749,13 @@ log(model.name + ": " + id)
     const PrintCard = (id) => {
         let output = "";
         if (id) {
-            let playerObj = findObjs({type: 'player',id: id})[0];
-            let who = playerObj.get("displayname");
-            output += `/w "${who}"`;
+             if (id === "GM") {
+                output += `/w "Don"`
+            } else {
+                let playerObj = findObjs({type: 'player',id: id})[0];
+                let who = playerObj.get("displayname");
+                output += `/w "${who}"`;
+            }
         } else {
             output += "/desc ";
         }
@@ -1155,6 +1169,17 @@ log(damageInfo)
 log(defender.immunities)
 log(defender.resistances)
 log(defender.vulnerabilities)
+        let extraResistances = [];
+        let resistanceTypes = ["Fire","Cold","Lightning","Thunder","Acid"];
+        let defenderMarkers = defender.Markers();
+        _.each(resistanceTypes,type => {
+            if (defenderMarkers.includes("Protection from " + type)) {
+                extraResistances.push(type.toLowerCase());
+            }
+        })
+
+
+
         //Immunities
         if (defender.immunities.includes(damageType)) {
             if (weaponTypes.includes(damageType)) {
@@ -1176,7 +1201,7 @@ log(defender.vulnerabilities)
             }
         }
         //Resistances
-        if (immune === false && defender.resistances.includes(damageType)) {
+        if (immune === false && (defender.resistances.includes(damageType) || extraResistances.includes(damageType))) {
             if (weaponTypes.includes(damageType)) {
                 if (defender.resistances.includes("nonmagical") && defender.resistances.includes("silver") === false && magic === false) {
                     resistant = true;
@@ -1243,12 +1268,23 @@ log(defender.vulnerabilities)
 
 
                 saveTip += "<br>" + result.tip
-            } else {
+            } else if (result.save === false) {
                 saveTip = "Fails<br>" + result.tip;
-                save = "Fails:";
+                save = "Fails: ";
                 if (saveEffect === 'Special') {
                     save = "Fails " +  damageInfo.failText; 
                 }
+            } else if (result.save === "NA") {
+                if (saveEffect === "No Damage") {
+                    saveTip = "No Damage";
+                }
+                if (saveEffect === "Half Damage") {
+                    saveTip = "Half Damage (" + Math.round(total/2) + ")";
+                }
+                if (saveEffect === 'Special') {
+                    saveTip = damageInfo.saveText;
+                }
+                save = "NA";
             }
         }
 
@@ -2192,6 +2228,7 @@ log(abilityName)
             spell.displacedTokenID = attID;
             spell.tempSize = 5;
             let target = SpellTarget(spell);
+            toFront(target.token);
             state.DnD.areaSpell = spell;
             SetupCard(attacker.name,"Dragon's Breath",attacker.displayScheme);
             outputCard.body.push("Place Target then use Macro to Cast");
@@ -2440,6 +2477,10 @@ log(abilityName)
                 let tip = rollResults.diceText;      
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
                 let saveTip = "";
+
+
+
+
                 if (damageResults.save) {
                     saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
                 }
@@ -2451,6 +2492,7 @@ log(abilityName)
                 if ((damageResults.save && damageResults.save !== "Saves") || (!damageResults.save)) {  
                     defender.token.set("status_" + Markers[spell.name],true);
                 }
+                
 
                 if (damageResults.total > 0 && state.DnD.conSpell[defender.id]) {
                      let spellID = state.DnD.conSpell[model.id];
