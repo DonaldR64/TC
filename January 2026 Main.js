@@ -1,5 +1,5 @@
 const DnD = (() => {
-    const version = '2026.1.2';
+    const version = '2026.1.13';
     if (!state.DnD) {state.DnD = {}};
 
     //various constants used in game
