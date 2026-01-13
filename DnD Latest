@@ -124,7 +124,7 @@ const DnD = (() => {
         "Protection from Lightning": "Slimed-Gray-Transparent::2006556",
         "Protection from Cold": "Slimed-Blue_-_Transparent::2006550",
         "Protection from Thunder": "Slimed-Black-Transparent::2006549",
-
+        "Fear": "Fear::1432026",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -615,7 +615,6 @@ log(model.name + ": " + id)
     const LineTargets = (caster,target,line) => {
         let temp = [];
         let width = parseInt(line.replace("Line","")) || 1;
-log("Width = " + width)
         let squares = Line(caster.Point(),target.Point());
         _.each(ModelArray,model => {
             if (model.id === target.id || model.id === caster.id || model.layer === "map") {return}
@@ -1078,6 +1077,7 @@ log(model.name + ": " + id)
             areaSpell: "",
             moveID: "",
             lastMoved: "",
+            saves: {},
             saveMarkers: {},
         }
         nameArray = {};
@@ -1995,6 +1995,22 @@ log(weapon)
                 outputCard.body.push("[hr]");
                 outputCard.body.push(weapon.text);
             }
+
+
+            if (finalDamage > 0 && state.DnD.conSpell[defender.id]) {
+                let spellID = state.DnD.conSpell[model.id];
+                let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                if (spell) {
+                    outputCard.body.push(defender.name + " is Concentrating on " + spell.name + " and must take a Concentration Check to maintain it");            
+                }
+            }
+
+
+
+
+
+
+
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -3106,7 +3122,12 @@ log(rituals)
                 let plus = (spell.castLevel < 4) ? true:Math.min(Math.floor(spell.castLevel/2),3);
                 target.token.set("status_" + Markers["Magic Weapon"],plus);
             }
-
+            if (spell.name === "Aid") {
+                let curHP = parseInt(target.token.get("bar1_value"));
+                bonusHP = (spell.castLevel - 1) * 5
+                target.token.set("bar1_value",curHP + bonusHP);
+                outputCard.body.push(target.name + " receives " + bonusHP + " hp from Aid");
+            }
 
         })
 
@@ -3336,6 +3357,10 @@ log(rituals)
         }
         let targetIDs = [];
         if (spell.areaEffect && spell.areaEffect.includes("Effect")) {
+            if (spell.failTextAll) {
+                outputCard.body.push(spell.failTextAll);
+                outputCard.body.push("[hr]");
+            }
             _.each(targets,target => {
                 let saved = SpellEffect(spell,target);
                 if (saved !== true) {

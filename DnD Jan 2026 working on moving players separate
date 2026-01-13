@@ -2478,9 +2478,6 @@ log(abilityName)
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ')';
                 let saveTip = "";
 
-
-
-
                 if (damageResults.save) {
                     saveTip = '[' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')'
                 }
