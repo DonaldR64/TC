@@ -526,6 +526,28 @@
             emote: "The Target can make a Wisdom Save at the end of each of its turns.",
         },
 
+        "Lightning Bolt": {
+            name: "Lightning Bolt",
+            level: 3,
+            range: 100,
+            spellType: "Area",
+            area: "Line",
+            areaEffect: "Damage",
+            base: '8d6',
+            sLevel: [0,0,'8d6','9d6','10d6','11d6'],
+            damageType: "lightning",
+            savingThrow: "dexterity",
+            saveEffect: "Half Damage",       
+            sound: "Thunder",
+            macro: '!Spell;Lightning Bolt;3',
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            tempSize: 5,
+            fx: 'beam-magic',
+        },
+
+
+
+
         "Mage Armour": {
             name: "Mage Armour",
             level: 1,

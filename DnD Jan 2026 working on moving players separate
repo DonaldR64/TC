@@ -1966,13 +1966,13 @@ log(weapon)
                 outputCard.body.push(weapon.text);
             }
 
-            if (finalDamage > 0 && state.DnD.conSpell[defender.id] && state.DnD.conSpell[defender.id].length > 0) {
-                outputCard.body.push("[hr]");
-                outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+            if (finalDamage > 0 && state.DnD.conSpell[defender.id]) {
+                let spellID = state.DnD.conSpell[model.id];
+                let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                if (spell) {
+                    outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");            
+                }
             }
-
-
-
         } else {
             outputCard.body.push("[B]Miss[/b]");
         }
@@ -2452,9 +2452,12 @@ log(abilityName)
                     defender.token.set("status_" + Markers[spell.name],true);
                 }
 
-                if (damageResults.total > 0 && state.DnD.conSpell[defender.id] !== "") {
-                    outputCard.body.push("[hr]");
-                    outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+                if (damageResults.total > 0 && state.DnD.conSpell[defender.id]) {
+                     let spellID = state.DnD.conSpell[model.id];
+                    let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+                    if (spell) {
+                        outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");            
+                    }
                 }
 
 
@@ -2786,16 +2789,19 @@ log("in party: " + m.inParty)
     const SpellDamage = (rollResults,spell,model) => {
         let damageResults = (ApplyDamage(rollResults,spell.dc,model,spell));
         let saveTip = "";
-        if (damageResults.save) {
+        if (damageResults.save && damageResults.save !== "NA") {
             saveTip = ' [' + damageResults.save + '](#" class="showtip" title="' + damageResults.saveTip + ')' + " and"
         }
         outputCard.body.push(model.name + saveTip +" takes [#ff0000]" + damageResults.total + "[/#] Damage" + damageResults.irv);
         if (spell.name === "Thunderwave" && damageResults.save === "Fails") {
             MoveTarget(ModelArray[spell.casterID],model,10);
         }
-        if (damageResults.total > 0 && state.DnD.conSpell[model.id] !== "") {
-            outputCard.body.push("[hr]");
-            outputCard.body.push(model.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");
+        if (damageResults.total > 0 && state.DnD.conSpell[model.id]) {
+            let spellID = state.DnD.conSpell[model.id];
+            let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
+            if (spell) {
+                outputCard.body.push(defender.name + " is Concentrating on a Spell and must take a Concentration Check to maintain it");            
+            }
         }
 
 
