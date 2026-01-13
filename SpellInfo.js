@@ -143,6 +143,22 @@
             macro: "!Spell;Conjure Animals;%Level%;%Selected%",
         },
 
+        "Crown of Madness": {
+            name: "Crown of Madness",
+            level: 2,
+            range: 120,
+            duration: 10,
+            concentration: true,
+            when: "endAll",
+            spellType: "Misc",
+            macro: "!Spell;Crown of Madness;2;%Selected%;%Target%",
+            sound: "Sound",
+            savingThrow: "wisdom",
+            saveText: " and is not Charmed.",
+            failText: " and is Charmed. While the target is charmed in this way, a twisted crown of jagged iron appears on its head, and a madness glows in its eyes. The charmed target must use its action before moving on each of its turns to make a melee attack against a creature other than itself that you mentally choose. On its subsequent turns, the caster must use its action to maintain control over the target, or the spell ends.",
+            emote: "The Target can make a Wisdom Save at the end of each of its turns.",
+        },
+
 
 
 
@@ -156,6 +172,22 @@
             sound: "Angels",
             macro: "!Spell;Cure Wounds;%Level%;%Selected%",
         },
+
+        "Dispel Magic": {
+            name: "Dispel Magic",
+            level: 3,
+            bonusAction: false,
+            duration: 1,
+            beneficial: true,
+            concentration: true,
+            range: "Self",
+            spellType: "Misc",
+            macro: "!Spell;Dispel Magic;%Level%;%Selected%",
+            emote: "Choose one creature, object, or magical effect within range. Any spell of 3rd level or lower on the target ends. For each spell of 4th level or higher on the target, make an ability check using your spellcasting ability. The DC equals 10 + the spell’s level. On a successful check, the spell ends. At Higher Levels. When you cast this spell using a spell slot o f 4th level or higher, you automatically end the effects o f a spell on the target if the spell’s level is equal to or less than the level o f the spell slot you used.",             
+            sound: "Angels",
+        },       
+
+
 
         "Divine Favour": {
             name: "Divine Favour",
@@ -264,6 +296,27 @@
             tempSize: 20,
             fx: 'explode-magic',
         },
+
+        "Fear": {
+            name: "Fear",
+            level: 3,
+            range: 30,
+            concentration: true,
+            duration: 10,
+            spellType: "Area",
+            savingThrow: "wisdom",
+            area: 'Cone',
+            areaEffect: "Effect",
+            tempImg: 'https://files.d20.io/images/105823565/P035DS5yk74ij8TxLPU8BQ/thumb.png?1582679991',
+            tempSize: 5,
+            sound: "Beam",
+            macro: '!Spell;Fear;%Level%',
+            fx: "breath-magic",
+            failText: " and is Feared",
+            failTextAll: "Creatures that fail drop whatever they are holding and become frightened for the duration. While frightened by this spell, a creature must take the Dash action and move away from the caster by the safest available route on each of its turns, unless there is nowhere to move. If the creature ends its turn in a location where it doesn’t have line of sight to the caster, the creature can make a Wisdom saving throw. On a successful save, the spell ends for that creature.",
+        },
+
+
 
         "Fire Bolt": {
             name: "Fire Bolt",
