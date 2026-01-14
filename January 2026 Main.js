@@ -125,6 +125,8 @@ const DnD = (() => {
         "Protection from Cold": "Slimed-Blue_-_Transparent::2006550",
         "Protection from Thunder": "Slimed-Black-Transparent::2006549",
         "Fear": "Fear::1432026",
+        "Blindness Deafness": "",
+        "Ray of Enfeeblement": "",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];

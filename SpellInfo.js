@@ -55,6 +55,23 @@
             duration: 10,
         },
 
+        "Blindness Deafness": {
+            name: "Blindness Deafness",
+            level: 2,
+            range: 30,
+            duration: 10,
+            when: "endAll",
+            spellType: "Misc",
+            macro: "!Spell;Blindness Deafness;%Level%;%Selected%;%Target%",
+            sound: "Sound",
+            savingThrow: "constitution",
+            saveText: " and is not Blind/Deaf",
+            failText: " and is Blind/Deaf",
+            emote: "The Target can make a Constitution Save at the end of each of its turns.",
+        },
+
+
+
         "Branding Smite": {
             name: "Branding Smite",
             level: 2,
@@ -588,6 +605,27 @@
 
         },
 
+        "Melf's Acid Arrow": {
+//fix
+            name: "Melf's Acid Arrow",
+            level: 2,
+            spellType: "DirectAttack",
+            range: 60,
+            autoHit: "No",
+            when: "start",
+            savingThrow: "auto",
+            saveText: "Movement is slowed by 10ft this turn",
+            base: '4d4',
+            cLevel: {5: '2d8', 11: '3d8'},
+            damageType: "acid",
+            sound: "Laser",
+            emote: "A shimmering green arrow streaks toward the target and burst in a spray of acid",
+            fx: "",
+            macro: '!Spell;Melfs Acid Arrow;%Level%;%Selected%;%Target%',
+        },
+
+
+
         "Moonbeam": {
             level: 2,
             name: "Moonbeam",
@@ -654,6 +692,25 @@
             sound: "Angels",
         },
 
+        "Ray of Enfeeblement": {
+            name: "Ray of Enfeeblement",
+            level: 2,
+            spellType: "DirectAttack",
+            range: 60,
+            concentration: true,
+            autoHit: "No",
+            when: "start",
+            note: "Target will deal only half damage with weapon attacks that use Strength until the spell ends",
+            when: "endAll",
+            savingThrow: "constitution",
+            spellType: "Misc",
+            sound: "Laser",
+            fx: "",
+            macro: '!Spell;Ray of Enfeeblement;0;%Selected%;%Target%',
+        },
+
+
+
         "Ray of Frost": {
             name: "Ray of Frost",
             level: 0,
@@ -672,6 +729,26 @@
             fx: "",
             macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
         },
+
+        "Ray of Sickness": {
+//fix
+            name: "Ray of Sickness",
+            level: 1,
+            spellType: "DirectAttack",
+            range: 60,
+            autoHit: "No",
+            when: "start",
+            savingThrow: "constitution",
+            base: '2d8',
+            sLevel: [0,"2d8","3d8","4d8","5d8","6d8","7d8"],
+            damageType: "poison",
+            sound: "Laser",
+            emote: "A ray of sickening greenish energy lashes out toward the target",
+            fx: "",
+            macro: '!Spell;Ray of Frost;0;%Selected%;%Target%',
+        },
+
+
 
         "Sacred Flame": {
             name: "Sacred Flame",
