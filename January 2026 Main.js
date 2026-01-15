@@ -127,6 +127,7 @@ const DnD = (() => {
         "Fear": "Fear::1432026",
         "Blindness": "110-Darkness-Partial::5818056",
         "Ray of Enfeeblement": "419-Effect-Debuff::5818083",
+        "Ray of Enfeeblement": "Poison::2006492",
         "Putrid Radiance": "Poison::2006492",
         "Crown of Madness": "Charmed::2006504",
     }
