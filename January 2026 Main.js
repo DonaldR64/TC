@@ -125,8 +125,10 @@ const DnD = (() => {
         "Protection from Cold": "Slimed-Blue_-_Transparent::2006550",
         "Protection from Thunder": "Slimed-Black-Transparent::2006549",
         "Fear": "Fear::1432026",
-        "Blindness Deafness": "",
-        "Ray of Enfeeblement": "",
+        "Blindness": "110-Darkness-Partial::5818056",
+        "Ray of Enfeeblement": "419-Effect-Debuff::5818083",
+        "Putrid Radiance": "Poison::2006492",
+        "Crown of Madness": "Charmed::2006504",
     }
 
     const Incapacitated = ["Paralyzed","Stunned","Unconscious","Incapacitated","Sleep","Hold Person"];
@@ -215,6 +217,9 @@ const DnD = (() => {
             this.layer = token.get("layer");
 
             let control = char.get("controlledby");
+            if (this.name === "Eivirin") {
+                control = "-OeTGX5FY4C70LTFBna4";
+            }
             let inParty = char.get("inParty")
             this.inParty = inParty;
             if (inParty === true) {
@@ -999,7 +1004,6 @@ log(model.name + ": " + id)
                 output += '<hr style="width:95%; align:center; margin:0px 0px 5px 5px; border-top:2px solid $1;">';
             }
             let out = "";
-            let borderColour = Factions[outputCard.side].borderColour;
             if (inline === false || i===0) {
                 out += `<div style="display: table-row; background: #FFFFFF;; ">`;
                 out += `<div style="display: table-cell; padding: 0px 0px; font-family: Arial; font-style: normal; font-weight: normal; font-size: 14px; `;
@@ -1009,9 +1013,9 @@ log(model.name + ": " + id)
             if (inline === true) {
                 out += '<span>     </span>';
             }
-            out += `<a style ="background-color: ` + Factions[outputCard.side].backgroundColour + `; padding: 5px;`
-            out += `color: ` + Factions[outputCard.side].fontColour + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
-            out += `border-color: ` + borderColour + `; font-family: Tahoma; font-size: x-small; `;
+            out += `<a style ="background-color: ` + "#ffffff" + `; padding: 5px;`
+            out += `color: ` + "#000000" + `; text-align: center; vertical-align: middle; border-radius: 5px;`;
+            out += `border-color: ` + "#000000" + `; font-family: Tahoma; font-size: x-small; `;
             out += `"href = "` + info.action + `">` + info.phrase + `</a>`
             
             if (inline === false || i === (array.length - 1)) {
@@ -1224,11 +1228,11 @@ log(defender.vulnerabilities)
         }
         if (immune == true) {
             total = 0
-            irv = " [#00ff00][Immune][/#]";        
+            irv = " [#ff0000][Immune][/#]";        
         }
         if (resistant === true) {
             total = Math.round(total/2)
-            irv = " [#00ff00][Resistant][/#]";
+            irv = " [#ff0000][Resistant][/#]";
         }
         //Vulnerabilities
         if (immune === false && resistant === false && defender.vulnerabilities.includes(damageType)) {
@@ -1241,12 +1245,29 @@ log(defender.vulnerabilities)
 
 
         //advantage/disadvantage due to special considerations
-        let adv = 0;
+        let adv = false;
+        let disadv = false;
         if (damageInfo.name === "Moonbeam" && defender.type.includes("shapechanger")) {
-            adv = -1;
-            saveTip = "Disadvantage to Save";
+            disadv = true;
+            saveTip = "Disadvantage to Save from Moonbeam";
             irv = " [#ff0000][Disadvantage][/#]";
         }
+
+        if (damageInfo.spell === true && defender.resistances.includes("magic resistance")) {
+            adv = true;
+            saveTip = "Advantage to Save from Magic Resistance";
+            irv = " [#ff0000][Advantage][/#]";
+        }
+        if (adv === true && disadv === false) {
+            adv = 1;
+        } else if ((adv === true && disadv === true) || adv === false && disadv === false) {
+            adv = 0;
+        } else if (adv === false && disadv === true) {
+            adv = -1;
+        }
+
+
+
 
         //Saving Throws
         let save;
@@ -1289,6 +1310,7 @@ log(defender.vulnerabilities)
                 save = "NA";
             }
         }
+
 
         let result = {
             total: total,
@@ -1711,13 +1733,17 @@ log(weapon)
         } 
 
         let statBonus = attacker.statBonus["strength"];
+        let strWeapon = true;
         if (inReach === false && weapon.properties.includes("Thrown") === false) {
             statBonus = attacker.statBonus["dexterity"];
+            strWeapon = false;
         }
         if (weapon.properties.includes("Finesse")) {
             statBonus = Math.max(attacker.statBonus["strength"],attacker.statBonus["dexterity"]);
+            strWeapon = false;
         }
         if (weapon.properties.includes("Spell")) {
+            strWeapon = false;
             statBonus = 0;
             weapon.magic = "magic";
             if (weapon === "Flame Blade") {
@@ -1732,12 +1758,14 @@ log(weapon)
             }
         }
         if (attMarkers.includes("Shillelagh") && weaponName.toLowerCase().includes("staff") || weaponName.toLowerCase().includes("club")) {
+            strWeapon = false;
             statBonus = attacker.statBonus["wisdom"];
             weapon.magic = "magic";
             weapon.base1 = "1d8,bludgeoning";
         }
 
         if (weaponName === "Spiritual Weapon") {
+            strWeapon = false;
             let spellID = attacker.token.get("gmnotes").toString();
             let spell = state.DnD.spellList.find((e) => e.spellID == spellID);
             if(!spell) {
@@ -1807,6 +1835,7 @@ log(weapon)
             weapon.magic = "magic";
         }
 
+        weapon.strWeapon = strWeapon;
 
         weapon.damage = [weapon.base1];
         if (weapon.base2) {
@@ -1904,6 +1933,12 @@ log(weapon)
                 //roll damage for each damage type then 'apply' it to defender
                 let rollResults = RollDamage(weapon.damage[i],crit); //total, diceText
                 let damageResults = ApplyDamage(rollResults,dc,defender,weapon);
+                if (i===0 && strWeapon === true && attMarkers.includes("Ray of Enfeeblement")) {
+                    damageResults.total = Math.round(damageResults.total/2);
+                    damageResults.irv += " [Feeble]";
+                }
+
+
                 let tip = rollResults.diceText;  
                 tip = '[' + damageResults.total + '](#" class="showtip" title="' + tip + ') ';
                 let saveTip = "";
@@ -2046,8 +2081,8 @@ log(weapon)
         let ids = Object.keys(ModelArray);
 
         let positive = ["Invisible","Advantage"];
-        let attNegative = ["Blind","Frightened","Poisoned","Disadvantage","Heat Metal"];
-        let defNegative = ["Blind","Disadvantage"];
+        let attNegative = ["Blind","Frightened","Poisoned","Disadvantage","Heat Metal","Blindness"];
+        let defNegative = ["Blind","Disadvantage","Blindness"];
 
         let advantage = false;
         let advText = []; 
@@ -2540,6 +2575,7 @@ log(abilityName)
         }
 
         let spell = DeepCopy(SpellInfo[spellName]);
+        spell.spell = true;
 
         //check spell slots, distance
         if (!spell.exempt && ritual === false && level > 0) {
@@ -3110,8 +3146,11 @@ log(rituals)
                 if (saved !== "NA") {
                     let tip = '[' + noun + '](#" class="showtip" title="' + saveResult.tip + ')';
                     outputCard.body.push(target.name + " " + tip + text);
-                } else if (saved === "NA" && Markers[spell.name]) {
-                    state.DnD.saveMarkers[targetID] = spell.name;
+                } else if (saved === "NA") {
+                    outputCard.body.push("Failure means " + target.pronoun.toLowerCase() + spell.failText)
+                    if (Markers[spell.name]) {
+                        state.DnD.saveMarkers[targetID] = spell.name;
+                    }
                 }
             }
             if (saved === false) {

@@ -55,18 +55,18 @@
             duration: 10,
         },
 
-        "Blindness Deafness": {
-            name: "Blindness Deafness",
+        "Blindness": {
+            name: "Blindness",
             level: 2,
             range: 30,
             duration: 10,
             when: "endAll",
             spellType: "Misc",
-            macro: "!Spell;Blindness Deafness;%Level%;%Selected%;%Target%",
+            macro: "!Spell;Blindness;%Level%;%Selected%;%Target%",
             sound: "Sound",
             savingThrow: "constitution",
-            saveText: " and is not Blind/Deaf",
-            failText: " and is Blind/Deaf",
+            saveText: " and is not Blinded",
+            failText: " is Blinded",
             emote: "The Target can make a Constitution Save at the end of each of its turns.",
         },
 
@@ -692,6 +692,30 @@
             sound: "Angels",
         },
 
+        "Putrid Radiance": {
+            name: "Putrid Radiance",
+            level: 2,
+            range: 30,
+            spellType: "Area",
+            area: "Square",
+            areaEffect: "Damage",
+            base: '2d6',
+            damageType: "poison",
+            savingThrow: "constitution",
+            saveEffect: "No Damage",       
+            sound: "",
+            macro: '!Spell;Putrid Radiance;2',
+            tempImg: "https://files.d20.io/images/469625735/mK7gnOSOteATSiJs5Z7riA/thumb.png?1767216572",
+            tempSize: 10,
+            fx: 'explode-poison',
+            when: "start",
+            savingThrow: "auto",
+            saveText: "The Putrid clears",
+            note: "Target is Poisoned for a round",
+        },
+
+
+
         "Ray of Enfeeblement": {
             name: "Ray of Enfeeblement",
             level: 2,
@@ -700,7 +724,7 @@
             concentration: true,
             autoHit: "No",
             when: "start",
-            note: "Target will deal only half damage with weapon attacks that use Strength until the spell ends",
+            failText: " will be Feeble while spell lasts",
             when: "endAll",
             savingThrow: "constitution",
             spellType: "Misc",
