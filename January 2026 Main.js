@@ -4163,12 +4163,31 @@ log("Is Spell: " + model.isSpell)
                 EffectCheck(model,"ModelMove");
                 SpellMove(model);
             }
-
-
-
-
-
         }
+
+
+        let covenNames = ["Morgantha","Offalia","Bella"];
+        if (tok.get("bar1_value") !== prev.bar1_value && covenNames.some(r => prev.name.includes(r))) {
+            let tokens = findObjs({
+                _pageid: Campaign().get("playerpageid"),
+                _type: "graphic",
+                _subtype: "token",
+                layer: "objects",
+            })
+            _.each(tokens,token => {
+                _.each(covenNames, name => {
+                    if (token.get("name").includes(name)) {
+                        token.set("bar1_value",tok.get("bar1_value"));
+                    }
+                })
+            })
+        }
+
+
+
+
+
+
     }
 
 
