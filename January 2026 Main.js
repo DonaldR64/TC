@@ -2036,7 +2036,7 @@ log(weapon)
 
 
             if (finalDamage > 0 && state.DnD.conSpell[defender.id]) {
-                let spellID = state.DnD.conSpell[model.id];
+                let spellID = state.DnD.conSpell[defender.id];
                 let spell = state.DnD.spellList.find((e) => e.spellID === spellID);
                 if (spell) {
                     outputCard.body.push(defender.name + " is Concentrating on " + spell.name + " and must take a Concentration Check to maintain it");            
